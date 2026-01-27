@@ -10,19 +10,31 @@ export default async function AdminLayout({
 }) {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
+  let authUser = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    authUser = data.user
+  } catch {
     redirect('/login')
   }
 
-  const { data: userDataRes } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  if (!authUser) {
+    redirect('/login')
+  }
 
-  const userData = userDataRes as User | null
+  let userData: User | null = null
+  try {
+    const { data: userDataRes } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authUser.id)
+      .single()
+
+    userData = userDataRes as User | null
+  } catch {
+    // User not found in database, redirect to login
+    redirect('/login')
+  }
 
   if (!userData || userData.role !== 'admin') {
     redirect('/closer/dashboard')
