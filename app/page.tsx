@@ -21,4 +21,6 @@ export default async function Home() {
   } else {
     redirect('/closer/dashboard')
   }
+
+  return null
 }
