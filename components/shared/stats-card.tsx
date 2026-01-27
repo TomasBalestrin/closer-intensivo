@@ -1,13 +1,59 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { LucideIcon } from 'lucide-react'
+import {
+  Users,
+  UserCheck,
+  Target,
+  DollarSign,
+  TrendingUp,
+  Award,
+  Activity,
+  BarChart,
+  Calendar,
+  CheckCircle,
+  Clock,
+  FileText,
+  Heart,
+  Home,
+  Mail,
+  Phone,
+  Settings,
+  Star,
+  User,
+  Zap,
+} from 'lucide-react'
+
+const iconMap = {
+  Users,
+  UserCheck,
+  Target,
+  DollarSign,
+  TrendingUp,
+  Award,
+  Activity,
+  BarChart,
+  Calendar,
+  CheckCircle,
+  Clock,
+  FileText,
+  Heart,
+  Home,
+  Mail,
+  Phone,
+  Settings,
+  Star,
+  User,
+  Zap,
+}
+
+export type IconName = keyof typeof iconMap
 
 interface StatsCardProps {
   title: string
   value: string | number
   subtitle?: string
-  icon?: LucideIcon
+  icon?: IconName
   trend?: {
     value: number
     isPositive: boolean
@@ -20,11 +66,13 @@ export function StatsCard({
   title,
   value,
   subtitle,
-  icon: Icon,
+  icon,
   trend,
   className,
   bgColor = 'bg-white',
 }: StatsCardProps) {
+  const Icon = icon ? iconMap[icon] : null
+
   return (
     <div className={cn('rounded-lg shadow-md p-6', bgColor, className)}>
       <div className="flex items-center justify-between">

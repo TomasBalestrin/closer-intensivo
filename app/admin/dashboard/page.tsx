@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { StatsCard } from '@/components/shared'
-import { Users, UserCheck, Target, DollarSign, TrendingUp, Award } from 'lucide-react'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
 import { Participant, Sale, User } from '@/lib/types'
+import { Award } from 'lucide-react'
 
 async function getDashboardData() {
   try {
@@ -87,7 +87,6 @@ async function getDashboardData() {
     }
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
-    // Return empty data on error
     return {
       totalParticipants: 0,
       checkedInDay1: 0,
@@ -127,25 +126,25 @@ export default async function AdminDashboard() {
           <StatsCard
             title="Total de Participantes"
             value={data.totalParticipants}
-            icon={Users}
+            icon="Users"
           />
           <StatsCard
             title="Credenciaram Dia 1"
             value={data.checkedInDay1}
             subtitle={`${formatPercentage(data.checkedInDay1 / (data.totalParticipants || 1))} do total`}
-            icon={UserCheck}
+            icon="UserCheck"
           />
           <StatsCard
             title="Credenciaram Dia 2"
             value={data.checkedInDay2}
             subtitle={`${formatPercentage(data.checkedInDay2 / (data.totalParticipants || 1))} do total`}
-            icon={UserCheck}
+            icon="UserCheck"
           />
           <StatsCard
             title="Credenciaram Dia 3"
             value={data.checkedInDay3}
             subtitle={`${formatPercentage(data.checkedInDay3 / (data.totalParticipants || 1))} do total`}
-            icon={UserCheck}
+            icon="UserCheck"
           />
         </div>
       </section>
@@ -157,25 +156,25 @@ export default async function AdminDashboard() {
           <StatsCard
             title="Total de Oportunidades"
             value={data.totalOpportunities}
-            icon={Target}
+            icon="Target"
           />
           <StatsCard
             title="Oportunidades Dia 1"
             value={data.oppDay1}
             subtitle={`${formatPercentage(data.oppDay1 / (data.totalOpportunities || 1))} do total`}
-            icon={Target}
+            icon="Target"
           />
           <StatsCard
             title="Oportunidades Dia 2"
             value={data.oppDay2}
             subtitle={`${formatPercentage(data.oppDay2 / (data.totalOpportunities || 1))} do total`}
-            icon={Target}
+            icon="Target"
           />
           <StatsCard
             title="Oportunidades Dia 3"
             value={data.oppDay3}
             subtitle={`${formatPercentage(data.oppDay3 / (data.totalOpportunities || 1))} do total`}
-            icon={Target}
+            icon="Target"
           />
         </div>
       </section>
