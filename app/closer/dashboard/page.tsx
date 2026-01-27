@@ -5,73 +5,93 @@ import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
 
 async function getCloserDashboardData(closerId: string) {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  // Get participants assigned to this closer
-  const { data: participants } = await supabase
-    .from('participants')
-    .select('*')
-    .eq('closer_id', closerId)
+    // Get participants assigned to this closer
+    const { data: participants } = await supabase
+      .from('participants')
+      .select('*')
+      .eq('closer_id', closerId)
 
-  // Get sales by this closer
-  const { data: sales } = await supabase
-    .from('sales')
-    .select('*')
-    .eq('closer_id', closerId)
+    // Get sales by this closer
+    const { data: sales } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('closer_id', closerId)
 
-  // Get all closers for top 3
-  const { data: allClosers } = await supabase
-    .from('users')
-    .select('*')
-    .eq('role', 'closer')
+    // Get all closers for top 3
+    const { data: allClosers } = await supabase
+      .from('users')
+      .select('*')
+      .eq('role', 'closer')
 
-  const { data: allSales } = await supabase
-    .from('sales')
-    .select('*')
+    const { data: allSales } = await supabase
+      .from('sales')
+      .select('*')
 
-  const checkedInParticipants = participants?.filter(
-    p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
-  ).length || 0
+    const checkedInParticipants = participants?.filter(
+      p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
+    ).length || 0
 
-  const opportunities = participants?.filter(p => p.is_opportunity) || []
-  const checkedInOpportunities = opportunities.filter(
-    p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
-  ).length
+    const opportunities = participants?.filter(p => p.is_opportunity) || []
+    const checkedInOpportunities = opportunities.filter(
+      p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
+    ).length
 
-  const totalSalesValue = sales?.reduce((sum, s) => sum + Number(s.total_value), 0) || 0
-  const totalEntryValue = sales?.reduce((sum, s) => sum + Number(s.entry_value), 0) || 0
-  const salesCount = sales?.length || 0
-  const conversionRate = checkedInOpportunities > 0 ? salesCount / checkedInOpportunities : 0
+    const totalSalesValue = sales?.reduce((sum, s) => sum + Number(s.total_value || 0), 0) || 0
+    const totalEntryValue = sales?.reduce((sum, s) => sum + Number(s.entry_value || 0), 0) || 0
+    const salesCount = sales?.length || 0
+    const conversionRate = checkedInOpportunities > 0 ? salesCount / checkedInOpportunities : 0
 
-  // Top 3 closers
-  const closerStats = allClosers?.map(closer => {
-    const closerSales = allSales?.filter(s => s.closer_id === closer.id) || []
+    // Top 3 closers
+    const closerStats = allClosers?.map(closer => {
+      const closerSales = allSales?.filter(s => s.closer_id === closer.id) || []
+      return {
+        ...closer,
+        salesCount: closerSales.length,
+        totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
+        entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
+      }
+    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3) || []
+
     return {
-      ...closer,
-      salesCount: closerSales.length,
-      totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value), 0),
-      entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value), 0),
+      checkedInParticipants,
+      checkedInOpportunities,
+      salesCount,
+      conversionRate,
+      totalSalesValue,
+      totalEntryValue,
+      topClosers: closerStats,
     }
-  }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3) || []
-
-  return {
-    checkedInParticipants,
-    checkedInOpportunities,
-    salesCount,
-    conversionRate,
-    totalSalesValue,
-    totalEntryValue,
-    topClosers: closerStats,
+  } catch (error) {
+    console.error('Error fetching closer dashboard data:', error)
+    return {
+      checkedInParticipants: 0,
+      checkedInOpportunities: 0,
+      salesCount: 0,
+      conversionRate: 0,
+      totalSalesValue: 0,
+      totalEntryValue: 0,
+      topClosers: [],
+    }
   }
 }
 
 export default async function CloserDashboard() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return null
+  let authUser = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    authUser = data.user
+  } catch {
+    return null
+  }
 
-  const data = await getCloserDashboardData(user.id)
+  if (!authUser) return null
+
+  const data = await getCloserDashboardData(authUser.id)
 
   return (
     <div className="space-y-8">

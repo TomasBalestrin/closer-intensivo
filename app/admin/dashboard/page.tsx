@@ -6,83 +6,105 @@ import { Avatar } from '@/components/ui'
 import { Participant, Sale, User } from '@/lib/types'
 
 async function getDashboardData() {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  // Get all participants
-  const { data: participantsData } = await supabase
-    .from('participants')
-    .select('*')
+    // Get all participants
+    const { data: participantsData } = await supabase
+      .from('participants')
+      .select('*')
 
-  // Get all sales with closer info
-  const { data: salesData } = await supabase
-    .from('sales')
-    .select('*, closer:users(*)')
+    // Get all sales with closer info
+    const { data: salesData } = await supabase
+      .from('sales')
+      .select('*, closer:users(*)')
 
-  // Get closers with their stats
-  const { data: closersData } = await supabase
-    .from('users')
-    .select('*')
-    .eq('role', 'closer')
+    // Get closers with their stats
+    const { data: closersData } = await supabase
+      .from('users')
+      .select('*')
+      .eq('role', 'closer')
 
-  const participants = (participantsData || []) as Participant[]
-  const sales = (salesData || []) as (Sale & { closer: User })[]
-  const closers = (closersData || []) as User[]
+    const participants = (participantsData || []) as Participant[]
+    const sales = (salesData || []) as (Sale & { closer: User })[]
+    const closers = (closersData || []) as User[]
 
-  const totalParticipants = participants.length
-  const checkedInDay1 = participants.filter(p => p.checked_in_day1).length
-  const checkedInDay2 = participants.filter(p => p.checked_in_day2).length
-  const checkedInDay3 = participants.filter(p => p.checked_in_day3).length
+    const totalParticipants = participants.length
+    const checkedInDay1 = participants.filter(p => p.checked_in_day1).length
+    const checkedInDay2 = participants.filter(p => p.checked_in_day2).length
+    const checkedInDay3 = participants.filter(p => p.checked_in_day3).length
 
-  const opportunities = participants.filter(p => p.is_opportunity)
-  const totalOpportunities = opportunities.length
-  const oppDay1 = opportunities.filter(p => p.checked_in_day1).length
-  const oppDay2 = opportunities.filter(p => p.checked_in_day2).length
-  const oppDay3 = opportunities.filter(p => p.checked_in_day3).length
+    const opportunities = participants.filter(p => p.is_opportunity)
+    const totalOpportunities = opportunities.length
+    const oppDay1 = opportunities.filter(p => p.checked_in_day1).length
+    const oppDay2 = opportunities.filter(p => p.checked_in_day2).length
+    const oppDay3 = opportunities.filter(p => p.checked_in_day3).length
 
-  // Qualification stats
-  const superQualified = opportunities.filter(p => p.qualification === 'super')
-  const medioQualified = opportunities.filter(p => p.qualification === 'medio')
-  const baixoQualified = opportunities.filter(p => p.qualification === 'baixo')
+    // Qualification stats
+    const superQualified = opportunities.filter(p => p.qualification === 'super')
+    const medioQualified = opportunities.filter(p => p.qualification === 'medio')
+    const baixoQualified = opportunities.filter(p => p.qualification === 'baixo')
 
-  // Sales by qualification
-  const getSalesByQualification = (qualification: string) => {
-    const qualifiedParticipantIds = opportunities
-      .filter(p => p.qualification === qualification)
-      .map(p => p.id)
-    return sales.filter(s => qualifiedParticipantIds.includes(s.participant_id))
-  }
-
-  const superSales = getSalesByQualification('super')
-  const medioSales = getSalesByQualification('medio')
-  const baixoSales = getSalesByQualification('baixo')
-
-  // Top 3 closers by sales value
-  const closerStats = closers.map(closer => {
-    const closerSales = sales.filter(s => s.closer_id === closer.id)
-    return {
-      ...closer,
-      salesCount: closerSales.length,
-      totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value), 0),
-      entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value), 0),
+    // Sales by qualification
+    const getSalesByQualification = (qualification: string) => {
+      const qualifiedParticipantIds = opportunities
+        .filter(p => p.qualification === qualification)
+        .map(p => p.id)
+      return sales.filter(s => qualifiedParticipantIds.includes(s.participant_id))
     }
-  }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3) || []
 
-  return {
-    totalParticipants,
-    checkedInDay1,
-    checkedInDay2,
-    checkedInDay3,
-    totalOpportunities,
-    oppDay1,
-    oppDay2,
-    oppDay3,
-    superQualified: superQualified.length,
-    medioQualified: medioQualified.length,
-    baixoQualified: baixoQualified.length,
-    superSales,
-    medioSales,
-    baixoSales,
-    topClosers: closerStats,
+    const superSales = getSalesByQualification('super')
+    const medioSales = getSalesByQualification('medio')
+    const baixoSales = getSalesByQualification('baixo')
+
+    // Top 3 closers by sales value
+    const closerStats = closers.map(closer => {
+      const closerSales = sales.filter(s => s.closer_id === closer.id)
+      return {
+        ...closer,
+        salesCount: closerSales.length,
+        totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
+        entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
+      }
+    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3) || []
+
+    return {
+      totalParticipants,
+      checkedInDay1,
+      checkedInDay2,
+      checkedInDay3,
+      totalOpportunities,
+      oppDay1,
+      oppDay2,
+      oppDay3,
+      superQualified: superQualified.length,
+      medioQualified: medioQualified.length,
+      baixoQualified: baixoQualified.length,
+      superSales,
+      medioSales,
+      baixoSales,
+      topClosers: closerStats,
+    }
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error)
+    // Return empty data on error
+    return {
+      totalParticipants: 0,
+      checkedInDay1: 0,
+      checkedInDay2: 0,
+      checkedInDay3: 0,
+      totalOpportunities: 0,
+      oppDay1: 0,
+      oppDay2: 0,
+      oppDay3: 0,
+      superQualified: 0,
+      medioQualified: 0,
+      baixoQualified: 0,
+      superSales: [],
+      medioSales: [],
+      baixoSales: [],
+      topClosers: [],
+    }
   }
 }
 
@@ -179,13 +201,13 @@ export default async function AdminDashboard() {
               <div>
                 <p className="text-gray-600">Valor de Venda</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.superSales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                  {formatCurrency(data.superSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0))}
                 </p>
               </div>
               <div>
                 <p className="text-gray-600">Valor Entrada</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.superSales.reduce((sum, s) => sum + Number(s.entry_value), 0))}
+                  {formatCurrency(data.superSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0))}
                 </p>
               </div>
             </div>
@@ -208,13 +230,13 @@ export default async function AdminDashboard() {
               <div>
                 <p className="text-gray-600">Valor de Venda</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.medioSales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                  {formatCurrency(data.medioSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0))}
                 </p>
               </div>
               <div>
                 <p className="text-gray-600">Valor Entrada</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.medioSales.reduce((sum, s) => sum + Number(s.entry_value), 0))}
+                  {formatCurrency(data.medioSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0))}
                 </p>
               </div>
             </div>
@@ -237,13 +259,13 @@ export default async function AdminDashboard() {
               <div>
                 <p className="text-gray-600">Valor de Venda</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.baixoSales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                  {formatCurrency(data.baixoSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0))}
                 </p>
               </div>
               <div>
                 <p className="text-gray-600">Valor Entrada</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(data.baixoSales.reduce((sum, s) => sum + Number(s.entry_value), 0))}
+                  {formatCurrency(data.baixoSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0))}
                 </p>
               </div>
             </div>
