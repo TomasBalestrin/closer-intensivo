@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { calculateArchetypes, getCombinedDescription, getArchetypeInfo } from '@/lib/archetypes'
+import { calculateDISC, getDISCProfileInfo, getDISCTraitInfo } from '@/lib/disc'
 
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -12,56 +14,91 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
-const DISC_DESCRIPTIONS: Record<string, string> = {
-  D: 'Dominância - Pessoas com perfil D são focadas em resultados, decisivas e diretas. Gostam de desafios e de estar no controle.',
-  I: 'Influência - Pessoas com perfil I são entusiastas, otimistas e sociáveis. Gostam de interagir com pessoas e influenciar os outros.',
-  S: 'Estabilidade - Pessoas com perfil S são pacientes, confiáveis e boas ouvintes. Valorizam estabilidade e harmonia.',
-  C: 'Conformidade - Pessoas com perfil C são analíticas, precisas e sistemáticas. Valorizam qualidade e acurácia.',
-}
-
 export async function POST(request: Request) {
   try {
-    const { formId, responses, participant, discProfile } = await request.json()
+    const { participantId, answers, challengeAnswer, desiredChangeAnswer } = await request.json()
     const supabase = getSupabase()
 
-    // Check if Anthropic API key is available
-    const anthropicKey = process.env.ANTHROPIC_API_KEY
+    // Calculate archetypes (visible to participant)
+    const archetypeResult = calculateArchetypes(answers)
+    const primaryInfo = getArchetypeInfo(archetypeResult.primary)
+    const secondaryInfo = getArchetypeInfo(archetypeResult.secondary)
+    const combinedDescription = getCombinedDescription(archetypeResult.primary, archetypeResult.secondary)
 
-    let analysis: any = {
-      disc_description: DISC_DESCRIPTIONS[discProfile] || 'Perfil não identificado',
-      sales_insights: getDefaultInsights(discProfile),
-      objections: getDefaultObjections(discProfile),
-      objection_handling: getDefaultHandling(discProfile),
-      closing_examples: getDefaultClosing(discProfile),
+    // Calculate DISC (hidden - only for closers)
+    const discResult = calculateDISC(answers)
+    const discProfileInfo = getDISCProfileInfo(discResult.profile)
+    const primaryTraitInfo = getDISCTraitInfo(discResult.primary)
+    const secondaryTraitInfo = getDISCTraitInfo(discResult.secondary)
+
+    // Get participant data
+    const { data: participant } = await supabase
+      .from('participants')
+      .select('name, phone, niche, revenue')
+      .eq('id', participantId)
+      .single()
+
+    // Prepare Claude API prompt for sales insights
+    let salesAnalysis = {
+      personality_summary: '',
+      sales_approach: discProfileInfo.approachTips,
+      decision_triggers: primaryTraitInfo?.motivators || [],
+      predicted_objections: generateDefaultObjections(discResult.primary, discResult.secondary),
+      closing_strategies: generateDefaultClosing(discResult.primary),
+      things_to_avoid: generateThingsToAvoid(discResult.primary),
+      quick_tips: discProfileInfo.approachTips.slice(0, 3)
     }
 
-    // If Anthropic API key is available, use Claude for analysis
+    // If Anthropic API key is available, use Claude for enhanced analysis
+    const anthropicKey = process.env.ANTHROPIC_API_KEY
     if (anthropicKey) {
       try {
-        const prompt = `Você é um especialista em perfis comportamentais DISC e vendas. Analise as seguintes informações e forneça insights de venda.
+        const prompt = `Você é um especialista em perfis comportamentais e vendas consultivas. Analise os seguintes dados e gere insights de venda ESPECÍFICOS e ACIONÁVEIS.
 
-Dados do Participante:
+## Dados do Participante
 - Nome: ${participant?.name || 'Não informado'}
-- Faturamento: ${participant?.revenue || 'Não informado'}
 - Nicho: ${participant?.niche || 'Não informado'}
+- Faturamento: ${participant?.revenue || 'Não informado'}
 
-Perfil DISC identificado: ${discProfile}
+## Perfil DISC
+- Perfil: ${discResult.profile} (${discProfileInfo.profile})
+- ${discProfileInfo.description}
+- Primário: ${primaryTraitInfo?.name} - ${primaryTraitInfo?.buyingStyle}
+- Secundário: ${secondaryTraitInfo?.name}
 
-Respostas do formulário: ${JSON.stringify(responses)}
+## Respostas Abertas
+- Maior desafio atual: "${challengeAnswer || 'Não informado'}"
+- Mudança desejada: "${desiredChangeAnswer || 'Não informado'}"
 
-Com base nessas informações, forneça:
+## Scores DISC
+- D (Dominância): ${discResult.scores.D}
+- I (Influência): ${discResult.scores.I}
+- S (Estabilidade): ${discResult.scores.S}
+- C (Conformidade): ${discResult.scores.C}
 
-1. PERFIL DISC (2-3 parágrafos descrevendo o perfil comportamental)
+Gere um JSON com EXATAMENTE esta estrutura:
+{
+  "personality_summary": "Resumo de 2-3 frases sobre como essa pessoa pensa, decide e o que valoriza. Seja específico ao nicho dela.",
+  "decision_triggers": ["gatilho1", "gatilho2", "gatilho3"],
+  "predicted_objections": [
+    {"objection": "objeção específica", "script": "script palavra por palavra de como responder"},
+    {"objection": "objeção 2", "script": "script 2"},
+    {"objection": "objeção 3", "script": "script 3"}
+  ],
+  "closing_strategies": [
+    {"name": "nome da técnica", "script": "frase exata de fechamento"},
+    {"name": "técnica 2", "script": "frase 2"},
+    {"name": "técnica 3", "script": "frase 3"}
+  ],
+  "things_to_avoid": ["erro1", "erro2", "erro3"],
+  "quick_tips": ["dica1", "dica2", "dica3"]
+}
 
-2. INSIGHTS PARA VENDER (3-5 pontos específicos sobre como abordar essa pessoa)
-
-3. OBJEÇÕES PROVÁVEIS (3-5 objeções que essa pessoa provavelmente levantará)
-
-4. COMO CONTORNAR OBJEÇÕES (estratégias específicas para cada objeção)
-
-5. EXEMPLOS DE FECHAMENTO (3 exemplos de frases de fechamento adequadas para este perfil)
-
-Formate a resposta em JSON com as chaves: disc_description, sales_insights, objections, objection_handling, closing_examples`
+IMPORTANTE:
+- Personalize para o NICHO da pessoa
+- Use o DESAFIO e a MUDANÇA DESEJADA nas objeções e fechamentos
+- Scripts devem ser frases prontas para usar na ligação
+- Responda APENAS o JSON, sem texto adicional`
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -73,12 +110,7 @@ Formate a resposta em JSON com as chaves: disc_description, sales_insights, obje
           body: JSON.stringify({
             model: 'claude-3-haiku-20240307',
             max_tokens: 2000,
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
+            messages: [{ role: 'user', content: prompt }],
           }),
         })
 
@@ -86,7 +118,6 @@ Formate a resposta em JSON com as chaves: disc_description, sales_insights, obje
           const data = await response.json()
           const content = data.content[0].text
 
-          // Try to parse JSON from the response
           try {
             // Extract JSON from markdown code block if present
             const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) ||
@@ -94,37 +125,77 @@ Formate a resposta em JSON com as chaves: disc_description, sales_insights, obje
 
             if (jsonMatch) {
               const jsonStr = jsonMatch[1] || jsonMatch[0]
-              analysis = JSON.parse(jsonStr)
+              const claudeAnalysis = JSON.parse(jsonStr)
+              salesAnalysis = { ...salesAnalysis, ...claudeAnalysis }
             }
           } catch (parseError) {
             console.error('Error parsing Claude response:', parseError)
-            // Keep default analysis
           }
         }
       } catch (claudeError) {
         console.error('Claude API error:', claudeError)
-        // Keep default analysis
       }
     }
 
-    // Update form with analysis
+    // Update participant with all analysis data
     const { error: updateError } = await supabase
-      .from('disc_forms')
+      .from('participants')
       .update({
-        analysis: JSON.stringify(analysis),
-        sales_approach: analysis.sales_insights,
+        // Visible to participant (archetypes)
+        primary_archetype: archetypeResult.primary,
+        secondary_archetype: archetypeResult.secondary,
+        archetype_description: combinedDescription,
+
+        // Hidden - only for closers (DISC)
+        disc_profile: discResult.profile,
+        disc_score_d: discResult.scores.D,
+        disc_score_i: discResult.scores.I,
+        disc_score_s: discResult.scores.S,
+        disc_score_c: discResult.scores.C,
+        disc_analysis: {
+          profile_name: discProfileInfo.profile,
+          profile_description: discProfileInfo.description,
+          primary_trait: primaryTraitInfo,
+          secondary_trait: secondaryTraitInfo
+        },
+
+        // Sales insights (hidden - only for closers)
+        personality_summary: salesAnalysis.personality_summary,
+        sales_approach: salesAnalysis.sales_approach,
+        decision_triggers: salesAnalysis.decision_triggers,
+        predicted_objections: salesAnalysis.predicted_objections,
+        closing_strategies: salesAnalysis.closing_strategies,
+        things_to_avoid: salesAnalysis.things_to_avoid,
+        quick_tips: salesAnalysis.quick_tips,
+
+        // Open answers
+        challenge_answer: challengeAnswer,
+        desired_change_answer: desiredChangeAnswer,
+        form_completed_at: new Date().toISOString()
       })
-      .eq('id', formId)
+      .eq('id', participantId)
 
     if (updateError) {
-      console.error('Error updating form:', updateError)
+      console.error('Error updating participant:', updateError)
       return NextResponse.json(
         { error: 'Error saving analysis' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ success: true, analysis })
+    // Return only the visible data (archetypes)
+    return NextResponse.json({
+      success: true,
+      archetypes: {
+        primary: archetypeResult.primary,
+        secondary: archetypeResult.secondary,
+        primaryIcon: primaryInfo.icon,
+        secondaryIcon: secondaryInfo.icon,
+        primaryDescription: primaryInfo.description,
+        secondaryDescription: secondaryInfo.description,
+        combinedDescription
+      }
+    })
   } catch (error: any) {
     console.error('Analysis error:', error)
     return NextResponse.json(
@@ -134,90 +205,67 @@ Formate a resposta em JSON com as chaves: disc_description, sales_insights, obje
   }
 }
 
-function getDefaultInsights(profile: string): string {
-  const insights: Record<string, string> = {
-    D: `• Seja direto e objetivo na apresentação
-• Foque em resultados e benefícios concretos
-• Mostre como o produto/serviço vai ajudar a atingir metas
-• Evite detalhes desnecessários
-• Dê opções e deixe que a pessoa tome a decisão`,
-    I: `• Crie um ambiente descontraído e amigável
-• Use histórias e casos de sucesso
-• Valorize a opinião da pessoa
-• Mostre o impacto social e reconhecimento
-• Seja entusiasta e positivo`,
-    S: `• Construa confiança gradualmente
-• Seja paciente e não pressione
-• Mostre estabilidade e segurança do produto
-• Envolva a equipe ou família na decisão
-• Garanta suporte pós-venda`,
-    C: `• Apresente dados e fatos comprovados
-• Responda todas as perguntas técnicas
-• Forneça documentação detalhada
-• Dê tempo para análise
-• Seja preciso e consistente`,
+function generateDefaultObjections(primary: 'D' | 'I' | 'S' | 'C', secondary: 'D' | 'I' | 'S' | 'C') {
+  const objections: Record<string, Array<{ objection: string; script: string }>> = {
+    D: [
+      { objection: 'Não tenho tempo para isso', script: 'Entendo que seu tempo é valioso. Por isso mesmo esse programa foi desenhado para pessoas ocupadas - são apenas X horas por semana e você começa a ver resultados em Y dias.' },
+      { objection: 'Qual é o ROI?', script: 'Excelente pergunta. Em média, nossos clientes recuperam o investimento em X meses. Posso te mostrar alguns casos específicos do seu nicho?' },
+      { objection: 'Já tentei algo assim', script: 'O que exatamente você tentou e o que não funcionou? Pergunto porque nosso método é diferente em [diferencial]. Você testou algo nessa linha?' }
+    ],
+    I: [
+      { objection: 'Preciso conversar com outras pessoas', script: 'Faz total sentido! Inclusive, temos um grupo incrível de pessoas como você. Quer que eu te mostre alguns depoimentos de quem já faz parte?' },
+      { objection: 'E se não funcionar para mim?', script: 'Você tem razão em se preocupar. Por isso oferecemos [garantia]. E olha, pessoas exatamente como você já conseguiram [resultado]. Posso te apresentar algumas?' },
+      { objection: 'Parece bom, mas...', script: 'O que está te segurando? Pergunto porque quero ter certeza de que você tem todas as informações para tomar a melhor decisão.' }
+    ],
+    S: [
+      { objection: 'Preciso pensar mais', script: 'Entendo completamente. O que especificamente você gostaria de analisar melhor? Posso te ajudar com mais informações sobre isso.' },
+      { objection: 'Não sei se é o momento', script: 'Respeito seu timing. Me conta: o que mudaria na sua situação para você sentir que é o momento certo?' },
+      { objection: 'E o suporte depois?', script: 'Fico feliz que você perguntou! Nosso suporte é [detalhar]. Você não estará sozinho em nenhum momento do processo.' }
+    ],
+    C: [
+      { objection: 'Preciso de mais informações', script: 'Com certeza! Que informações específicas você precisa? Tenho dados, cases e documentação que posso compartilhar.' },
+      { objection: 'Como funciona exatamente?', script: 'Vou te explicar o processo passo a passo: [1, 2, 3]. Alguma etapa específica que você quer que eu detalhe mais?' },
+      { objection: 'Quais são as garantias?', script: 'Oferecemos [garantia específica]. Além disso, temos [certificações/metodologia]. Quer ver os dados de resultados dos últimos clientes?' }
+    ]
   }
-  return insights[profile] || insights.S
+
+  return [...objections[primary], ...(objections[secondary]?.slice(0, 1) || [])]
 }
 
-function getDefaultObjections(profile: string): string {
-  const objections: Record<string, string> = {
-    D: `• "Não tenho tempo para isso"
-• "Preciso ver resultados rápidos"
-• "Qual é o retorno sobre investimento?"
-• "Já tentei algo similar antes"`,
-    I: `• "Preciso conversar com outras pessoas primeiro"
-• "Parece interessante, mas..."
-• "E se não funcionar para mim?"
-• "Conheço alguém que teve uma experiência ruim"`,
-    S: `• "Preciso pensar mais sobre isso"
-• "Não sei se é o momento certo"
-• "E se minha situação mudar?"
-• "Preciso consultar minha família/equipe"`,
-    C: `• "Preciso de mais informações"
-• "Como exatamente isso funciona?"
-• "Quais são as garantias?"
-• "Posso ver os dados/estudos?"`,
+function generateDefaultClosing(primary: 'D' | 'I' | 'S' | 'C') {
+  const closings: Record<string, Array<{ name: string; script: string }>> = {
+    D: [
+      { name: 'Alternativa', script: 'Então, você prefere começar com o plano X ou o Y?' },
+      { name: 'Urgência', script: 'Essa condição é válida até hoje. Vamos garantir sua vaga?' },
+      { name: 'Direto', script: 'Pelo que conversamos, faz sentido para você. Vamos fechar?' }
+    ],
+    I: [
+      { name: 'Prova Social', script: 'Muitas pessoas como você já estão tendo resultados. Vamos juntos nessa?' },
+      { name: 'Visão Futura', script: 'Imagina você daqui a 6 meses com [resultado]. Vamos começar essa jornada?' },
+      { name: 'Exclusividade', script: 'Você tem perfil para nossa mentoria premium. Posso reservar sua vaga?' }
+    ],
+    S: [
+      { name: 'Suporte', script: 'Estarei com você em cada etapa. Posso te ajudar a dar esse primeiro passo?' },
+      { name: 'Gradual', script: 'Começamos devagar, no seu ritmo. O que acha de iniciarmos?' },
+      { name: 'Segurança', script: 'Com nossa garantia, você não tem nada a perder. Vamos?' }
+    ],
+    C: [
+      { name: 'Lógico', script: 'Pelos dados que vimos, faz sentido lógico investir. Concorda?' },
+      { name: 'Processo', script: 'O próximo passo é [X]. Podemos avançar?' },
+      { name: 'Informação', script: 'Você tem todas as informações. O que te impede de começar hoje?' }
+    ]
   }
-  return objections[profile] || objections.S
+
+  return closings[primary]
 }
 
-function getDefaultHandling(profile: string): string {
-  const handling: Record<string, string> = {
-    D: `• Respeite o tempo: "Vou ser breve e direto"
-• Mostre ROI: "Em X meses, você terá Y de retorno"
-• Use desafios: "Será que você está pronto para esse nível?"
-• Prove com fatos: "Veja esses resultados comprovados"`,
-    I: `• Valide a opinião: "É importante ouvir outras pessoas"
-• Use prova social: "Muitos clientes como você tiveram sucesso"
-• Crie urgência positiva: "Imagine você já com esses resultados"
-• Ofereça garantias: "Você não tem nada a perder"`,
-    S: `• Dê tempo: "Não precisa decidir agora"
-• Mostre segurança: "Temos X anos no mercado"
-• Inclua suporte: "Estaremos com você em cada etapa"
-• Reduza riscos: "Temos garantia de satisfação"`,
-    C: `• Forneça dados: "Aqui estão os números detalhados"
-• Seja técnico: "O processo funciona assim..."
-• Ofereça documentação: "Posso enviar o material completo"
-• Prove qualidade: "Veja nossa certificação/metodologia"`,
+function generateThingsToAvoid(primary: 'D' | 'I' | 'S' | 'C') {
+  const avoid: Record<string, string[]> = {
+    D: ['Enrolar ou dar voltas', 'Falar demais', 'Parecer inseguro', 'Pressão artificial'],
+    I: ['Ser muito técnico', 'Ignorar relacionamento', 'Pressionar cedo demais', 'Ser negativo'],
+    S: ['Apressar a decisão', 'Mudanças bruscas', 'Criar urgência falsa', 'Ignorar preocupações'],
+    C: ['Exagerar benefícios', 'Ser impreciso', 'Pressionar sem dados', 'Respostas vagas']
   }
-  return handling[profile] || handling.S
-}
 
-function getDefaultClosing(profile: string): string {
-  const closing: Record<string, string> = {
-    D: `1. "Qual opção você prefere: plano A ou plano B?"
-2. "Vamos começar hoje para você ter resultados mais rápido?"
-3. "O que você precisa para tomar essa decisão agora?"`,
-    I: `1. "Imagina como vai ser bom compartilhar essa conquista!"
-2. "Vários clientes como você já começaram, vamos juntos?"
-3. "Que tal começar e depois contar para seus amigos?"`,
-    S: `1. "Posso te ajudar a dar esse primeiro passo?"
-2. "Começamos devagar, no seu ritmo, o que acha?"
-3. "Estarei aqui para te apoiar em cada etapa."`,
-    C: `1. "Você tem todas as informações que precisa para decidir?"
-2. "Posso esclarecer mais algum detalhe antes de começar?"
-3. "Qual próximo passo faz mais sentido para você?"`,
-  }
-  return closing[profile] || closing.S
+  return avoid[primary]
 }
