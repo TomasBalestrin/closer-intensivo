@@ -33,7 +33,7 @@ export default function CloserParticipantes() {
       supabase
         .from('participants')
         .select('*')
-        .eq('assigned_closer_id', user.id)
+        .eq('closer_id', user.id)
         .order('created_at', { ascending: false }),
       supabase
         .from('sales')

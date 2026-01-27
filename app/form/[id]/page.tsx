@@ -107,7 +107,7 @@ export default function FormPage() {
     setLoading(true)
 
     const { data: formData, error: formError } = await supabase
-      .from('forms')
+      .from('disc_forms')
       .select('*, participant:participants(*)')
       .eq('id', params.id)
       .single()
@@ -150,10 +150,10 @@ export default function FormPage() {
 
       // Save responses first
       await supabase
-        .from('forms')
+        .from('disc_forms')
         .update({
-          responses: answers,
-          disc_profile: dominantProfile,
+          answers: answers,
+          profile_result: dominantProfile,
           completed_at: new Date().toISOString(),
         })
         .eq('id', params.id)

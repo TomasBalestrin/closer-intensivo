@@ -41,7 +41,7 @@ export default function CloserDetail() {
 
     const [closerRes, participantsRes, salesRes] = await Promise.all([
       supabase.from('users').select('*').eq('id', params.id).single(),
-      supabase.from('participants').select('*').eq('assigned_closer_id', params.id),
+      supabase.from('participants').select('*').eq('closer_id', params.id),
       supabase.from('sales').select('*').eq('closer_id', params.id),
     ])
 
