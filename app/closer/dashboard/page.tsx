@@ -11,7 +11,7 @@ async function getCloserDashboardData(closerId: string) {
   const { data: participants } = await supabase
     .from('participants')
     .select('*')
-    .eq('assigned_closer_id', closerId)
+    .eq('closer_id', closerId)
 
   // Get sales by this closer
   const { data: sales } = await supabase

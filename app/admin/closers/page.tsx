@@ -41,7 +41,7 @@ export default function AdminClosers() {
 
     const closersWithStats: CloserWithStats[] = closersData.map(closer => {
       const assignedParticipants = participantsData.filter(
-        p => p.assigned_closer_id === closer.id
+        p => p.closer_id === closer.id
       )
 
       const opportunities = assignedParticipants.filter(p => p.is_opportunity)

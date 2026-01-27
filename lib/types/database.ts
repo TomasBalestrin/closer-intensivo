@@ -58,7 +58,7 @@ export interface Database {
           mentee_inviter: string | null
           companion: string | null
           is_opportunity: boolean
-          assigned_closer_id: string | null
+          closer_id: string | null
           times_called: number
           checked_in_day1: boolean
           checked_in_day2: boolean
@@ -81,7 +81,7 @@ export interface Database {
           mentee_inviter?: string | null
           companion?: string | null
           is_opportunity?: boolean
-          assigned_closer_id?: string | null
+          closer_id?: string | null
           times_called?: number
           checked_in_day1?: boolean
           checked_in_day2?: boolean
@@ -104,7 +104,7 @@ export interface Database {
           mentee_inviter?: string | null
           companion?: string | null
           is_opportunity?: boolean
-          assigned_closer_id?: string | null
+          closer_id?: string | null
           times_called?: number
           checked_in_day1?: boolean
           checked_in_day2?: boolean
@@ -236,7 +236,7 @@ export type WebhookLogInsert = Database['public']['Tables']['webhooks_log']['Ins
 
 // Extended types with relations
 export interface ParticipantWithRelations extends Participant {
-  assigned_closer?: User | null
+  closer?: User | null
   seller_closer?: User | null
   forms?: Form[]
   sales?: Sale[]

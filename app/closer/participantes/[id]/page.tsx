@@ -70,14 +70,14 @@ export default function CloserParticipantDetail() {
         .from('participants')
         .select('*')
         .eq('id', params.id)
-        .eq('assigned_closer_id', user.id)
+        .eq('closer_id', user.id)
         .single(),
       supabase
         .from('users')
         .select('*')
         .eq('role', 'closer'),
       supabase
-        .from('forms')
+        .from('disc_forms')
         .select('*')
         .eq('participant_id', params.id),
       supabase
@@ -136,10 +136,10 @@ export default function CloserParticipantDetail() {
     setFormLoading(true)
     try {
       const formId = crypto.randomUUID()
-      const { error } = await supabase.from('forms').insert({
+      const { error } = await supabase.from('disc_forms').insert({
         id: formId,
         participant_id: params.id as string,
-        form_url: `/form/${formId}`,
+        answers: {},
       })
 
       if (error) throw error

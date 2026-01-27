@@ -75,7 +75,7 @@ export default function ParticipantDetail() {
         .select('*')
         .eq('role', 'closer'),
       supabase
-        .from('forms')
+        .from('disc_forms')
         .select('*')
         .eq('participant_id', params.id),
       supabase
@@ -137,7 +137,7 @@ export default function ParticipantDetail() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ assigned_closer_id: closerId })
+        .update({ closer_id: closerId })
         .eq('id', params.id)
 
       if (error) throw error
@@ -156,10 +156,10 @@ export default function ParticipantDetail() {
     setFormLoading(true)
     try {
       const formId = crypto.randomUUID()
-      const { error } = await supabase.from('forms').insert({
+      const { error } = await supabase.from('disc_forms').insert({
         id: formId,
         participant_id: params.id as string,
-        form_url: `/form/${formId}`,
+        answers: {},
       })
 
       if (error) throw error
@@ -184,7 +184,7 @@ export default function ParticipantDetail() {
 
       const { error } = await supabase.from('sales').insert({
         participant_id: params.id as string,
-        closer_id: participant?.assigned_closer_id || user.id,
+        closer_id: participant?.closer_id || user.id,
         product: saleData.product,
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
@@ -228,7 +228,7 @@ export default function ParticipantDetail() {
     )
   }
 
-  const assignedCloser = closers.find(c => c.id === participant.assigned_closer_id)
+  const assignedCloser = closers.find(c => c.id === participant.closer_id)
 
   return (
     <div className="space-y-6">
@@ -570,7 +570,7 @@ export default function ParticipantDetail() {
             >
               <Avatar src={closer.photo_url} alt={closer.name} />
               <span className="font-medium">{closer.name}</span>
-              {closer.id === participant.assigned_closer_id && (
+              {closer.id === participant.closer_id && (
                 <Badge variant="success" className="ml-auto">Atual</Badge>
               )}
             </button>

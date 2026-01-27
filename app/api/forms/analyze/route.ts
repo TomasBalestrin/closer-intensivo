@@ -109,13 +109,10 @@ Formate a resposta em JSON com as chaves: disc_description, sales_insights, obje
 
     // Update form with analysis
     const { error: updateError } = await supabase
-      .from('forms')
+      .from('disc_forms')
       .update({
-        disc_description: analysis.disc_description,
-        sales_insights: analysis.sales_insights,
-        objections: analysis.objections,
-        objection_handling: analysis.objection_handling,
-        closing_examples: analysis.closing_examples,
+        analysis: JSON.stringify(analysis),
+        sales_approach: analysis.sales_insights,
       })
       .eq('id', formId)
 
