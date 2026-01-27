@@ -11,7 +11,6 @@ import {
   Loading,
 } from '@/components/ui'
 import { StatsCard } from '@/components/shared'
-import { Users, Target, DollarSign, TrendingUp } from 'lucide-react'
 import { User, Participant, Sale } from '@/lib/types'
 import { formatCurrency, formatPercentage, getColorClass } from '@/lib/utils'
 
@@ -111,32 +110,32 @@ export default function MeuPainel() {
           <StatsCard
             title="Participantes Atribuídos"
             value={participants.length}
-            icon={Users}
+            icon="Users"
           />
           <StatsCard
             title="Oportunidades Compareceram"
             value={opportunitiesCheckedIn}
-            icon={Target}
+            icon="Target"
           />
           <StatsCard
             title="Vendas"
             value={sales.length}
-            icon={DollarSign}
+            icon="DollarSign"
           />
           <StatsCard
             title="Taxa de Conversão"
             value={formatPercentage(conversionRate)}
-            icon={TrendingUp}
+            icon="TrendingUp"
           />
           <StatsCard
             title="Valor de Vendas"
             value={formatCurrency(totalSalesValue)}
-            icon={DollarSign}
+            icon="DollarSign"
           />
           <StatsCard
             title="Valor de Entrada"
             value={formatCurrency(totalEntryValue)}
-            icon={DollarSign}
+            icon="DollarSign"
           />
         </div>
       </section>

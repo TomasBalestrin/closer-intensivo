@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { StatsCard } from '@/components/shared'
-import { Users, Target, DollarSign, TrendingUp, Award } from 'lucide-react'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
+import { Award } from 'lucide-react'
 
 async function getCloserDashboardData(closerId: string) {
   try {
@@ -104,32 +104,32 @@ export default async function CloserDashboard() {
           <StatsCard
             title="Participantes Compareceram"
             value={data.checkedInParticipants}
-            icon={Users}
+            icon="Users"
           />
           <StatsCard
             title="Oportunidades Compareceram"
             value={data.checkedInOpportunities}
-            icon={Target}
+            icon="Target"
           />
           <StatsCard
             title="Vendas"
             value={data.salesCount}
-            icon={DollarSign}
+            icon="DollarSign"
           />
           <StatsCard
             title="Taxa de Conversão"
             value={formatPercentage(data.conversionRate)}
-            icon={TrendingUp}
+            icon="TrendingUp"
           />
           <StatsCard
             title="Valor de Venda"
             value={formatCurrency(data.totalSalesValue)}
-            icon={DollarSign}
+            icon="DollarSign"
           />
           <StatsCard
             title="Valor de Entrada"
             value={formatCurrency(data.totalEntryValue)}
-            icon={DollarSign}
+            icon="DollarSign"
           />
         </div>
       </section>
