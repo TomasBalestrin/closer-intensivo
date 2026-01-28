@@ -145,6 +145,7 @@ IMPORTANTE:
         primary_archetype: archetypeResult.primary,
         secondary_archetype: archetypeResult.secondary,
         archetype_description: combinedDescription,
+        archetype_scores: archetypeResult.scores,
 
         // Hidden - only for closers (DISC)
         disc_profile: discResult.profile,

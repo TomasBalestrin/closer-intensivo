@@ -148,6 +148,7 @@ const ARCHETYPE_COMBINATIONS: Record<string, string> = {
 export interface ArchetypeResult {
   primary: string
   secondary: string
+  scores: Record<string, number>
 }
 
 export function calculateArchetypes(answers: Record<string, string>): ArchetypeResult {
@@ -168,7 +169,8 @@ export function calculateArchetypes(answers: Record<string, string>): ArchetypeR
 
   return {
     primary: sorted[0]?.[0] || 'Herói',
-    secondary: sorted[1]?.[0] || 'Sábio'
+    secondary: sorted[1]?.[0] || 'Sábio',
+    scores,
   }
 }
 
