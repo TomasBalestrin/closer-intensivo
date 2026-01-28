@@ -68,6 +68,10 @@ export default function ParticipantDetail() {
     times_called: 0,
     color: '',
     qualification: '',
+    cpf: '',
+    badge_name: '',
+    net_profit: '',
+    partner: '',
   })
 
   const [saleData, setSaleData] = useState({
@@ -102,6 +106,10 @@ export default function ParticipantDetail() {
         times_called: participantRes.data.times_called,
         color: participantRes.data.color || '',
         qualification: participantRes.data.qualification || '',
+        cpf: participantRes.data.cpf || '',
+        badge_name: participantRes.data.badge_name || '',
+        net_profit: participantRes.data.net_profit || '',
+        partner: participantRes.data.partner || '',
       })
     }
 
@@ -125,6 +133,10 @@ export default function ParticipantDetail() {
           times_called: formData.times_called,
           color: formData.color || null,
           qualification: formData.qualification || null,
+          cpf: formData.cpf || null,
+          badge_name: formData.badge_name || null,
+          net_profit: formData.net_profit || null,
+          partner: formData.partner || null,
         })
         .eq('id', params.id)
 
@@ -354,6 +366,22 @@ export default function ParticipantDetail() {
                         {participant.checked_in_day3 ? 'Sim' : 'Não'}
                       </p>
                     </div>
+                    <div>
+                      <span className="text-gray-500">CPF:</span>
+                      <p className="font-medium">{participant.cpf || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Nome no Crachá:</span>
+                      <p className="font-medium">{participant.badge_name || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Lucro Líquido:</span>
+                      <p className="font-medium">{participant.net_profit || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Sócio:</span>
+                      <p className="font-medium">{participant.partner || '-'}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -427,6 +455,28 @@ export default function ParticipantDetail() {
                         onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
                       />
                     </div>
+                    <Input
+                      label="CPF"
+                      value={formData.cpf}
+                      onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                      placeholder="000.000.000-00"
+                    />
+                    <Input
+                      label="Nome no Crachá"
+                      value={formData.badge_name}
+                      onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
+                    />
+                    <Input
+                      label="Lucro Líquido"
+                      value={formData.net_profit}
+                      onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
+                      placeholder="R$ 0.000,00"
+                    />
+                    <Input
+                      label="Sócio"
+                      value={formData.partner}
+                      onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
+                    />
                   </div>
                   <div className="mt-6">
                     <Button onClick={handleSave} loading={saving}>

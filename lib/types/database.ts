@@ -87,6 +87,11 @@ export interface Database {
           challenge_answer: string | null
           desired_change_answer: string | null
           form_completed_at: string | null
+          // Extra fields (manual entry)
+          cpf: string | null
+          badge_name: string | null
+          net_profit: string | null
+          partner: string | null
           created_at: string
           updated_at: string
         }
@@ -129,6 +134,10 @@ export interface Database {
           challenge_answer?: string | null
           desired_change_answer?: string | null
           form_completed_at?: string | null
+          cpf?: string | null
+          badge_name?: string | null
+          net_profit?: string | null
+          partner?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -171,6 +180,10 @@ export interface Database {
           challenge_answer?: string | null
           desired_change_answer?: string | null
           form_completed_at?: string | null
+          cpf?: string | null
+          badge_name?: string | null
+          net_profit?: string | null
+          partner?: string | null
           created_at?: string
           updated_at?: string
         }
