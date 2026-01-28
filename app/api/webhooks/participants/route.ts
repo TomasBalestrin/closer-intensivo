@@ -12,6 +12,12 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
+// Clean instagram handle (remove @ if present)
+function cleanInstagram(value: string | undefined): string | null {
+  if (!value) return null
+  return value.replace(/^@/, '').trim() || null
+}
+
 export async function POST(request: Request) {
   const supabase = getSupabase()
   try {
@@ -29,56 +35,67 @@ export async function POST(request: Request) {
       console.error('Error logging webhook:', logError)
     }
 
-    // Extract participant data from payload
-    const {
-      name,
-      photo_url,
-      revenue,
-      niche,
-      instagram,
-      checked_in_day1,
-      checked_in_day2,
-      checked_in_day3,
-      ...otherData
-    } = payload
+    // New format: data is nested in 'fields'
+    const { participant_id, form_name, event_name, status, created_at, fields } = payload
+
+    // Map fields to participant data
+    const name = fields?.nome_completo
+    const email = fields?.digite_seu_melhor_email
+    const phone = fields?.digite_seu_whatsapp
+    const instagram = cleanInstagram(fields?.qual_seu_do_instagram)
+    const cpf = fields?.digite_o_seu_cpf_ou_cnpj
+    const badge_name = fields?.nome_para_cracha
+    const partner = fields?.voce_tem_socio
+    const niche = fields?.qual_sua_area_de_atuacao_profissional
+    const desired_change_answer = fields?.o_que_pretende_aprender_no_intensivo_da_alta_performance
+    const challenge_answer = fields?.qual_sua_maior_dificuldade_no_seu_negocio_hoje
+    const revenue = fields?.quanto_voce_fatura_por_mes
+    const net_profit = fields?.qual_seu_lucro_liquido_mensal
+    const photo_url = fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos
 
     if (!name) {
       return NextResponse.json(
-        { error: 'Name is required' },
+        { error: 'Nome completo é obrigatório (fields.nome_completo)' },
         { status: 400 }
       )
     }
 
-    // Check if participant exists by name
+    // Check if participant exists by name or external_id
     const { data: existingParticipant } = await supabase
       .from('participants')
       .select('id')
-      .eq('name', name)
+      .or(`name.eq.${name},external_id.eq.${participant_id}`)
       .single()
+
+    const participantData = {
+      name,
+      email: email || null,
+      phone: phone || null,
+      photo_url: photo_url || null,
+      revenue: revenue || null,
+      niche: niche || null,
+      instagram,
+      cpf: cpf || null,
+      badge_name: badge_name || null,
+      partner: partner || null,
+      net_profit: net_profit || null,
+      challenge_answer: challenge_answer || null,
+      desired_change_answer: desired_change_answer || null,
+      external_id: participant_id || null,
+      webhook_data: payload,
+    }
 
     if (existingParticipant) {
       // Update existing participant
-      const updateData: any = {
-        webhook_data: payload,
-      }
-
-      if (photo_url !== undefined) updateData.photo_url = photo_url
-      if (revenue !== undefined) updateData.revenue = revenue
-      if (niche !== undefined) updateData.niche = niche
-      if (instagram !== undefined) updateData.instagram = instagram
-      if (checked_in_day1 !== undefined) updateData.checked_in_day1 = checked_in_day1
-      if (checked_in_day2 !== undefined) updateData.checked_in_day2 = checked_in_day2
-      if (checked_in_day3 !== undefined) updateData.checked_in_day3 = checked_in_day3
-
       const { error: updateError } = await supabase
         .from('participants')
-        .update(updateData)
+        .update(participantData)
         .eq('id', existingParticipant.id)
 
       if (updateError) {
         console.error('Error updating participant:', updateError)
         return NextResponse.json(
-          { error: 'Error updating participant' },
+          { error: 'Erro ao atualizar participante', details: updateError.message },
           { status: 500 }
         )
       }
@@ -93,29 +110,20 @@ export async function POST(request: Request) {
         success: true,
         action: 'updated',
         participantId: existingParticipant.id,
+        name,
       })
     } else {
       // Create new participant
       const { data: newParticipant, error: insertError } = await supabase
         .from('participants')
-        .insert({
-          name,
-          photo_url: photo_url || null,
-          revenue: revenue || null,
-          niche: niche || null,
-          instagram: instagram || null,
-          checked_in_day1: checked_in_day1 || false,
-          checked_in_day2: checked_in_day2 || false,
-          checked_in_day3: checked_in_day3 || false,
-          webhook_data: payload,
-        })
+        .insert(participantData)
         .select('id')
         .single()
 
       if (insertError) {
         console.error('Error creating participant:', insertError)
         return NextResponse.json(
-          { error: 'Error creating participant' },
+          { error: 'Erro ao criar participante', details: insertError.message },
           { status: 500 }
         )
       }
@@ -130,6 +138,7 @@ export async function POST(request: Request) {
         success: true,
         action: 'created',
         participantId: newParticipant.id,
+        name,
       })
     }
   } catch (error: any) {
@@ -145,16 +154,28 @@ export async function POST(request: Request) {
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    message: 'Webhook endpoint is active. Send POST requests with participant data.',
+    message: 'Webhook endpoint ativo. Envie requisições POST com dados do participante.',
     expectedPayload: {
-      name: 'string (required)',
-      photo_url: 'string (optional)',
-      revenue: 'string (optional)',
-      niche: 'string (optional)',
-      instagram: 'string (optional)',
-      checked_in_day1: 'boolean (optional)',
-      checked_in_day2: 'boolean (optional)',
-      checked_in_day3: 'boolean (optional)',
+      participant_id: 'string (ID externo do formulário)',
+      form_name: 'string',
+      event_name: 'string',
+      status: 'string (registered, etc)',
+      created_at: 'timestamp',
+      fields: {
+        nome_completo: 'string (obrigatório)',
+        digite_seu_melhor_email: 'string',
+        digite_seu_whatsapp: 'string',
+        qual_seu_do_instagram: 'string',
+        digite_o_seu_cpf_ou_cnpj: 'string',
+        nome_para_cracha: 'string',
+        voce_tem_socio: 'string (Sim/Não)',
+        qual_sua_area_de_atuacao_profissional: 'string',
+        o_que_pretende_aprender_no_intensivo_da_alta_performance: 'string',
+        qual_sua_maior_dificuldade_no_seu_negocio_hoje: 'string',
+        quanto_voce_fatura_por_mes: 'string',
+        qual_seu_lucro_liquido_mensal: 'string',
+        qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos: 'string (URL)',
+      },
     },
   })
 }

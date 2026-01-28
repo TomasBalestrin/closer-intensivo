@@ -46,7 +46,10 @@ export interface Database {
       participants: {
         Row: {
           id: string
+          external_id: string | null
           name: string
+          email: string | null
+          phone: string | null
           photo_url: string | null
           revenue: string | null
           niche: string | null
@@ -87,12 +90,20 @@ export interface Database {
           challenge_answer: string | null
           desired_change_answer: string | null
           form_completed_at: string | null
+          // Extra fields (manual entry)
+          cpf: string | null
+          badge_name: string | null
+          net_profit: string | null
+          partner: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
+          external_id?: string | null
           name: string
+          email?: string | null
+          phone?: string | null
           photo_url?: string | null
           revenue?: string | null
           niche?: string | null
@@ -129,12 +140,19 @@ export interface Database {
           challenge_answer?: string | null
           desired_change_answer?: string | null
           form_completed_at?: string | null
+          cpf?: string | null
+          badge_name?: string | null
+          net_profit?: string | null
+          partner?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
+          external_id?: string | null
           name?: string
+          email?: string | null
+          phone?: string | null
           photo_url?: string | null
           revenue?: string | null
           niche?: string | null
@@ -171,6 +189,10 @@ export interface Database {
           challenge_answer?: string | null
           desired_change_answer?: string | null
           form_completed_at?: string | null
+          cpf?: string | null
+          badge_name?: string | null
+          net_profit?: string | null
+          partner?: string | null
           created_at?: string
           updated_at?: string
         }
