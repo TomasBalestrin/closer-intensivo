@@ -3,129 +3,233 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button, Card, CardHeader, CardTitle, CardContent, Loading } from '@/components/ui'
-import { CheckCircle, Sparkles } from 'lucide-react'
+import { Button, Card, CardContent, Loading } from '@/components/ui'
+import { CheckCircle, Sparkles, ChevronRight, ChevronLeft, Flame } from 'lucide-react'
 
-// 12 Perguntas com opções A, B, C, D que mapeiam para arquétipos E DISC
-const questions = [
+// 10 Perguntas de Arquétipos (6 opções cada - distribuição equilibrada)
+const archetypeQuestions = [
   {
     id: 'q1',
-    question: 'Quando você enfrenta um problema difícil, qual é sua primeira reação?',
+    question: 'O que mais te motiva na vida?',
     options: [
-      { value: 'A', label: 'Busco ajudar todos os envolvidos e garantir que ninguém fique para trás' },
-      { value: 'B', label: 'Vejo como uma aventura e uma chance de aprender algo novo' },
-      { value: 'C', label: 'Analiso profundamente antes de tomar qualquer decisão' },
-      { value: 'D', label: 'Encontro um jeito criativo de transformar a situação em algo positivo' },
+      { value: 'A', label: 'Viver com esperança e acreditar no melhor das pessoas' },
+      { value: 'B', label: 'Superar desafios e provar minha força' },
+      { value: 'C', label: 'Buscar conhecimento e entender como tudo funciona' },
+      { value: 'D', label: 'Explorar o mundo e viver novas experiências' },
+      { value: 'E', label: 'Transformar realidades e fazer o impossível acontecer' },
+      { value: 'F', label: 'Cuidar e ajudar as pessoas que precisam' },
     ],
   },
   {
     id: 'q2',
-    question: 'O que você mais valoriza em um projeto ou trabalho?',
+    question: 'Como você prefere ser visto pelos outros?',
     options: [
-      { value: 'A', label: 'Ter controle e poder para tomar as decisões importantes' },
-      { value: 'B', label: 'A oportunidade de superar desafios e provar meu valor' },
-      { value: 'C', label: 'Poder cuidar e apoiar as pessoas ao meu redor' },
-      { value: 'D', label: 'Liberdade para explorar novas possibilidades' },
+      { value: 'A', label: 'Como alguém com autoridade e presença' },
+      { value: 'B', label: 'Como alguém apaixonante e intenso' },
+      { value: 'C', label: 'Como alguém autêntico que não segue regras' },
+      { value: 'D', label: 'Como alguém divertido e que traz alegria' },
+      { value: 'E', label: 'Como alguém simples e acessível' },
+      { value: 'F', label: 'Como alguém criativo e original' },
     ],
   },
   {
     id: 'q3',
-    question: 'Como você costuma reagir em situações de estresse?',
+    question: 'Quando enfrenta um problema difícil, você:',
     options: [
-      { value: 'A', label: 'Uso o humor para aliviar a tensão' },
-      { value: 'B', label: 'Foco em apoiar os outros e manter a harmonia' },
-      { value: 'C', label: 'Me concentro em criar soluções práticas' },
-      { value: 'D', label: 'Busco entender a situação antes de agir' },
+      { value: 'A', label: 'Enfrenta de frente com coragem e determinação' },
+      { value: 'B', label: 'Busca uma solução transformadora e inovadora' },
+      { value: 'C', label: 'Pensa em como sua decisão afeta os outros' },
+      { value: 'D', label: 'Procura criar uma solução única e original' },
+      { value: 'E', label: 'Analisa com calma antes de agir' },
+      { value: 'F', label: 'Toma controle da situação e organiza tudo' },
     ],
   },
   {
     id: 'q4',
-    question: 'O que mais te motiva na vida?',
+    question: 'Em um grupo, você naturalmente:',
     options: [
-      { value: 'A', label: 'Buscar conhecimento e entender como as coisas funcionam' },
-      { value: 'B', label: 'Manter a esperança e acreditar no melhor das pessoas' },
-      { value: 'C', label: 'Conquistar objetivos e superar meus próprios limites' },
-      { value: 'D', label: 'Conexões profundas e momentos especiais com pessoas importantes' },
+      { value: 'A', label: 'Se conecta facilmente com todos de forma simples' },
+      { value: 'B', label: 'Busca novas possibilidades e desafia limites' },
+      { value: 'C', label: 'Cuida para que todos estejam bem' },
+      { value: 'D', label: 'Questiona regras que não fazem sentido' },
+      { value: 'E', label: 'Cria conexões intensas e significativas' },
+      { value: 'F', label: 'Mantém a paz e harmonia' },
     ],
   },
   {
     id: 'q5',
-    question: 'Quando você alcança uma conquista importante, como costuma comemorar?',
+    question: 'O que te faz sentir mais realizado?',
     options: [
-      { value: 'A', label: 'Refletindo sobre o aprendizado e planejando os próximos passos' },
-      { value: 'B', label: 'Compartilhando com quem me ajudou e celebrando em equipe' },
-      { value: 'C', label: 'Já pensando em como usar isso para criar algo novo' },
-      { value: 'D', label: 'De forma simples, junto com as pessoas do meu dia a dia' },
+      { value: 'A', label: 'Vencer um grande desafio ou competição' },
+      { value: 'B', label: 'Descobrir uma verdade ou entender algo profundo' },
+      { value: 'C', label: 'Criar algo único que expressa quem eu sou' },
+      { value: 'D', label: 'Fazer as pessoas rirem e se sentirem bem' },
+      { value: 'E', label: 'Liderar um projeto ou equipe ao sucesso' },
+      { value: 'F', label: 'Ver bondade e beleza no mundo' },
     ],
   },
   {
     id: 'q6',
-    question: 'O que as pessoas mais admiram em você?',
+    question: 'Nos relacionamentos, você valoriza:',
     options: [
-      { value: 'A', label: 'Minha coragem para enfrentar desafios de frente' },
-      { value: 'B', label: 'Minha capacidade de liderar e organizar' },
-      { value: 'C', label: 'Minha leveza e capacidade de ver o lado bom das coisas' },
-      { value: 'D', label: 'Minha capacidade de criar conexões verdadeiras' },
+      { value: 'A', label: 'Conexão emocional intensa e momentos especiais' },
+      { value: 'B', label: 'Autenticidade e conversas simples e verdadeiras' },
+      { value: 'C', label: 'Liberdade para ser quem você é' },
+      { value: 'D', label: 'Parceiros que desafiam padrões com você' },
+      { value: 'E', label: 'Poder cuidar e apoiar seu parceiro' },
+      { value: 'F', label: 'Crescimento mútuo e transformação' },
     ],
   },
   {
     id: 'q7',
-    question: 'Como você prefere passar seu tempo livre?',
+    question: 'Diante de uma injustiça, você:',
     options: [
-      { value: 'A', label: 'Criando algo novo - arte, projetos, ideias' },
-      { value: 'B', label: 'Cuidando de pessoas ou causas importantes' },
-      { value: 'C', label: 'Aprendendo coisas novas - leitura, cursos, pesquisa' },
-      { value: 'D', label: 'Explorando lugares novos ou vivendo experiências diferentes' },
+      { value: 'A', label: 'Luta ativamente para corrigir o erro' },
+      { value: 'B', label: 'Usa humor para expor a hipocrisia' },
+      { value: 'C', label: 'Cria formas alternativas de resolver' },
+      { value: 'D', label: 'Assume a liderança para mudar as coisas' },
+      { value: 'E', label: 'Busca entender todos os lados primeiro' },
+      { value: 'F', label: 'Encontra uma forma de transformar a situação' },
     ],
   },
   {
     id: 'q8',
-    question: 'Quando você precisa tomar uma decisão importante, como você age?',
+    question: 'Como você lida com mudanças na vida?',
     options: [
-      { value: 'A', label: 'Ajo rapidamente, confiando no meu instinto e força' },
-      { value: 'B', label: 'Pesquiso e analiso todas as informações disponíveis' },
-      { value: 'C', label: 'Considero como isso afeta as pessoas próximas a mim' },
-      { value: 'D', label: 'Penso em como me sinto e busco o que me traz mais prazer' },
+      { value: 'A', label: 'Focando em como posso ajudar outros na transição' },
+      { value: 'B', label: 'Vendo como uma aventura e oportunidade' },
+      { value: 'C', label: 'Deixando-me levar pela emoção e intuição' },
+      { value: 'D', label: 'Questionando se a mudança faz sentido' },
+      { value: 'E', label: 'Adaptando-me sem drama, seguindo o fluxo' },
+      { value: 'F', label: 'Mantendo a fé de que tudo vai dar certo' },
     ],
   },
   {
     id: 'q9',
-    question: 'O que te faz sentir mais realizado?',
+    question: 'Seu passatempo ideal seria:',
     options: [
-      { value: 'A', label: 'Fazer as pessoas rirem e se sentirem bem' },
-      { value: 'B', label: 'Superar obstáculos e alcançar vitórias importantes' },
-      { value: 'C', label: 'Ajudar alguém a resolver um problema difícil' },
-      { value: 'D', label: 'Descobrir uma verdade ou entender algo profundamente' },
+      { value: 'A', label: 'Explorar lugares novos ou fazer trilhas' },
+      { value: 'B', label: 'Atividades divertidas com amigos e risadas' },
+      { value: 'C', label: 'Tempo de qualidade com pessoas próximas' },
+      { value: 'D', label: 'Algo que quebre a rotina e desafie regras' },
+      { value: 'E', label: 'Experiências românticas ou artísticas' },
+      { value: 'F', label: 'Práticas de autoconhecimento e transformação' },
     ],
   },
   {
     id: 'q10',
-    question: 'Qual frase mais representa sua visão de mundo?',
+    question: 'O que você quer deixar como legado?',
     options: [
-      { value: 'A', label: 'A vida é sobre conexões e momentos especiais' },
-      { value: 'B', label: 'Com determinação, posso conquistar qualquer coisa' },
-      { value: 'C', label: 'Cuidar dos outros é o que dá sentido à vida' },
-      { value: 'D', label: 'O conhecimento é a chave para entender tudo' },
+      { value: 'A', label: 'Ter vencido grandes batalhas e inspirado outros' },
+      { value: 'B', label: 'Ter feito diferença na vida das pessoas' },
+      { value: 'C', label: 'Conhecimento e sabedoria compartilhados' },
+      { value: 'D', label: 'Criações únicas que representam quem eu sou' },
+      { value: 'E', label: 'Um império ou organização de sucesso' },
+      { value: 'F', label: 'Um mundo mais puro e cheio de esperança' },
+    ],
+  },
+]
+
+// 10 Perguntas DISC (4 opções cada - A=D, B=S, C=C, D=I)
+const discQuestions = [
+  {
+    id: 'qd1',
+    question: 'No trabalho, você prefere:',
+    options: [
+      { value: 'A', label: 'Tomar decisões rápidas e ir direto ao ponto' },
+      { value: 'B', label: 'Manter um ritmo estável e previsível' },
+      { value: 'C', label: 'Analisar dados antes de qualquer decisão' },
+      { value: 'D', label: 'Trabalhar em equipe e motivar os outros' },
     ],
   },
   {
-    id: 'q11',
-    question: 'Como você lida com mudanças e novidades?',
+    id: 'qd2',
+    question: 'Quando alguém discorda de você:',
     options: [
-      { value: 'A', label: 'Encaro como um desafio a ser vencido' },
-      { value: 'B', label: 'Ajudo os outros a se adaptarem e mantenho a união' },
-      { value: 'C', label: 'Analiso os prós e contras antes de aceitar' },
-      { value: 'D', label: 'Transformo em diversão e aproveito o momento' },
+      { value: 'A', label: 'Defendo minha posição com firmeza' },
+      { value: 'B', label: 'Busco entender o ponto de vista da pessoa' },
+      { value: 'C', label: 'Peço dados e fatos para embasar a discussão' },
+      { value: 'D', label: 'Tento convencer usando charme e entusiasmo' },
     ],
   },
   {
-    id: 'q12',
-    question: 'O que você busca em seus relacionamentos?',
+    id: 'qd3',
+    question: 'Em uma reunião, você costuma:',
     options: [
-      { value: 'A', label: 'Liberdade para ser quem eu sou e desafiar padrões' },
-      { value: 'B', label: 'Conexão emocional profunda e momentos intensos' },
-      { value: 'C', label: 'Harmonia, paz e confiança mútua' },
-      { value: 'D', label: 'Conversas inteligentes e crescimento mútuo' },
+      { value: 'A', label: 'Ir direto aos pontos importantes, sem enrolação' },
+      { value: 'B', label: 'Ouvir mais e falar quando necessário' },
+      { value: 'C', label: 'Trazer dados e análises detalhadas' },
+      { value: 'D', label: 'Energizar o ambiente e engajar as pessoas' },
+    ],
+  },
+  {
+    id: 'qd4',
+    question: 'Sob pressão, você:',
+    options: [
+      { value: 'A', label: 'Fica mais direto e exigente' },
+      { value: 'B', label: 'Busca estabilidade e evita conflitos' },
+      { value: 'C', label: 'Se apega a processos e detalhes' },
+      { value: 'D', label: 'Procura apoio e compartilha sentimentos' },
+    ],
+  },
+  {
+    id: 'qd5',
+    question: 'Para você, sucesso significa:',
+    options: [
+      { value: 'A', label: 'Alcançar resultados e vencer desafios' },
+      { value: 'B', label: 'Ter segurança e relacionamentos estáveis' },
+      { value: 'C', label: 'Fazer um trabalho perfeito e bem feito' },
+      { value: 'D', label: 'Ser reconhecido e admirado pelos outros' },
+    ],
+  },
+  {
+    id: 'qd6',
+    question: 'Ao iniciar um projeto novo, você:',
+    options: [
+      { value: 'A', label: 'Quer começar logo e ver resultados rápidos' },
+      { value: 'B', label: 'Prefere um plano claro e passo a passo' },
+      { value: 'C', label: 'Pesquisa muito antes de começar' },
+      { value: 'D', label: 'Fica animado e quer envolver todo mundo' },
+    ],
+  },
+  {
+    id: 'qd7',
+    question: 'O que mais te incomoda no trabalho?',
+    options: [
+      { value: 'A', label: 'Lentidão e falta de resultados' },
+      { value: 'B', label: 'Mudanças bruscas e falta de harmonia' },
+      { value: 'C', label: 'Erros, imprecisões e falta de qualidade' },
+      { value: 'D', label: 'Falta de reconhecimento e ambiente negativo' },
+    ],
+  },
+  {
+    id: 'qd8',
+    question: 'Você prefere ser lembrado como alguém:',
+    options: [
+      { value: 'A', label: 'Que entrega resultados e resolve problemas' },
+      { value: 'B', label: 'Confiável e que mantém a equipe unida' },
+      { value: 'C', label: 'Competente e que faz tudo com excelência' },
+      { value: 'D', label: 'Carismático e que inspira os outros' },
+    ],
+  },
+  {
+    id: 'qd9',
+    question: 'Quando precisa convencer alguém, você:',
+    options: [
+      { value: 'A', label: 'Vai direto ao ponto e mostra os benefícios práticos' },
+      { value: 'B', label: 'Constrói confiança e dá tempo para a pessoa pensar' },
+      { value: 'C', label: 'Apresenta dados, provas e argumentos lógicos' },
+      { value: 'D', label: 'Usa histórias, entusiasmo e conexão pessoal' },
+    ],
+  },
+  {
+    id: 'qd10',
+    question: 'Seu maior medo no trabalho é:',
+    options: [
+      { value: 'A', label: 'Perder o controle ou parecer fraco' },
+      { value: 'B', label: 'Conflitos ou mudanças inesperadas' },
+      { value: 'C', label: 'Cometer erros ou parecer incompetente' },
+      { value: 'D', label: 'Ser rejeitado ou ficar isolado' },
     ],
   },
 ]
@@ -134,15 +238,21 @@ const questions = [
 const openQuestions = [
   {
     id: 'challenge',
-    question: 'Qual é o maior desafio que você está enfrentando agora no seu negócio/vida?',
-    placeholder: 'Conte-nos sobre seu principal desafio atual...'
+    question: 'Qual é o maior desafio que você está enfrentando agora?',
+    placeholder: 'Conte-nos sobre seu principal desafio atual no seu negócio ou vida pessoal...'
   },
   {
     id: 'desired_change',
-    question: 'Se você pudesse mudar uma coisa na sua situação atual, o que seria?',
-    placeholder: 'Descreva a mudança que você deseja...'
+    question: 'Se pudesse mudar uma coisa na sua situação atual, o que seria?',
+    placeholder: 'Descreva a mudança que você mais deseja ver acontecer...'
   }
 ]
+
+// Total de perguntas por seção
+const ARCHETYPE_COUNT = archetypeQuestions.length
+const DISC_COUNT = discQuestions.length
+const OPEN_COUNT = openQuestions.length
+const TOTAL_QUESTIONS = ARCHETYPE_COUNT + DISC_COUNT + OPEN_COUNT
 
 interface ArchetypeResult {
   primary: string
@@ -164,7 +274,9 @@ export default function FormPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [openAnswers, setOpenAnswers] = useState<Record<string, string>>({})
   const [archetypeResult, setArchetypeResult] = useState<ArchetypeResult | null>(null)
-  const [currentStep, setCurrentStep] = useState(0) // 0: questions, 1: open questions, 2: result
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showIntro, setShowIntro] = useState(true)
 
   useEffect(() => {
     fetchData()
@@ -173,7 +285,6 @@ export default function FormPage() {
   const fetchData = async () => {
     setLoading(true)
 
-    // Try to fetch from disc_forms first (for existing links)
     const { data: formData } = await supabase
       .from('disc_forms')
       .select('*, participant:participants(*)')
@@ -184,7 +295,6 @@ export default function FormPage() {
       setParticipant(formData.participant)
       if (formData.completed_at || formData.participant.form_completed_at) {
         setSubmitted(true)
-        // If we have archetype data, show it
         if (formData.participant.primary_archetype) {
           setArchetypeResult({
             primary: formData.participant.primary_archetype,
@@ -201,7 +311,6 @@ export default function FormPage() {
       return
     }
 
-    // If not found in disc_forms, try direct participant lookup
     const { data: participantData } = await supabase
       .from('participants')
       .select('*')
@@ -247,26 +356,71 @@ export default function FormPage() {
     return icons[archetype] || '✨'
   }
 
-  const handleNextStep = () => {
-    if (Object.keys(answers).length < questions.length) {
-      alert('Por favor, responda todas as perguntas.')
-      return
+  // Get current question data
+  const getCurrentQuestionData = () => {
+    if (currentQuestion < ARCHETYPE_COUNT) {
+      return {
+        type: 'archetype',
+        data: archetypeQuestions[currentQuestion],
+        section: 'Descobrindo seu Arquétipo',
+        sectionColor: 'from-purple-600 to-indigo-600'
+      }
+    } else if (currentQuestion < ARCHETYPE_COUNT + DISC_COUNT) {
+      const discIndex = currentQuestion - ARCHETYPE_COUNT
+      return {
+        type: 'disc',
+        data: discQuestions[discIndex],
+        section: 'Seu Perfil Comportamental',
+        sectionColor: 'from-blue-600 to-cyan-600'
+      }
+    } else {
+      const openIndex = currentQuestion - ARCHETYPE_COUNT - DISC_COUNT
+      return {
+        type: 'open',
+        data: openQuestions[openIndex],
+        section: 'Últimas Perguntas',
+        sectionColor: 'from-amber-500 to-orange-500'
+      }
     }
-    setCurrentStep(1)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSelectOption = (questionId: string, value: string) => {
+    setAnswers({ ...answers, [questionId]: value })
 
+    // Auto-advance after selection with delay
+    setTimeout(() => {
+      handleNext()
+    }, 400)
+  }
+
+  const handleNext = () => {
+    if (currentQuestion < TOTAL_QUESTIONS - 1) {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setCurrentQuestion(currentQuestion + 1)
+        setIsTransitioning(false)
+      }, 200)
+    }
+  }
+
+  const handlePrev = () => {
+    if (currentQuestion > 0) {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setCurrentQuestion(currentQuestion - 1)
+        setIsTransitioning(false)
+      }, 200)
+    }
+  }
+
+  const handleSubmit = async () => {
     if (!openAnswers.challenge || !openAnswers.desired_change) {
-      alert('Por favor, responda as duas perguntas.')
       return
     }
 
     setSubmitting(true)
 
     try {
-      // Call API to analyze
       const response = await fetch('/api/forms/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -289,7 +443,6 @@ export default function FormPage() {
       }
 
       setSubmitted(true)
-      setCurrentStep(2)
     } catch (error) {
       console.error('Submit error:', error)
       alert('Erro ao enviar formulário. Tente novamente.')
@@ -298,9 +451,21 @@ export default function FormPage() {
     }
   }
 
+  // Check if current question is answered
+  const isCurrentAnswered = () => {
+    const { type, data } = getCurrentQuestionData()
+    if (type === 'open') {
+      return !!openAnswers[data.id]
+    }
+    return !!answers[data.id]
+  }
+
+  // Calculate progress
+  const progress = ((currentQuestion + 1) / TOTAL_QUESTIONS) * 100
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Loading size="lg" />
       </div>
     )
@@ -308,64 +473,67 @@ export default function FormPage() {
 
   if (!participant) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
-        <Card className="max-w-md">
-          <CardContent className="text-center py-8">
-            <p className="text-gray-500">Formulário não encontrado ou link inválido.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
+        <Card className="max-w-md bg-white/10 backdrop-blur-lg border-white/20">
+          <CardContent className="text-center py-12">
+            <p className="text-white/80">Formulário não encontrado ou link inválido.</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  // Show archetype result
+  // Result Screen
   if (submitted && archetypeResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-8 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8 px-4">
         <div className="max-w-2xl mx-auto">
-          <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-8 text-center text-white">
-              <Sparkles className="h-12 w-12 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold mb-2">
-                Parabéns, {participant?.name}!
-              </h1>
-              <p className="text-purple-100">
-                Descobrimos seus arquétipos de personalidade
-              </p>
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mb-6 shadow-2xl shadow-amber-500/30">
+              <Sparkles className="h-10 w-10 text-white" />
             </div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Parabéns, {participant?.name?.split(' ')[0]}!
+            </h1>
+            <p className="text-white/70">
+              Descobrimos seu arquétipo de personalidade
+            </p>
+          </div>
 
-            <CardContent className="p-8">
-              {/* Primary Archetype */}
-              <div className="text-center mb-8">
-                <div className="text-6xl mb-4">{archetypeResult.primaryIcon}</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Seu arquétipo principal é
-                </h2>
-                <p className="text-3xl font-bold text-purple-600 mb-4">
-                  {archetypeResult.primary}
-                </p>
-              </div>
+          {/* Primary Archetype */}
+          <Card className="mb-6 bg-white/10 backdrop-blur-lg border-white/20 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-center">
+              <div className="text-7xl mb-4">{archetypeResult.primaryIcon}</div>
+              <p className="text-purple-200 text-sm mb-1">Seu arquétipo principal é</p>
+              <h2 className="text-3xl font-bold text-white">
+                {archetypeResult.primary}
+              </h2>
+            </div>
+          </Card>
 
-              {/* Secondary Archetype */}
-              <div className="bg-gray-50 rounded-lg p-6 mb-8 text-center">
-                <div className="text-4xl mb-2">{archetypeResult.secondaryIcon}</div>
-                <p className="text-gray-600 mb-1">Com traços de</p>
-                <p className="text-xl font-semibold text-gray-800">
-                  {archetypeResult.secondary}
-                </p>
-              </div>
+          {/* Secondary Archetype */}
+          <Card className="mb-6 bg-white/10 backdrop-blur-lg border-white/20">
+            <CardContent className="p-6 text-center">
+              <div className="text-5xl mb-3">{archetypeResult.secondaryIcon}</div>
+              <p className="text-white/60 text-sm mb-1">Com traços de</p>
+              <p className="text-xl font-semibold text-white">
+                {archetypeResult.secondary}
+              </p>
+            </CardContent>
+          </Card>
 
-              {/* Combined Description */}
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6">
-                <h3 className="font-semibold text-gray-900 mb-3">O que isso significa:</h3>
-                <p className="text-gray-700 leading-relaxed">
-                  {archetypeResult.combinedDescription}
-                </p>
-              </div>
-
-              <div className="mt-8 text-center text-sm text-gray-500">
-                <CheckCircle className="h-5 w-5 inline-block text-green-500 mr-2" />
-                Suas respostas foram salvas com sucesso
+          {/* Combined Description */}
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            <CardContent className="p-6">
+              <h3 className="font-semibold text-white mb-3">O que isso significa:</h3>
+              <p className="text-white/80 leading-relaxed">
+                {archetypeResult.combinedDescription}
+              </p>
+              <div className="mt-6 pt-4 border-t border-white/10 text-center">
+                <div className="inline-flex items-center gap-2 text-green-400 text-sm">
+                  <CheckCircle className="h-4 w-4" />
+                  Suas respostas foram salvas com sucesso
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -374,17 +542,17 @@ export default function FormPage() {
     )
   }
 
-  // Show simple thank you if submitted without archetype data
+  // Simple thank you if submitted without result
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 px-4">
-        <Card className="max-w-md w-full">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
+        <Card className="max-w-md bg-white/10 backdrop-blur-lg border-white/20">
           <CardContent className="text-center py-12">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Obrigado, {participant?.name}!
+            <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Obrigado, {participant?.name?.split(' ')[0]}!
             </h2>
-            <p className="text-gray-600">
+            <p className="text-white/70">
               Suas respostas foram enviadas com sucesso.
             </p>
           </CardContent>
@@ -393,142 +561,180 @@ export default function FormPage() {
     )
   }
 
-  // Step 1: Open questions
-  if (currentStep === 1) {
+  // Intro Screen
+  if (showIntro) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          <Card className="mb-6">
-            <CardHeader className="text-center">
-              <div className="h-12 w-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-xl font-bold text-white">BE</span>
-              </div>
-              <CardTitle className="text-xl">Quase lá!</CardTitle>
-              <p className="text-gray-500 mt-2">
-                Responda essas duas últimas perguntas para completar seu perfil, {participant?.name}.
-              </p>
-            </CardHeader>
-          </Card>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 mb-8 shadow-2xl shadow-amber-500/30">
+            <Flame className="h-10 w-10 text-white" />
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {openQuestions.map((q) => (
-              <Card key={q.id}>
-                <CardContent className="pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4">
-                    {q.question}
-                  </h3>
-                  <textarea
-                    value={openAnswers[q.id] || ''}
-                    onChange={(e) => setOpenAnswers({ ...openAnswers, [q.id]: e.target.value })}
-                    placeholder={q.placeholder}
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                    rows={4}
-                  />
-                </CardContent>
-              </Card>
-            ))}
+          <h1 className="text-3xl font-bold text-white mb-4">
+            Olá, {participant?.name?.split(' ')[0]}! 👋
+          </h1>
 
-            <div className="flex gap-4 justify-center">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setCurrentStep(0)}
-              >
-                Voltar
-              </Button>
-              <Button
-                type="submit"
-                size="lg"
-                loading={submitting}
-                disabled={!openAnswers.challenge || !openAnswers.desired_change}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              >
-                Descobrir meu Arquétipo
-              </Button>
+          <p className="text-white/70 mb-8 text-lg leading-relaxed">
+            Vamos descobrir seu <span className="text-purple-400 font-semibold">arquétipo de personalidade</span>.
+            São apenas algumas perguntas rápidas sobre quem você é.
+          </p>
+
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 text-left">
+            <div className="flex items-center gap-3 text-white/80 mb-3">
+              <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-sm">⏱️</div>
+              <span>Leva cerca de <strong className="text-white">3-5 minutos</strong></span>
             </div>
-          </form>
+            <div className="flex items-center gap-3 text-white/80 mb-3">
+              <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-sm">🎯</div>
+              <span>Responda com <strong className="text-white">sinceridade</strong></span>
+            </div>
+            <div className="flex items-center gap-3 text-white/80">
+              <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-sm">✨</div>
+              <span>Não existem respostas <strong className="text-white">certas ou erradas</strong></span>
+            </div>
+          </div>
+
+          <Button
+            size="lg"
+            onClick={() => setShowIntro(false)}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-purple-500/30 transition-all hover:scale-[1.02]"
+          >
+            Começar
+            <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
       </div>
     )
   }
 
-  // Step 0: Multiple choice questions
+  // Question Screen
+  const { type, data, section, sectionColor } = getCurrentQuestionData()
+  const isLastQuestion = currentQuestion === TOTAL_QUESTIONS - 1
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <Card className="mb-6">
-          <CardHeader className="text-center">
-            <div className="h-12 w-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-xl font-bold text-white">BE</span>
-            </div>
-            <CardTitle className="text-xl">Descubra seu Arquétipo</CardTitle>
-            <p className="text-gray-500 mt-2">
-              Olá {participant?.name}, responda as perguntas abaixo para descobrir seu arquétipo de personalidade.
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <div className="h-1 bg-white/10">
+          <div
+            className={`h-full bg-gradient-to-r ${sectionColor} transition-all duration-500 ease-out`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Header */}
+      <div className="pt-8 pb-4 px-4">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <button
+            onClick={handlePrev}
+            disabled={currentQuestion === 0}
+            className="p-2 rounded-full bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <div className="text-center">
+            <p className={`text-sm font-medium bg-gradient-to-r ${sectionColor} bg-clip-text text-transparent`}>
+              {section}
             </p>
-          </CardHeader>
-        </Card>
+            <p className="text-white/50 text-xs mt-1">
+              {currentQuestion + 1} de {TOTAL_QUESTIONS}
+            </p>
+          </div>
 
-        {/* Progress bar */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Progresso</span>
-            <span>{Object.keys(answers).length} de {questions.length} perguntas</span>
-          </div>
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-300"
-              style={{ width: `${(Object.keys(answers).length / questions.length) * 100}%` }}
-            />
-          </div>
+          <div className="w-9" /> {/* Spacer for alignment */}
         </div>
+      </div>
 
-        <div className="space-y-6">
-          {questions.map((q, index) => (
-            <Card key={q.id}>
-              <CardContent className="pt-6">
-                <h3 className="font-medium text-gray-900 mb-4">
-                  {index + 1}. {q.question}
-                </h3>
-                <div className="space-y-3">
-                  {q.options.map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        answers[q.id] === option.value
-                          ? 'border-purple-500 bg-purple-50 shadow-sm'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={q.id}
-                        value={option.value}
-                        checked={answers[q.id] === option.value}
-                        onChange={(e) =>
-                          setAnswers({ ...answers, [q.id]: e.target.value })
-                        }
-                        className="mt-1 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span className="text-gray-700">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Question Content */}
+      <div className="px-4 pb-8">
+        <div className={`max-w-2xl mx-auto transition-all duration-200 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
 
-          <div className="flex justify-center pb-8">
-            <Button
-              type="button"
-              size="lg"
-              onClick={handleNextStep}
-              disabled={Object.keys(answers).length < questions.length}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-            >
-              Continuar
-            </Button>
+          {/* Question */}
+          <div className="mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-white text-center leading-tight">
+              {data.question}
+            </h2>
           </div>
+
+          {/* Options for multiple choice */}
+          {type !== 'open' && 'options' in data && (
+            <div className="space-y-3">
+              {data.options.map((option, index) => {
+                const isSelected = answers[data.id] === option.value
+                const letters = ['A', 'B', 'C', 'D', 'E', 'F']
+
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleSelectOption(data.id, option.value)}
+                    className={`w-full p-4 rounded-xl text-left transition-all duration-200 flex items-start gap-4 group ${
+                      isSelected
+                        ? `bg-gradient-to-r ${sectionColor} text-white shadow-lg`
+                        : 'bg-white/10 backdrop-blur-sm text-white/90 hover:bg-white/20 border border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    <span className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${
+                      isSelected
+                        ? 'bg-white/30 text-white'
+                        : 'bg-white/10 text-white/70 group-hover:bg-white/20'
+                    }`}>
+                      {letters[index]}
+                    </span>
+                    <span className="flex-1 pt-1">{option.label}</span>
+                    {isSelected && (
+                      <CheckCircle className="h-5 w-5 flex-shrink-0 mt-1" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Open question */}
+          {type === 'open' && (
+            <div className="space-y-4">
+              <textarea
+                value={openAnswers[data.id] || ''}
+                onChange={(e) => setOpenAnswers({ ...openAnswers, [data.id]: e.target.value })}
+                placeholder={'placeholder' in data ? data.placeholder : ''}
+                className="w-full p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none min-h-[150px]"
+                rows={5}
+              />
+
+              {isLastQuestion ? (
+                <Button
+                  size="lg"
+                  onClick={handleSubmit}
+                  loading={submitting}
+                  disabled={!openAnswers.challenge || !openAnswers.desired_change}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-4 rounded-xl shadow-lg shadow-amber-500/30 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Descobrir meu Arquétipo
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  onClick={handleNext}
+                  disabled={!openAnswers[data.id]}
+                  className={`w-full bg-gradient-to-r ${sectionColor} hover:opacity-90 text-white font-semibold py-4 rounded-xl shadow-lg transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100`}
+                >
+                  Continuar
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Navigation hint for mobile */}
+      <div className="fixed bottom-6 left-0 right-0 text-center pointer-events-none">
+        <p className="text-white/30 text-xs">
+          {type !== 'open' ? 'Toque para selecionar' : ''}
+        </p>
       </div>
     </div>
   )

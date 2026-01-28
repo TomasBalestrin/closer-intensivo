@@ -1,17 +1,16 @@
-// Mapeamento OCULTO de respostas para DISC (NÃO VISÍVEL para participante)
+// Mapeamento de respostas para DISC (10 perguntas específicas)
+// Cada traço D-I-S-C aparece em todas as perguntas
 const DISC_MAP: Record<string, Record<string, 'D' | 'I' | 'S' | 'C'>> = {
-  q1: { A: 'I', B: 'D', C: 'S', D: 'I' },
-  q2: { A: 'D', B: 'D', C: 'I', D: 'S' },
-  q3: { A: 'I', B: 'S', C: 'C', D: 'C' },
-  q4: { A: 'C', B: 'S', C: 'D', D: 'I' },
-  q5: { A: 'C', B: 'D', C: 'C', D: 'S' },
-  q6: { A: 'D', B: 'D', C: 'S', D: 'I' },
-  q7: { A: 'C', B: 'I', C: 'C', D: 'S' },
-  q8: { A: 'D', B: 'C', C: 'S', D: 'I' },
-  q9: { A: 'I', B: 'D', C: 'S', D: 'C' },
-  q10: { A: 'I', B: 'D', C: 'S', D: 'C' },
-  q11: { A: 'D', B: 'I', C: 'C', D: 'I' },
-  q12: { A: 'D', B: 'I', C: 'S', D: 'C' }
+  qd1: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd2: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd3: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd4: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd5: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd6: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd7: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd8: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd9: { A: 'D', B: 'S', C: 'C', D: 'I' },
+  qd10: { A: 'D', B: 'S', C: 'C', D: 'I' }
 }
 
 // Descrições dos perfis DISC para closers
@@ -201,7 +200,8 @@ export function calculateDISC(answers: Record<string, string>): DISCResult {
   const scores = { D: 0, I: 0, S: 0, C: 0 }
 
   Object.entries(answers).forEach(([question, answer]) => {
-    if (question.startsWith('q') && DISC_MAP[question]) {
+    // Process DISC questions (qd1-qd10)
+    if (question.startsWith('qd') && DISC_MAP[question]) {
       const trait = DISC_MAP[question]?.[answer]
       if (trait) {
         scores[trait]++
@@ -209,7 +209,7 @@ export function calculateDISC(answers: Record<string, string>): DISCResult {
     }
   })
 
-  // Normalizar para porcentagem (12 questões = 100%)
+  // Normalizar para porcentagem (10 questões = 100%)
   const total = Object.values(scores).reduce((a, b) => a + b, 0) || 1
   const normalized = {
     D: Math.round((scores.D / total) * 100) / 10,

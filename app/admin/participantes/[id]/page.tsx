@@ -35,6 +35,7 @@ import {
   ShoppingCart,
   Zap,
   Copy,
+  RefreshCw,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR } from '@/lib/utils'
@@ -224,6 +225,38 @@ export default function ParticipantDetail() {
     showToast('Link copiado!', 'success')
   }
 
+  const handleReprocessAnalysis = async (form: any) => {
+    if (!participant) return
+    setFormLoading(true)
+    try {
+      // Get the form data
+      const answers = form.answers || {}
+
+      // Call the analysis API
+      const response = await fetch('/api/forms/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participantId: participant.id,
+          answers,
+          challengeAnswer: participant.challenge_answer || '',
+          desiredChangeAnswer: participant.desired_change_answer || '',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro na análise')
+      }
+
+      showToast('Análise reprocessada com sucesso', 'success')
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao reprocessar análise', 'error')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -246,6 +279,8 @@ export default function ParticipantDetail() {
   const assignedCloser = closers.find(c => c.id === participant.closer_id)
   const hasFormCompleted = participant.form_completed_at != null
   const hasDiscProfile = participant.disc_profile != null
+  const completedForms = forms.filter((f: any) => f.completed_at != null)
+  const hasCompletedForms = completedForms.length > 0
 
   const tabs = [
     { id: 'dados' as TabType, label: 'Dados', icon: User },
@@ -641,7 +676,8 @@ export default function ParticipantDetail() {
         {/* DISC TAB */}
         {activeTab === 'disc' && (
           <div className="space-y-6">
-            {!hasFormCompleted ? (
+            {/* No DISC profile and no completed forms - show generate button */}
+            {!hasDiscProfile && !hasCompletedForms && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -650,9 +686,34 @@ export default function ParticipantDetail() {
                     <FileText className="h-4 w-4 mr-2" />
                     Gerar Formulário
                   </Button>
+                  {forms.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-4">
+                      {forms.length} formulário(s) pendente(s) de resposta
+                    </p>
+                  )}
                 </CardContent>
               </Card>
-            ) : (
+            )}
+
+            {/* No DISC profile but has completed forms - show reprocess option */}
+            {!hasDiscProfile && hasCompletedForms && (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Brain className="h-12 w-12 text-amber-400 mx-auto mb-3" />
+                  <p className="text-gray-700 font-medium mb-2">Formulário respondido, mas análise não processada</p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    O participante respondeu o formulário, mas os dados DISC não foram gerados.
+                  </p>
+                  <Button onClick={() => handleReprocessAnalysis(completedForms[0])} loading={formLoading}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reprocessar Análise
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Has DISC profile - show DISC data */}
+            {hasDiscProfile && (
               <>
                 {/* DISC Scores */}
                 <Card>
