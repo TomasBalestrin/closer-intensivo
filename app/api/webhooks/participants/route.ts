@@ -58,9 +58,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if participant exists by external_id first, then by name
+    // Check if participant exists - priority: external_id > email > cpf > name
+    // This prevents duplicates and ensures data is updated correctly
     let existingParticipant = null
 
+    // 1. Check by external_id (most reliable - unique form submission ID)
     if (participant_id) {
       const { data } = await supabase
         .from('participants')
@@ -70,6 +72,27 @@ export async function POST(request: Request) {
       existingParticipant = data
     }
 
+    // 2. Check by email (very reliable identifier)
+    if (!existingParticipant && email) {
+      const { data } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('email', email)
+        .single()
+      existingParticipant = data
+    }
+
+    // 3. Check by CPF (unique document, if available)
+    if (!existingParticipant && cpf) {
+      const { data } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('cpf', cpf)
+        .single()
+      existingParticipant = data
+    }
+
+    // 4. Check by name (last resort - less reliable)
     if (!existingParticipant && name) {
       const { data } = await supabase
         .from('participants')

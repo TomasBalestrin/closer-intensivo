@@ -351,7 +351,8 @@ export default function ParticipantDetail() {
   const assignedCloser = closers.find(c => c.id === participant.closer_id)
   const hasFormCompleted = participant.form_completed_at != null
   const hasDiscProfile = participant.disc_profile != null
-  const completedForms = forms.filter((f: any) => f.completed_at != null)
+  // Check if form is truly completed (has completed_at AND has actual answers)
+  const completedForms = forms.filter((f: any) => f.completed_at != null && f.answers && Object.keys(f.answers).length > 0)
   const hasCompletedForms = completedForms.length > 0
 
   const tabs = [
@@ -1011,24 +1012,29 @@ export default function ParticipantDetail() {
                   <div className="border-t pt-4">
                     <p className="text-sm text-gray-500 mb-3">Formulários existentes:</p>
                     <div className="space-y-3">
-                      {forms.map((form) => (
-                        <div key={form.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Badge variant={form.completed_at ? 'success' : 'warning'}>
-                              {form.completed_at ? 'Respondido' : 'Aguardando resposta'}
-                            </Badge>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => copyFormLink(form.id)} title="Copiar link">
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
-                                <Button variant="ghost" size="sm" title="Abrir formulário">
-                                  <ExternalLink className="h-4 w-4" />
+                      {forms.map((form: any) => {
+                        // Check if form is actually answered (has answers with content)
+                        const hasAnswers = form.answers && Object.keys(form.answers).length > 0
+                        const isCompleted = form.completed_at && hasAnswers
+
+                        return (
+                          <div key={form.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Badge variant={isCompleted ? 'success' : 'warning'}>
+                                {isCompleted ? 'Respondido' : 'Aguardando resposta'}
+                              </Badge>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => copyFormLink(form.id)} title="Copiar link">
+                                  <Copy className="h-4 w-4" />
                                 </Button>
-                              </a>
+                                <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
+                                  <Button variant="ghost" size="sm" title="Abrir formulário">
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                </a>
+                              </div>
                             </div>
-                          </div>
-                          {!form.completed_at && (
+                            {/* Always show form link */}
                             <div className="flex items-center gap-2">
                               <input
                                 type="text"
@@ -1041,9 +1047,9 @@ export default function ParticipantDetail() {
                                 Copiar
                               </Button>
                             </div>
-                          )}
-                        </div>
-                      ))}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
