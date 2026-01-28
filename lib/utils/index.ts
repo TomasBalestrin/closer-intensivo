@@ -23,6 +23,7 @@ export function getColorClass(color: string | null): string {
     azul_claro: 'bg-badge-azul-claro text-white',
     dourado: 'bg-badge-dourado text-black',
     laranja: 'bg-badge-laranja text-white',
+    verde: 'bg-green-600 text-white',
   }
   return color ? colorMap[color] || 'bg-gray-200 text-gray-800' : 'bg-gray-200 text-gray-800'
 }
