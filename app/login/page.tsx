@@ -57,8 +57,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <div className="h-20 w-20 bg-[#1a2744] rounded-2xl flex items-center justify-center mx-auto">
-              <Flame className="h-10 w-10 text-amber-500" />
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-xl shadow-amber-500/30">
+              <Flame className="h-10 w-10 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl">Bethel Events</CardTitle>

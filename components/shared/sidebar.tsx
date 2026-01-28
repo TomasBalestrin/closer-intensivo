@@ -86,13 +86,13 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
             {!isCollapsed ? (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
                   <Flame className="h-5 w-5 text-white" />
                 </div>
                 <span className="font-semibold text-white">Bethel Events</span>
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center mx-auto">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">
                 <Flame className="h-5 w-5 text-white" />
               </div>
             )}
