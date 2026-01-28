@@ -36,6 +36,8 @@ import {
   Zap,
   Copy,
   RefreshCw,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR } from '@/lib/utils'
@@ -81,6 +83,9 @@ export default function ParticipantDetail() {
     entry_value: '',
     negotiation_type: '',
   })
+
+  const [editingSale, setEditingSale] = useState<Sale | null>(null)
+  const [deletingSale, setDeletingSale] = useState<Sale | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -217,6 +222,73 @@ export default function ParticipantDetail() {
     } finally {
       setFormLoading(false)
     }
+  }
+
+  const handleEditSale = (sale: Sale) => {
+    setEditingSale(sale)
+    setSaleData({
+      product: sale.product || '',
+      total_value: sale.total_value?.toString() || '',
+      entry_value: sale.entry_value?.toString() || '',
+      negotiation_type: sale.negotiation_type || '',
+    })
+    setSaleModal(true)
+  }
+
+  const handleUpdateSale = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingSale) return
+
+    setFormLoading(true)
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({
+          product: saleData.product,
+          total_value: parseFloat(saleData.total_value),
+          entry_value: parseFloat(saleData.entry_value),
+          negotiation_type: saleData.negotiation_type,
+        })
+        .eq('id', editingSale.id)
+
+      if (error) throw error
+      showToast('Venda atualizada com sucesso', 'success')
+      setSaleModal(false)
+      setEditingSale(null)
+      setSaleData({ product: '', total_value: '', entry_value: '', negotiation_type: '' })
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao atualizar venda', 'error')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleDeleteSale = async () => {
+    if (!deletingSale) return
+
+    setFormLoading(true)
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', deletingSale.id)
+
+      if (error) throw error
+      showToast('Venda excluída com sucesso', 'success')
+      setDeletingSale(null)
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao excluir venda', 'error')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleCloseSaleModal = () => {
+    setSaleModal(false)
+    setEditingSale(null)
+    setSaleData({ product: '', total_value: '', entry_value: '', negotiation_type: '' })
   }
 
   const copyFormLink = (formId: string) => {
@@ -493,11 +565,12 @@ export default function ParticipantDetail() {
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                       options={[
                         { value: '', label: 'Selecione...' },
-                        { value: 'rosa', label: 'Rosa' },
-                        { value: 'preto', label: 'Preto' },
-                        { value: 'azul_claro', label: 'Azul Claro' },
-                        { value: 'dourado', label: 'Dourado' },
-                        { value: 'laranja', label: 'Laranja' },
+                        { value: 'rosa', label: 'Rosa (Até R$ 5.000)' },
+                        { value: 'preto', label: 'Preto (R$ 5.000 a R$ 10.000)' },
+                        { value: 'azul_claro', label: 'Azul Claro (R$ 10.000 a R$ 30.000)' },
+                        { value: 'dourado', label: 'Dourado (R$ 30.000 a R$ 50.000)' },
+                        { value: 'laranja', label: 'Laranja (R$ 50.000 a R$ 100.000)' },
+                        { value: 'verde', label: 'Verde (Acima de R$ 100.000)' },
                       ]}
                     />
                     <Select
@@ -619,26 +692,44 @@ export default function ParticipantDetail() {
                 {sales.map((sale: any) => (
                   <Card key={sale.id}>
                     <CardContent className="py-4">
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div>
-                          <span className="text-sm text-gray-500">Produto</span>
-                          <p className="font-medium">{sale.product}</p>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                          <div>
+                            <span className="text-sm text-gray-500">Produto</span>
+                            <p className="font-medium">{sale.product}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Valor Total</span>
+                            <p className="font-medium text-green-600">{formatCurrency(sale.total_value)}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Entrada</span>
+                            <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Negociação</span>
+                            <p className="font-medium">{sale.negotiation_type}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Closer</span>
+                            <p className="font-medium">{sale.closer?.name || '-'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Valor Total</span>
-                          <p className="font-medium text-green-600">{formatCurrency(sale.total_value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Entrada</span>
-                          <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Negociação</span>
-                          <p className="font-medium">{sale.negotiation_type}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-500">Closer</span>
-                          <p className="font-medium">{sale.closer?.name || '-'}</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditSale(sale)}
+                            className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Editar venda"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeletingSale(sale)}
+                            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Excluir venda"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     </CardContent>
@@ -1037,17 +1128,35 @@ export default function ParticipantDetail() {
         </div>
       </Modal>
 
-      <Modal isOpen={saleModal} onClose={() => setSaleModal(false)} title="Registrar Venda">
-        <form onSubmit={handleRegisterSale} className="space-y-4">
+      <Modal isOpen={saleModal} onClose={handleCloseSaleModal} title={editingSale ? 'Editar Venda' : 'Registrar Venda'}>
+        <form onSubmit={editingSale ? handleUpdateSale : handleRegisterSale} className="space-y-4">
           <Input label="Produto Vendido" value={saleData.product} onChange={(e) => setSaleData({ ...saleData, product: e.target.value })} required />
           <Input label="Valor Total" type="number" step="0.01" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
           <Input label="Valor Entrada" type="number" step="0.01" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
           <Input label="Negociação" value={saleData.negotiation_type} onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })} required />
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setSaleModal(false)}>Cancelar</Button>
-            <Button type="submit" loading={formLoading}>Registrar</Button>
+            <Button type="button" variant="secondary" onClick={handleCloseSaleModal}>Cancelar</Button>
+            <Button type="submit" loading={formLoading}>{editingSale ? 'Salvar' : 'Registrar'}</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Sale Confirmation Modal */}
+      <Modal isOpen={!!deletingSale} onClose={() => setDeletingSale(null)} title="Confirmar Exclusão">
+        <p className="text-gray-600">
+          Tem certeza que deseja excluir a venda do produto <strong>{deletingSale?.product}</strong>?
+          <br />
+          <span className="text-sm text-gray-500">Valor: {deletingSale ? formatCurrency(deletingSale.total_value) : ''}</span>
+        </p>
+        <p className="text-red-600 text-sm mt-2">Esta ação não pode ser desfeita.</p>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="secondary" onClick={() => setDeletingSale(null)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleDeleteSale} loading={formLoading}>
+            Excluir Venda
+          </Button>
+        </div>
       </Modal>
     </div>
   )

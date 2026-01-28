@@ -27,13 +27,31 @@ export default function AdminParticipantes() {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [assignCloserId, setAssignCloserId] = useState('')
 
+  // Mapeamento de faturamento para cor
+  const FATURAMENTO_OPTIONS = [
+    { value: 'Até R$ 5.000,00', label: 'Até R$ 5.000', color: 'rosa' },
+    { value: 'R$ 5.000 até R$ 10.000', label: 'R$ 5.000 a R$ 10.000', color: 'preto' },
+    { value: 'R$ 10.000 até R$ 30.000', label: 'R$ 10.000 a R$ 30.000', color: 'azul_claro' },
+    { value: 'R$ 30.000 até R$ 50.000', label: 'R$ 30.000 a R$ 50.000', color: 'dourado' },
+    { value: 'R$ 50.000 até R$ 100.000', label: 'R$ 50.000 a R$ 100.000', color: 'laranja' },
+    { value: 'Acima de R$ 100.000', label: 'Acima de R$ 100.000', color: 'verde' },
+  ]
+
+  const getColorFromRevenue = (revenue: string): string | null => {
+    const option = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
+    return option?.color || null
+  }
+
   // Create participant form
   const [newParticipant, setNewParticipant] = useState({
     name: '',
+    email: '',
+    phone: '',
     instagram: '',
     revenue: '',
     niche: '',
     funnel: '',
+    badge_name: '',
     is_opportunity: false,
   })
   const [creating, setCreating] = useState(false)
@@ -73,7 +91,12 @@ export default function AdminParticipantes() {
   const funnels = [...new Set(participants.map(p => p.funnel).filter(Boolean))]
 
   const filteredParticipants = participants.filter((p: any) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
+    const searchLower = search.toLowerCase()
+    const matchesSearch = !search ||
+      p.name?.toLowerCase().includes(searchLower) ||
+      p.email?.toLowerCase().includes(searchLower) ||
+      p.niche?.toLowerCase().includes(searchLower) ||
+      p.instagram?.toLowerCase().includes(searchLower)
     const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
     const matchesSeller = !sellerFilter || p.seller_closer_id === sellerFilter
     const matchesOpportunity = opportunityFilter === '' ||
@@ -83,6 +106,15 @@ export default function AdminParticipantes() {
 
     return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale
   })
+
+  const hasActiveFilters = funnelFilter || sellerFilter || opportunityFilter || saleFilter
+
+  const clearFilters = () => {
+    setFunnelFilter('')
+    setSellerFilter('')
+    setOpportunityFilter('')
+    setSaleFilter('')
+  }
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -113,19 +145,25 @@ export default function AdminParticipantes() {
     setCreating(true)
 
     try {
+      const color = getColorFromRevenue(newParticipant.revenue)
+
       const { error } = await supabase.from('participants').insert({
         name: newParticipant.name,
+        email: newParticipant.email || null,
+        phone: newParticipant.phone || null,
         instagram: newParticipant.instagram || null,
         revenue: newParticipant.revenue || null,
         niche: newParticipant.niche || null,
         funnel: newParticipant.funnel || null,
+        badge_name: newParticipant.badge_name || null,
         is_opportunity: newParticipant.is_opportunity,
+        color: color,
       })
 
       if (error) throw error
 
       setShowCreateModal(false)
-      setNewParticipant({ name: '', instagram: '', revenue: '', niche: '', funnel: '', is_opportunity: false })
+      setNewParticipant({ name: '', email: '', phone: '', instagram: '', revenue: '', niche: '', funnel: '', badge_name: '', is_opportunity: false })
       fetchData()
     } catch (error) {
       console.error('Error creating participant:', error)
@@ -207,7 +245,7 @@ export default function AdminParticipantes() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Buscar por nome..."
+              placeholder="Buscar por nome, email, nicho ou Instagram..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -223,45 +261,54 @@ export default function AdminParticipantes() {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-            <Select
-              label="Funil"
-              value={funnelFilter}
-              onChange={(e) => setFunnelFilter(e.target.value)}
-              options={[
-                { value: '', label: 'Todos os funis' },
-                ...funnels.map(f => ({ value: f!, label: f! })),
-              ]}
-            />
-            <Select
-              label="Vendedor/Convidador"
-              value={sellerFilter}
-              onChange={(e) => setSellerFilter(e.target.value)}
-              options={[
-                { value: '', label: 'Todos' },
-                ...closers.map(c => ({ value: c.id, label: c.name })),
-              ]}
-            />
-            <Select
-              label="É Oportunidade"
-              value={opportunityFilter}
-              onChange={(e) => setOpportunityFilter(e.target.value)}
-              options={[
-                { value: '', label: 'Todos' },
-                { value: 'true', label: 'Sim' },
-                { value: 'false', label: 'Não' },
-              ]}
-            />
-            <Select
-              label="Foi uma Venda"
-              value={saleFilter}
-              onChange={(e) => setSaleFilter(e.target.value)}
-              options={[
-                { value: '', label: 'Todos' },
-                { value: 'true', label: 'Sim' },
-                { value: 'false', label: 'Não' },
-              ]}
-            />
+          <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Select
+                label="Funil"
+                value={funnelFilter}
+                onChange={(e) => setFunnelFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos os funis' },
+                  ...funnels.map(f => ({ value: f!, label: f! })),
+                ]}
+              />
+              <Select
+                label="Vendedor/Convidador"
+                value={sellerFilter}
+                onChange={(e) => setSellerFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  ...closers.map(c => ({ value: c.id, label: c.name })),
+                ]}
+              />
+              <Select
+                label="É Oportunidade"
+                value={opportunityFilter}
+                onChange={(e) => setOpportunityFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Sim' },
+                  { value: 'false', label: 'Não' },
+                ]}
+              />
+              <Select
+                label="Foi uma Venda"
+                value={saleFilter}
+                onChange={(e) => setSaleFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Sim' },
+                  { value: 'false', label: 'Não' },
+                ]}
+              />
+            </div>
+            {hasActiveFilters && (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Limpar Filtros
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -387,34 +434,62 @@ export default function AdminParticipantes() {
         title="Novo Participante"
       >
         <form onSubmit={handleCreateParticipant} className="space-y-4">
-          <Input
-            label="Nome *"
-            value={newParticipant.name}
-            onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nome *"
+              value={newParticipant.name}
+              onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Nome no Crachá"
+              value={newParticipant.badge_name}
+              onChange={(e) => setNewParticipant({ ...newParticipant, badge_name: e.target.value })}
+              placeholder="Como aparecer no crachá"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Email"
+              type="email"
+              value={newParticipant.email}
+              onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
+              placeholder="email@exemplo.com"
+            />
+            <Input
+              label="Telefone"
+              value={newParticipant.phone}
+              onChange={(e) => setNewParticipant({ ...newParticipant, phone: e.target.value })}
+              placeholder="(00) 00000-0000"
+            />
+          </div>
           <Input
             label="Instagram"
             value={newParticipant.instagram}
             onChange={(e) => setNewParticipant({ ...newParticipant, instagram: e.target.value })}
             placeholder="@usuario"
           />
-          <Input
-            label="Faturamento"
+          <Select
+            label="Faturamento (define cor automática)"
             value={newParticipant.revenue}
             onChange={(e) => setNewParticipant({ ...newParticipant, revenue: e.target.value })}
-            placeholder="R$ 100.000"
+            options={[
+              { value: '', label: 'Selecione o faturamento' },
+              ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
+            ]}
           />
-          <Input
-            label="Nicho"
-            value={newParticipant.niche}
-            onChange={(e) => setNewParticipant({ ...newParticipant, niche: e.target.value })}
-          />
-          <Input
-            label="Funil"
-            value={newParticipant.funnel}
-            onChange={(e) => setNewParticipant({ ...newParticipant, funnel: e.target.value })}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nicho"
+              value={newParticipant.niche}
+              onChange={(e) => setNewParticipant({ ...newParticipant, niche: e.target.value })}
+            />
+            <Input
+              label="Funil"
+              value={newParticipant.funnel}
+              onChange={(e) => setNewParticipant({ ...newParticipant, funnel: e.target.value })}
+            />
+          </div>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
