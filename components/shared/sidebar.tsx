@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Trophy,
   Flame,
+  Webhook,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -36,6 +37,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Participantes', href: '/admin/participantes', icon: Users },
         { name: 'Closers', href: '/admin/closers', icon: Trophy },
+        { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
     : [
