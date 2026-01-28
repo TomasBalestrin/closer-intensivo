@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 
@@ -56,8 +57,14 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <div className="h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-2xl font-bold text-white">BE</span>
+            <div className="h-20 w-20 bg-[#1a2744] rounded-2xl flex items-center justify-center mx-auto p-3">
+              <Image
+                src="/images/logo.png"
+                alt="Bethel Events"
+                width={64}
+                height={64}
+                className="w-full h-full object-contain"
+              />
             </div>
           </div>
           <CardTitle className="text-2xl">Bethel Events</CardTitle>
