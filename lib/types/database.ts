@@ -71,6 +71,7 @@ export interface Database {
           primary_archetype: string | null
           secondary_archetype: string | null
           archetype_description: string | null
+          archetype_scores: Json | null
           // DISC fields (hidden - only for closers)
           disc_profile: string | null
           disc_score_d: number | null
@@ -124,6 +125,7 @@ export interface Database {
           primary_archetype?: string | null
           secondary_archetype?: string | null
           archetype_description?: string | null
+          archetype_scores?: Json | null
           disc_profile?: string | null
           disc_score_d?: number | null
           disc_score_i?: number | null
@@ -173,6 +175,7 @@ export interface Database {
           primary_archetype?: string | null
           secondary_archetype?: string | null
           archetype_description?: string | null
+          archetype_scores?: Json | null
           disc_profile?: string | null
           disc_score_d?: number | null
           disc_score_i?: number | null

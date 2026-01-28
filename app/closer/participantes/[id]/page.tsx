@@ -391,40 +391,187 @@ export default function CloserParticipantDetail() {
             </Card>
           ) : (
             <>
-              {/* DISC Scores */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-blue-600" />
-                    Perfil DISC: <span className="text-blue-600">{participant.disc_profile}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-4">
-                    {[
-                      { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', name: 'Dominância' },
-                      { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', name: 'Influência' },
-                      { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', name: 'Estabilidade' },
-                      { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', name: 'Conformidade' },
-                    ].map((score) => (
-                      <div key={score.label} className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">{score.name}</div>
-                        <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden">
-                          <div
-                            className={`absolute bottom-0 left-0 right-0 ${score.color} transition-all`}
-                            style={{ height: `${(score.value || 0) * 10}%` }}
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-2xl font-bold text-gray-800">{score.label}</span>
+              {/* Main Profile Grid - Archetype + DISC side by side */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Perfil de Arquétipo */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-purple-700">
+                      <Sparkles className="h-5 w-5" />
+                      Perfil de Arquétipo
+                    </CardTitle>
+                    {participant.form_completed_at && (
+                      <p className="text-sm text-gray-500">
+                        Avaliação em {new Date(participant.form_completed_at).toLocaleDateString('pt-BR')}
+                      </p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Top 3 Archetypes */}
+                    <div className="space-y-2">
+                      {/* 1st Place */}
+                      {participant.primary_archetype && (
+                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border-2 border-purple-200">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-7 h-7 bg-purple-600 text-white rounded-full text-xs font-bold">
+                              1º
+                            </span>
+                            <span className="text-lg font-semibold text-purple-700">
+                              {getArchetypeIcon(participant.primary_archetype)} {participant.primary_archetype}
+                            </span>
                           </div>
+                          <span className="text-xl font-bold text-purple-600">
+                            {(participant.archetype_scores as Record<string, number> | null)?.[participant.primary_archetype] || '-'}
+                          </span>
                         </div>
-                        <div className="text-sm font-medium mt-1">{score.value || 0}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      )}
 
+                      {/* 2nd Place */}
+                      {participant.secondary_archetype && (
+                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-6 h-6 bg-gray-400 text-white rounded-full text-xs font-bold">
+                              2º
+                            </span>
+                            <span className="font-medium text-gray-700">
+                              {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}
+                            </span>
+                          </div>
+                          <span className="text-lg font-bold text-gray-600">
+                            {(participant.archetype_scores as Record<string, number> | null)?.[participant.secondary_archetype] || '-'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 3rd Place - find from archetype_scores */}
+                      {participant.archetype_scores && (() => {
+                        const scores = participant.archetype_scores as Record<string, number>
+                        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1])
+                        const third = sorted[2]
+                        if (third) {
+                          return (
+                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-3">
+                                <span className="flex items-center justify-center w-6 h-6 bg-gray-300 text-white rounded-full text-xs font-bold">
+                                  3º
+                                </span>
+                                <span className="font-medium text-gray-600">
+                                  {getArchetypeIcon(third[0])} {third[0]}
+                                </span>
+                              </div>
+                              <span className="text-lg font-bold text-gray-500">{third[1]}</span>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
+
+                    {/* All Archetypes Grid */}
+                    {participant.archetype_scores && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-2">Todos os Arquétipos</p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          {Object.entries(participant.archetype_scores as Record<string, number>)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([name, score]) => (
+                              <div key={name} className="flex justify-between py-1 border-b border-gray-100">
+                                <span className="text-gray-600">{name}</span>
+                                <span className="font-semibold text-gray-800">{score}</span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Perfil DISC */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      Perfil DISC
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Main DISC Profile Badge */}
+                    {(() => {
+                      const discColors: Record<string, { bg: string; badge: string; name: string; desc: string }> = {
+                        'D': { bg: 'bg-red-50 border-red-200', badge: 'bg-red-500', name: 'Dominância', desc: 'Executor Determinado' },
+                        'I': { bg: 'bg-yellow-50 border-yellow-200', badge: 'bg-yellow-500', name: 'Influência', desc: 'Comunicador Expressivo' },
+                        'S': { bg: 'bg-green-50 border-green-200', badge: 'bg-green-500', name: 'Estabilidade', desc: 'Apoiador Consistente' },
+                        'C': { bg: 'bg-blue-50 border-blue-200', badge: 'bg-blue-500', name: 'Conformidade', desc: 'Analítico Preciso' },
+                      }
+                      const profile = participant.disc_profile || 'D'
+                      const mainLetter = profile.charAt(0)
+                      const config = discColors[mainLetter] || discColors['D']
+
+                      return (
+                        <div className={`p-4 rounded-lg border-2 ${config.bg}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-4xl font-bold text-gray-800">{mainLetter}</span>
+                            <span className={`${config.badge} text-white px-3 py-1 rounded-full text-sm font-medium`}>
+                              {config.name}
+                            </span>
+                          </div>
+                          <p className="text-gray-700 font-medium">{config.desc}</p>
+                        </div>
+                      )
+                    })()}
+
+                    {/* DISC Bars */}
+                    <div className="space-y-3">
+                      {[
+                        { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', name: 'Dominância' },
+                        { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', name: 'Influência' },
+                        { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', name: 'Estabilidade' },
+                        { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', name: 'Conformidade' },
+                      ].map((score) => {
+                        const percentage = ((score.value || 0) / 10) * 100
+                        return (
+                          <div key={score.label}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-gray-600">{score.label} - {score.name}</span>
+                              <span className="font-semibold">{Math.round(percentage)}%</span>
+                            </div>
+                            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${score.color} transition-all duration-500`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Quick Tip - Dica de Abordagem */}
+                    {participant.quick_tips && participant.quick_tips.length > 0 && (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center gap-2 text-green-700 font-semibold mb-1">
+                          <Lightbulb className="h-4 w-4" />
+                          Dica de Abordagem
+                        </div>
+                        <p className="text-green-700 text-sm">{participant.quick_tips[0]}</p>
+                      </div>
+                    )}
+
+                    {/* Alert - Things to Avoid */}
+                    {participant.things_to_avoid && participant.things_to_avoid.length > 0 && (
+                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-2 text-amber-700 font-semibold mb-1">
+                          <AlertTriangle className="h-4 w-4" />
+                          Alertas
+                        </div>
+                        <p className="text-amber-700 text-sm">{participant.things_to_avoid[0]}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Additional Info Below */}
               {/* Personality Summary */}
               {participant.personality_summary && (
                 <Card>
@@ -470,13 +617,13 @@ export default function CloserParticipantDetail() {
                 </Card>
               )}
 
-              {/* Quick Tips */}
-              {participant.quick_tips && participant.quick_tips.length > 0 && (
+              {/* All Quick Tips */}
+              {participant.quick_tips && participant.quick_tips.length > 1 && (
                 <Card className="border-green-200 bg-green-50/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-green-800">
                       <Lightbulb className="h-5 w-5" />
-                      Dicas Rápidas para Vender
+                      Todas as Dicas de Abordagem
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -560,8 +707,8 @@ export default function CloserParticipantDetail() {
                 </Card>
               )}
 
-              {/* Things to Avoid */}
-              {participant.things_to_avoid && participant.things_to_avoid.length > 0 && (
+              {/* All Things to Avoid */}
+              {participant.things_to_avoid && participant.things_to_avoid.length > 1 && (
                 <Card className="border-red-200 bg-red-50/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-red-800">

@@ -47,8 +47,6 @@ export async function POST(request: Request) {
     const badge_name = fields?.nome_para_cracha
     const partner = fields?.voce_tem_socio
     const niche = fields?.qual_sua_area_de_atuacao_profissional
-    const desired_change_answer = fields?.o_que_pretende_aprender_no_intensivo_da_alta_performance
-    const challenge_answer = fields?.qual_sua_maior_dificuldade_no_seu_negocio_hoje
     const revenue = fields?.quanto_voce_fatura_por_mes
     const net_profit = fields?.qual_seu_lucro_liquido_mensal
     const photo_url = fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos
@@ -81,7 +79,9 @@ export async function POST(request: Request) {
       existingParticipant = data
     }
 
-    const participantData = {
+    // Build participantData with only fields that exist in the database
+    // Note: challenge_answer and desired_change_answer are set by the form analysis API
+    const participantData: Record<string, any> = {
       name,
       email: email || null,
       phone: phone || null,
@@ -89,15 +89,14 @@ export async function POST(request: Request) {
       revenue: revenue || null,
       niche: niche || null,
       instagram,
-      cpf: cpf || null,
-      badge_name: badge_name || null,
-      partner: partner || null,
-      net_profit: net_profit || null,
-      challenge_answer: challenge_answer || null,
-      desired_change_answer: desired_change_answer || null,
       external_id: participant_id || null,
-      webhook_data: payload,
     }
+
+    // Optional fields - only include if the webhook provides them
+    if (cpf) participantData.cpf = cpf
+    if (badge_name) participantData.badge_name = badge_name
+    if (partner) participantData.partner = partner
+    if (net_profit) participantData.net_profit = net_profit
 
     if (existingParticipant) {
       // Update existing participant
