@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Avatar, Loading } from '@/components/ui'
@@ -9,15 +9,20 @@ import { Trophy, Users, Target, Calendar, TrendingUp, Percent, DollarSign, Credi
 
 type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
 
+// Create supabase client outside component to avoid re-creation
+const supabase = createClient()
+
 export default function AdminDashboard() {
-  const supabase = createClient()
   const [dayFilter, setDayFilter] = useState<DayFilter>('todos')
   const [loading, setLoading] = useState(true)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [sales, setSales] = useState<(Sale & { closer: User })[]>([])
   const [closers, setClosers] = useState<User[]>([])
+  const hasFetched = useRef(false)
 
   useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
     fetchData()
   }, [])
 
@@ -39,58 +44,69 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
-  // Filter participants by day
-  const getFilteredParticipants = () => {
+  // Memoize filtered data to prevent recalculations on every render
+  const filteredParticipants = useMemo(() => {
     if (dayFilter === 'todos') return participants
     if (dayFilter === 'dia1') return participants.filter(p => p.checked_in_day1)
     if (dayFilter === 'dia2') return participants.filter(p => p.checked_in_day2)
     if (dayFilter === 'dia3') return participants.filter(p => p.checked_in_day3)
     return participants
-  }
+  }, [participants, dayFilter])
 
-  const filteredParticipants = getFilteredParticipants()
-  const opportunities = filteredParticipants.filter(p => p.is_opportunity)
+  const opportunities = useMemo(() => filteredParticipants.filter(p => p.is_opportunity), [filteredParticipants])
 
   // Get sales for filtered participants
-  const participantIds = filteredParticipants.map(p => p.id)
-  const filteredSales = sales.filter(s => participantIds.includes(s.participant_id))
+  const filteredSales = useMemo(() => {
+    const participantIds = new Set(filteredParticipants.map(p => p.id))
+    return sales.filter(s => participantIds.has(s.participant_id))
+  }, [filteredParticipants, sales])
 
-  // Stats calculations
-  const totalParticipants = filteredParticipants.length
-  const totalOpportunities = opportunities.length
-  const totalSalesCount = filteredSales.length
-  const conversionRate = totalOpportunities > 0 ? totalSalesCount / totalOpportunities : 0
-  const totalSalesValue = filteredSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0)
-  const totalEntryValue = filteredSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0)
+  // Stats calculations - memoized
+  const stats = useMemo(() => {
+    const totalParticipants = filteredParticipants.length
+    const totalOpportunities = opportunities.length
+    const totalSalesCount = filteredSales.length
+    const conversionRate = totalOpportunities > 0 ? totalSalesCount / totalOpportunities : 0
+    const totalSalesValue = filteredSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0)
+    const totalEntryValue = filteredSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0)
+    return { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue }
+  }, [filteredParticipants, opportunities, filteredSales])
 
-  // Qualification stats
-  const superQualified = opportunities.filter(p => p.qualification === 'super')
-  const medioQualified = opportunities.filter(p => p.qualification === 'medio')
-  const baixoQualified = opportunities.filter(p => p.qualification === 'baixo')
+  // Qualification stats - memoized
+  const qualificationStats = useMemo(() => {
+    const superQualified = opportunities.filter(p => p.qualification === 'super')
+    const medioQualified = opportunities.filter(p => p.qualification === 'medio')
+    const baixoQualified = opportunities.filter(p => p.qualification === 'baixo')
 
-  const getSalesByQualification = (qualification: string) => {
-    const ids = opportunities.filter(p => p.qualification === qualification).map(p => p.id)
-    return filteredSales.filter(s => ids.includes(s.participant_id))
-  }
+    const getSalesByQualification = (qualification: string) => {
+      const ids = new Set(opportunities.filter(p => p.qualification === qualification).map(p => p.id))
+      return filteredSales.filter(s => ids.has(s.participant_id))
+    }
 
-  const superSales = getSalesByQualification('super')
-  const medioSales = getSalesByQualification('medio')
-  const baixoSales = getSalesByQualification('baixo')
+    const superSales = getSalesByQualification('super')
+    const medioSales = getSalesByQualification('medio')
+    const baixoSales = getSalesByQualification('baixo')
+
+    return { superQualified, medioQualified, baixoQualified, superSales, medioSales, baixoSales }
+  }, [opportunities, filteredSales])
 
   const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
 
-  // Top closers
-  const closerStats = closers.map(closer => {
-    const closerSales = filteredSales.filter(s => s.closer_id === closer.id)
-    return {
-      ...closer,
-      salesCount: closerSales.length,
-      totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
-      entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
-    }
-  }).sort((a, b) => b.totalValue - a.totalValue)
+  // Top closers - memoized
+  const topClosers = useMemo(() => {
+    return closers.map(closer => {
+      const closerSales = filteredSales.filter(s => s.closer_id === closer.id)
+      return {
+        ...closer,
+        salesCount: closerSales.length,
+        totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
+        entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
+      }
+    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
+  }, [closers, filteredSales])
 
-  const topClosers = closerStats.slice(0, 3)
+  const { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue } = stats
+  const { superQualified, medioQualified, baixoQualified, superSales, medioSales, baixoSales } = qualificationStats
 
   if (loading) {
     return (
