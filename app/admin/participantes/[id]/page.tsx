@@ -918,24 +918,39 @@ export default function ParticipantDetail() {
 
                 {forms.length > 0 && (
                   <div className="border-t pt-4">
-                    <p className="text-sm text-gray-500 mb-2">Formulários existentes:</p>
-                    <div className="space-y-2">
+                    <p className="text-sm text-gray-500 mb-3">Formulários existentes:</p>
+                    <div className="space-y-3">
                       {forms.map((form) => (
-                        <div key={form.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm">{form.completed_at ? 'Respondido' : 'Pendente'}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => copyFormLink(form.id)}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
-                              <Button variant="ghost" size="sm">
-                                <ExternalLink className="h-4 w-4" />
+                        <div key={form.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Badge variant={form.completed_at ? 'success' : 'warning'}>
+                              {form.completed_at ? 'Respondido' : 'Aguardando resposta'}
+                            </Badge>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => copyFormLink(form.id)} title="Copiar link">
+                                <Copy className="h-4 w-4" />
                               </Button>
-                            </a>
+                              <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
+                                <Button variant="ghost" size="sm" title="Abrir formulário">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </a>
+                            </div>
                           </div>
+                          {!form.completed_at && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                readOnly
+                                value={typeof window !== 'undefined' ? `${window.location.origin}/form/${form.id}` : `/form/${form.id}`}
+                                className="flex-1 text-xs p-2 bg-white border rounded text-gray-600 font-mono"
+                                onClick={(e) => (e.target as HTMLInputElement).select()}
+                              />
+                              <Button size="sm" onClick={() => copyFormLink(form.id)}>
+                                Copiar
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
