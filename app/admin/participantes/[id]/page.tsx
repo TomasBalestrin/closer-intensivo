@@ -333,6 +333,35 @@ export default function ParticipantDetail() {
                       <p className="font-medium">{participant.niche || '-'}</p>
                     </div>
                     <div>
+                      <span className="text-gray-500">Email:</span>
+                      {participant.email ? (
+                        <a
+                          href={`mailto:${participant.email}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {participant.email}
+                        </a>
+                      ) : (
+                        <p className="text-gray-400">-</p>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">WhatsApp:</span>
+                      {participant.phone ? (
+                        <a
+                          href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          {participant.phone}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <p className="text-gray-400">-</p>
+                      )}
+                    </div>
+                    <div>
                       <span className="text-gray-500">Instagram:</span>
                       {participant.instagram ? (
                         <a

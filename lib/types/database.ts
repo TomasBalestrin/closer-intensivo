@@ -46,7 +46,10 @@ export interface Database {
       participants: {
         Row: {
           id: string
+          external_id: string | null
           name: string
+          email: string | null
+          phone: string | null
           photo_url: string | null
           revenue: string | null
           niche: string | null
@@ -97,7 +100,10 @@ export interface Database {
         }
         Insert: {
           id?: string
+          external_id?: string | null
           name: string
+          email?: string | null
+          phone?: string | null
           photo_url?: string | null
           revenue?: string | null
           niche?: string | null
@@ -143,7 +149,10 @@ export interface Database {
         }
         Update: {
           id?: string
+          external_id?: string | null
           name?: string
+          email?: string | null
+          phone?: string | null
           photo_url?: string | null
           revenue?: string | null
           niche?: string | null
