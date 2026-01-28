@@ -64,6 +64,29 @@ export interface Database {
           checked_in_day2: boolean
           checked_in_day3: boolean
           qualification: Qualification | null
+          // Archetype fields (visible to participant)
+          primary_archetype: string | null
+          secondary_archetype: string | null
+          archetype_description: string | null
+          // DISC fields (hidden - only for closers)
+          disc_profile: string | null
+          disc_score_d: number | null
+          disc_score_i: number | null
+          disc_score_s: number | null
+          disc_score_c: number | null
+          disc_analysis: Json | null
+          // Sales insights (hidden - only for closers)
+          personality_summary: string | null
+          sales_approach: Json | null
+          decision_triggers: Json | null
+          predicted_objections: Json | null
+          closing_strategies: Json | null
+          things_to_avoid: string[] | null
+          quick_tips: string[] | null
+          // Open answers
+          challenge_answer: string | null
+          desired_change_answer: string | null
+          form_completed_at: string | null
           created_at: string
           updated_at: string
         }
@@ -87,6 +110,25 @@ export interface Database {
           checked_in_day2?: boolean
           checked_in_day3?: boolean
           qualification?: Qualification | null
+          primary_archetype?: string | null
+          secondary_archetype?: string | null
+          archetype_description?: string | null
+          disc_profile?: string | null
+          disc_score_d?: number | null
+          disc_score_i?: number | null
+          disc_score_s?: number | null
+          disc_score_c?: number | null
+          disc_analysis?: Json | null
+          personality_summary?: string | null
+          sales_approach?: Json | null
+          decision_triggers?: Json | null
+          predicted_objections?: Json | null
+          closing_strategies?: Json | null
+          things_to_avoid?: string[] | null
+          quick_tips?: string[] | null
+          challenge_answer?: string | null
+          desired_change_answer?: string | null
+          form_completed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -110,6 +152,25 @@ export interface Database {
           checked_in_day2?: boolean
           checked_in_day3?: boolean
           qualification?: Qualification | null
+          primary_archetype?: string | null
+          secondary_archetype?: string | null
+          archetype_description?: string | null
+          disc_profile?: string | null
+          disc_score_d?: number | null
+          disc_score_i?: number | null
+          disc_score_s?: number | null
+          disc_score_c?: number | null
+          disc_analysis?: Json | null
+          personality_summary?: string | null
+          sales_approach?: Json | null
+          decision_triggers?: Json | null
+          predicted_objections?: Json | null
+          closing_strategies?: Json | null
+          things_to_avoid?: string[] | null
+          quick_tips?: string[] | null
+          challenge_answer?: string | null
+          desired_change_answer?: string | null
+          form_completed_at?: string | null
           created_at?: string
           updated_at?: string
         }
