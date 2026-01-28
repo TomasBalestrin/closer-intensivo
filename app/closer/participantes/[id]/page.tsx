@@ -18,9 +18,28 @@ import {
   Loading,
   useToast,
 } from '@/components/ui'
-import { ArrowLeft, ExternalLink, FileText, DollarSign } from 'lucide-react'
+import {
+  ArrowLeft,
+  ExternalLink,
+  FileText,
+  DollarSign,
+  Brain,
+  Target,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Lightbulb,
+  MessageSquare,
+  ShoppingCart,
+  Copy,
+  Phone,
+  Mail,
+  Sparkles,
+} from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency } from '@/lib/utils'
+
+type TabType = 'dados' | 'disc' | 'vendas'
 
 export default function CloserParticipantDetail() {
   const params = useParams()
@@ -28,6 +47,7 @@ export default function CloserParticipantDetail() {
   const supabase = createClient()
   const { showToast } = useToast()
 
+  const [activeTab, setActiveTab] = useState<TabType>('disc')
   const [participant, setParticipant] = useState<Participant | null>(null)
   const [closers, setClosers] = useState<User[]>([])
   const [forms, setForms] = useState<Form[]>([])
@@ -189,6 +209,33 @@ export default function CloserParticipantDetail() {
     }
   }
 
+  const copyFormLink = (formId: string) => {
+    const url = `${window.location.origin}/form/${formId}`
+    navigator.clipboard.writeText(url)
+    showToast('Link copiado!', 'success')
+  }
+
+  const getArchetypeIcon = (archetype: string): string => {
+    const icons: Record<string, string> = {
+      'Inocente': '🌟',
+      'Cara Comum': '🤝',
+      'Herói': '⚔️',
+      'Cuidador': '💝',
+      'Explorador': '🧭',
+      'Rebelde': '🔥',
+      'Amante': '❤️',
+      'Criador': '🎨',
+      'Bobo da Corte': '🎭',
+      'Sábio': '📚',
+      'Mago': '✨',
+      'Governante': '👑'
+    }
+    return icons[archetype] || '✨'
+  }
+
+  // Check if participant has DISC profile data
+  const hasDiscProfile = participant?.disc_profile
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -208,6 +255,12 @@ export default function CloserParticipantDetail() {
     )
   }
 
+  const tabs = [
+    { id: 'disc' as TabType, label: 'Análise DISC', icon: Brain },
+    { id: 'dados' as TabType, label: 'Dados', icon: FileText },
+    { id: 'vendas' as TabType, label: 'Vendas', icon: ShoppingCart },
+  ]
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -216,65 +269,354 @@ export default function CloserParticipantDetail() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Participant Data */}
+      {/* Participant Header Card */}
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
+          <div className="flex items-start gap-4">
+            <Avatar src={participant.photo_url} alt={participant.name} size="xl" className="border-4 border-white/30" />
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold">{participant.name}</h1>
+              <div className="flex flex-wrap items-center gap-3 mt-2 text-white/80 text-sm">
+                {participant.niche && (
+                  <span className="bg-white/20 px-3 py-1 rounded-full">{participant.niche}</span>
+                )}
+                {participant.revenue && (
+                  <span className="bg-white/20 px-3 py-1 rounded-full">{participant.revenue}</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {participant.instagram && (
+                  <a
+                    href={getInstagramUrl(participant.instagram) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-sm transition-colors"
+                  >
+                    @{participant.instagram.replace('@', '')}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+                {participant.email && (
+                  <a
+                    href={`mailto:${participant.email}`}
+                    className="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-sm transition-colors"
+                  >
+                    <Mail className="h-3 w-3" />
+                    Email
+                  </a>
+                )}
+                {participant.phone && (
+                  <a
+                    href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 bg-green-500/80 hover:bg-green-500 px-3 py-1 rounded-full text-sm transition-colors"
+                  >
+                    <Phone className="h-3 w-3" />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+            </div>
+            {/* Archetypes Badge */}
+            {participant.primary_archetype && (
+              <div className="text-center bg-white/10 backdrop-blur rounded-xl p-4">
+                <div className="text-3xl mb-1">{getArchetypeIcon(participant.primary_archetype)}</div>
+                <p className="font-semibold text-sm">{participant.primary_archetype}</p>
+                {participant.secondary_archetype && (
+                  <p className="text-xs text-white/70">+ {participant.secondary_archetype}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="border-b">
+          <div className="flex">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-purple-600 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+                {tab.id === 'disc' && hasDiscProfile && (
+                  <Badge variant="info" className="ml-1">{participant.disc_profile}</Badge>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* DISC Tab */}
+      {activeTab === 'disc' && (
+        <div className="space-y-6">
+          {!hasDiscProfile ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-4">Análise DISC não disponível</p>
+                <Button onClick={handleGenerateForm} loading={formLoading}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Gerar Formulário
+                </Button>
+                {forms.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-gray-400">Links de formulário:</p>
+                    {forms.map((form) => (
+                      <div key={form.id} className="flex items-center justify-center gap-2">
+                        <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                          /form/{form.id}
+                        </span>
+                        <button
+                          onClick={() => copyFormLink(form.id)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* DISC Scores */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-600" />
+                    Perfil DISC: <span className="text-blue-600">{participant.disc_profile}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 gap-4">
+                    {[
+                      { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', name: 'Dominância' },
+                      { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', name: 'Influência' },
+                      { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', name: 'Estabilidade' },
+                      { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', name: 'Conformidade' },
+                    ].map((score) => (
+                      <div key={score.label} className="text-center">
+                        <div className="text-xs text-gray-500 mb-1">{score.name}</div>
+                        <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden">
+                          <div
+                            className={`absolute bottom-0 left-0 right-0 ${score.color} transition-all`}
+                            style={{ height: `${(score.value || 0) * 10}%` }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-2xl font-bold text-gray-800">{score.label}</span>
+                          </div>
+                        </div>
+                        <div className="text-sm font-medium mt-1">{score.value || 0}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Personality Summary */}
+              {participant.personality_summary && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-purple-600" />
+                      Resumo da Personalidade
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700">{participant.personality_summary}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Open Answers */}
+              {(participant.challenge_answer || participant.desired_change_answer) && (
+                <Card className="border-amber-200 bg-amber-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-amber-800">
+                      <Sparkles className="h-5 w-5" />
+                      O Que o Participante Disse
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {participant.challenge_answer && (
+                      <div>
+                        <p className="text-sm text-amber-700 font-medium mb-1">Maior desafio:</p>
+                        <p className="text-gray-700 italic bg-white/80 p-3 rounded-lg border border-amber-200">
+                          &ldquo;{participant.challenge_answer}&rdquo;
+                        </p>
+                      </div>
+                    )}
+                    {participant.desired_change_answer && (
+                      <div>
+                        <p className="text-sm text-amber-700 font-medium mb-1">Mudança desejada:</p>
+                        <p className="text-gray-700 italic bg-white/80 p-3 rounded-lg border border-amber-200">
+                          &ldquo;{participant.desired_change_answer}&rdquo;
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Quick Tips */}
+              {participant.quick_tips && participant.quick_tips.length > 0 && (
+                <Card className="border-green-200 bg-green-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-green-800">
+                      <Lightbulb className="h-5 w-5" />
+                      Dicas Rápidas para Vender
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {participant.quick_tips.map((tip: string, i: number) => (
+                        <li key={i} className="text-green-700 flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Decision Triggers */}
+              {participant.decision_triggers && Array.isArray(participant.decision_triggers) && participant.decision_triggers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-orange-600" />
+                      Gatilhos de Decisão
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {(participant.decision_triggers as string[]).map((trigger: string, i: number) => (
+                        <span key={i} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+                          {trigger}
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Predicted Objections */}
+              {participant.predicted_objections && Array.isArray(participant.predicted_objections) && participant.predicted_objections.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      Objeções Previstas + Scripts
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {(participant.predicted_objections as Array<{objection: string; script: string}>).map((obj, i: number) => (
+                        <div key={i} className="border-l-4 border-amber-400 pl-4 py-2 bg-amber-50 rounded-r-lg">
+                          <p className="font-medium text-amber-800">&ldquo;{obj.objection}&rdquo;</p>
+                          <p className="text-gray-600 text-sm mt-2">
+                            <span className="font-semibold text-green-700">Resposta: </span>
+                            {obj.script}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Closing Strategies */}
+              {participant.closing_strategies && Array.isArray(participant.closing_strategies) && participant.closing_strategies.length > 0 && (
+                <Card className="border-green-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="h-5 w-5" />
+                      Estratégias de Fechamento
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {(participant.closing_strategies as Array<{name: string; script: string}>).map((strategy, i: number) => (
+                        <div key={i} className="bg-green-50 rounded-lg p-4 border border-green-200">
+                          <p className="font-semibold text-green-800 mb-2">{strategy.name}</p>
+                          <p className="text-green-700 text-sm italic">&ldquo;{strategy.script}&rdquo;</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Things to Avoid */}
+              {participant.things_to_avoid && participant.things_to_avoid.length > 0 && (
+                <Card className="border-red-200 bg-red-50/30">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-red-800">
+                      <XCircle className="h-5 w-5" />
+                      O Que Evitar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {participant.things_to_avoid.map((item: string, i: number) => (
+                        <li key={i} className="text-red-700 flex items-start gap-2">
+                          <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Dados Tab */}
+      {activeTab === 'dados' && (
+        <div className="space-y-6">
+          {/* Participant Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Dados do Participante</CardTitle>
+              <CardTitle>Informações do Participante</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-start gap-4 mb-6">
-                <Avatar src={participant.photo_url} alt={participant.name} size="xl" />
-                <div>
-                  <h3 className="text-lg font-semibold">{participant.name}</h3>
-                  {participant.revenue && (
-                    <p className="text-gray-600">Faturamento: {participant.revenue}</p>
-                  )}
-                  {participant.niche && (
-                    <span
-                      className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full ${getColorClass(
-                        participant.color
-                      )}`}
-                    >
-                      {participant.niche}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Instagram:</span>
-                  {participant.instagram ? (
-                    <a
-                      href={getInstagramUrl(participant.instagram) || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-blue-600 hover:underline inline-flex items-center gap-1"
-                    >
-                      {participant.instagram}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <span className="ml-2 text-gray-400">-</span>
-                  )}
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">Credenciou Dia 1:</span>
-                  <span className="ml-2">{participant.checked_in_day1 ? 'Sim' : 'Não'}</span>
+                  <p className={participant.checked_in_day1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                    {participant.checked_in_day1 ? 'Sim' : 'Não'}
+                  </p>
                 </div>
                 <div>
                   <span className="text-gray-500">Credenciou Dia 2:</span>
-                  <span className="ml-2">{participant.checked_in_day2 ? 'Sim' : 'Não'}</span>
+                  <p className={participant.checked_in_day2 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                    {participant.checked_in_day2 ? 'Sim' : 'Não'}
+                  </p>
                 </div>
                 <div>
                   <span className="text-gray-500">Credenciou Dia 3:</span>
-                  <span className="ml-2">{participant.checked_in_day3 ? 'Sim' : 'Não'}</span>
+                  <p className={participant.checked_in_day3 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                    {participant.checked_in_day3 ? 'Sim' : 'Não'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Vezes Chamado:</span>
+                  <p className="font-medium">{participant.times_called || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -352,140 +694,84 @@ export default function CloserParticipantDetail() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
 
-          {/* Forms and DISC Analysis */}
-          {forms.length > 0 && (
+      {/* Vendas Tab */}
+      {activeTab === 'vendas' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Vendas Realizadas</h2>
+            <Button onClick={() => setSaleModal(true)}>
+              <DollarSign className="h-4 w-4 mr-2" />
+              Registrar Venda
+            </Button>
+          </div>
+
+          {sales.length === 0 ? (
             <Card>
-              <CardHeader>
-                <CardTitle>Formulários e Análise DISC</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {forms.map((form) => (
-                  <div key={form.id} className="border rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-4">
+              <CardContent className="py-12 text-center">
+                <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">Nenhuma venda registrada</p>
+                <Button className="mt-4" onClick={() => setSaleModal(true)}>
+                  Registrar Primeira Venda
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {sales.map((sale) => (
+                <Card key={sale.id}>
+                  <CardContent className="py-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <p className="text-sm text-gray-500">URL do Formulário:</p>
-                        <a
-                          href={form.form_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {typeof window !== 'undefined' ? window.location.origin : ''}{form.form_url}
-                        </a>
+                        <span className="text-sm text-gray-500">Produto</span>
+                        <p className="font-medium">{sale.product}</p>
                       </div>
-                      {form.disc_profile && (
-                        <Badge variant="info" className="text-lg px-4 py-2">
-                          {form.disc_profile}
-                        </Badge>
-                      )}
+                      <div>
+                        <span className="text-sm text-gray-500">Valor Total</span>
+                        <p className="font-medium text-green-600">{formatCurrency(sale.total_value)}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Entrada</span>
+                        <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500">Negociação</span>
+                        <p className="font-medium">{sale.negotiation_type}</p>
+                      </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ))}
 
-                    {form.completed_at ? (
-                      <div className="space-y-4">
-                        {form.disc_description && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Descrição do Perfil</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.disc_description}</p>
-                          </div>
-                        )}
-                        {form.sales_insights && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Insights para Vender</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.sales_insights}</p>
-                          </div>
-                        )}
-                        {form.objections && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Objeções Prováveis</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.objections}</p>
-                          </div>
-                        )}
-                        {form.objection_handling && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Como Contornar Objeções</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.objection_handling}</p>
-                          </div>
-                        )}
-                        {form.closing_examples && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Exemplos de Fechamento</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.closing_examples}</p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500">Aguardando resposta do participante...</p>
-                    )}
+              {/* Sales Summary */}
+              <Card className="bg-green-50 border-green-200">
+                <CardContent className="py-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-sm text-green-600">Total Vendas</p>
+                      <p className="text-2xl font-bold text-green-700">{sales.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-green-600">Valor Total</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-green-600">Total Entradas</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {formatCurrency(sales.reduce((sum, s) => sum + Number(s.entry_value), 0))}
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sales */}
-          {sales.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Vendas Realizadas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {sales.map((sale) => (
-                    <div key={sale.id} className="border rounded-lg p-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Produto:</span>
-                          <p className="font-medium">{sale.product}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Valor Total:</span>
-                          <p className="font-medium">{formatCurrency(sale.total_value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Valor Entrada:</span>
-                          <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Negociação:</span>
-                          <p className="font-medium">{sale.negotiation_type}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
-
-        {/* Sidebar Actions */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ações</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={handleGenerateForm}
-                loading={formLoading}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Gerar Formulário
-              </Button>
-              <Button
-                className="w-full"
-                onClick={() => setSaleModal(true)}
-              >
-                <DollarSign className="h-4 w-4 mr-2" />
-                Venda Realizada
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      )}
 
       {/* Sale Modal */}
       <Modal
