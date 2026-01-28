@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button, Input, Select, Card, Avatar, Badge, Loading } from '@/components/ui'
-import { Search, Filter, ExternalLink } from 'lucide-react'
+import { Button, Input, Select, Card, Avatar, Badge, Loading, Modal } from '@/components/ui'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square } from 'lucide-react'
 import { Participant, User } from '@/lib/types'
-import { getColorClass, getInstagramUrl } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean } from '@/lib/utils'
 
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
-  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null })[]>([])
+  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; hasSale?: boolean })[]>([])
   const [closers, setClosers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -20,6 +20,24 @@ export default function AdminParticipantes() {
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
+  const [assignCloserId, setAssignCloserId] = useState('')
+
+  // Create participant form
+  const [newParticipant, setNewParticipant] = useState({
+    name: '',
+    instagram: '',
+    revenue: '',
+    niche: '',
+    funnel: '',
+    is_opportunity: false,
+  })
+  const [creating, setCreating] = useState(false)
+  const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -66,6 +84,98 @@ export default function AdminParticipantes() {
     return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale
   })
 
+  // Export to CSV
+  const handleExportCSV = () => {
+    const dataToExport = selectedParticipants.length > 0
+      ? filteredParticipants.filter(p => selectedParticipants.includes(p.id))
+      : filteredParticipants
+
+    exportToCSV(dataToExport, [
+      { key: 'name', label: 'Nome' },
+      { key: 'instagram', label: 'Instagram' },
+      { key: 'revenue', label: 'Faturamento' },
+      { key: 'niche', label: 'Nicho' },
+      { key: 'funnel', label: 'Funil' },
+      { key: 'is_opportunity', label: 'É Oportunidade', format: (v) => formatBoolean(v) },
+      { key: 'qualification', label: 'Qualificação' },
+      { key: 'checked_in_day1', label: 'Check-in Dia 1', format: (v) => formatBoolean(v) },
+      { key: 'checked_in_day2', label: 'Check-in Dia 2', format: (v) => formatBoolean(v) },
+      { key: 'checked_in_day3', label: 'Check-in Dia 3', format: (v) => formatBoolean(v) },
+      { key: 'seller_closer.name', label: 'Vendedor/Convidador' },
+      { key: 'primary_archetype', label: 'Arquétipo Primário' },
+      { key: 'disc_profile', label: 'Perfil DISC' },
+    ], 'participantes')
+  }
+
+  // Create participant
+  const handleCreateParticipant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreating(true)
+
+    try {
+      const { error } = await supabase.from('participants').insert({
+        name: newParticipant.name,
+        instagram: newParticipant.instagram || null,
+        revenue: newParticipant.revenue || null,
+        niche: newParticipant.niche || null,
+        funnel: newParticipant.funnel || null,
+        is_opportunity: newParticipant.is_opportunity,
+      })
+
+      if (error) throw error
+
+      setShowCreateModal(false)
+      setNewParticipant({ name: '', instagram: '', revenue: '', niche: '', funnel: '', is_opportunity: false })
+      fetchData()
+    } catch (error) {
+      console.error('Error creating participant:', error)
+      alert('Erro ao criar participante')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  // Bulk assign closer
+  const handleBulkAssign = async () => {
+    if (!assignCloserId || selectedParticipants.length === 0) return
+
+    setAssigning(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({ seller_closer_id: assignCloserId })
+        .in('id', selectedParticipants)
+
+      if (error) throw error
+
+      setShowAssignModal(false)
+      setSelectedParticipants([])
+      setAssignCloserId('')
+      fetchData()
+    } catch (error) {
+      console.error('Error assigning closer:', error)
+      alert('Erro ao atribuir closer')
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  // Toggle selection
+  const toggleSelectAll = () => {
+    if (selectedParticipants.length === filteredParticipants.length) {
+      setSelectedParticipants([])
+    } else {
+      setSelectedParticipants(filteredParticipants.map(p => p.id))
+    }
+  }
+
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedParticipants(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -78,7 +188,17 @@ export default function AdminParticipantes() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Participantes</h1>
-        <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+          <Button variant="secondary" onClick={handleExportCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -146,15 +266,56 @@ export default function AdminParticipantes() {
         )}
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedParticipants.length > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <span className="text-blue-800 font-medium">
+            {selectedParticipants.length} selecionado(s)
+          </span>
+          <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Atribuir Closer
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedParticipants([])}>
+            Limpar seleção
+          </Button>
+        </div>
+      )}
+
+      {/* Select All */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleSelectAll}
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+        >
+          {selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0 ? (
+            <CheckSquare className="h-5 w-5 text-blue-600" />
+          ) : (
+            <Square className="h-5 w-5" />
+          )}
+          Selecionar todos
+        </button>
+      </div>
+
       {/* Participants Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredParticipants.map((participant: any) => (
           <Card
             key={participant.id}
-            className="cursor-pointer hover:shadow-lg transition-shadow"
+            className={`cursor-pointer hover:shadow-lg transition-shadow ${selectedParticipants.includes(participant.id) ? 'ring-2 ring-blue-500' : ''}`}
             onClick={() => router.push(`/admin/participantes/${participant.id}`)}
           >
             <div className="flex items-start gap-4">
+              <button
+                onClick={(e) => toggleSelect(participant.id, e)}
+                className="mt-1"
+              >
+                {selectedParticipants.includes(participant.id) ? (
+                  <CheckSquare className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <Square className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
               <Avatar
                 src={participant.photo_url}
                 alt={participant.name}
@@ -218,6 +379,95 @@ export default function AdminParticipantes() {
           <p className="text-gray-500">Nenhum participante encontrado</p>
         </div>
       )}
+
+      {/* Create Participant Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Novo Participante"
+      >
+        <form onSubmit={handleCreateParticipant} className="space-y-4">
+          <Input
+            label="Nome *"
+            value={newParticipant.name}
+            onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Instagram"
+            value={newParticipant.instagram}
+            onChange={(e) => setNewParticipant({ ...newParticipant, instagram: e.target.value })}
+            placeholder="@usuario"
+          />
+          <Input
+            label="Faturamento"
+            value={newParticipant.revenue}
+            onChange={(e) => setNewParticipant({ ...newParticipant, revenue: e.target.value })}
+            placeholder="R$ 100.000"
+          />
+          <Input
+            label="Nicho"
+            value={newParticipant.niche}
+            onChange={(e) => setNewParticipant({ ...newParticipant, niche: e.target.value })}
+          />
+          <Input
+            label="Funil"
+            value={newParticipant.funnel}
+            onChange={(e) => setNewParticipant({ ...newParticipant, funnel: e.target.value })}
+          />
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={newParticipant.is_opportunity}
+              onChange={(e) => setNewParticipant({ ...newParticipant, is_opportunity: e.target.checked })}
+              className="rounded border-gray-300"
+            />
+            <span className="text-sm">É uma oportunidade</span>
+          </label>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={creating}>
+              Criar Participante
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Bulk Assign Modal */}
+      <Modal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        title="Atribuir Closer em Massa"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Atribuir closer para {selectedParticipants.length} participante(s) selecionado(s).
+          </p>
+          <Select
+            label="Selecione o Closer"
+            value={assignCloserId}
+            onChange={(e) => setAssignCloserId(e.target.value)}
+            options={[
+              { value: '', label: 'Selecione...' },
+              ...closers.map(c => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setShowAssignModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkAssign}
+              loading={assigning}
+              disabled={!assignCloserId}
+            >
+              Atribuir
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

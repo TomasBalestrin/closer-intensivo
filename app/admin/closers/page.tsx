@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Card, Avatar, Loading } from '@/components/ui'
+import { Card, Avatar, Loading, Button } from '@/components/ui'
 import { User, Sale, Participant } from '@/lib/types'
-import { formatCurrency, formatPercentage } from '@/lib/utils'
+import { formatCurrency, formatPercentage, exportToCSV } from '@/lib/utils'
+import { Download } from 'lucide-react'
 
 interface CloserWithStats extends User {
   participantsCount: number
@@ -69,6 +70,19 @@ export default function AdminClosers() {
     setLoading(false)
   }
 
+  const handleExportCSV = () => {
+    exportToCSV(closers, [
+      { key: 'name', label: 'Nome' },
+      { key: 'email', label: 'Email' },
+      { key: 'participantsCount', label: 'Participantes' },
+      { key: 'opportunitiesCheckedIn', label: 'Oportunidades' },
+      { key: 'salesCount', label: 'Vendas' },
+      { key: 'conversionRate', label: 'Taxa Conversão', format: (v) => formatPercentage(v) },
+      { key: 'totalSalesValue', label: 'Valor Total Vendas', format: (v) => formatCurrency(v) },
+      { key: 'totalEntryValue', label: 'Valor Total Entrada', format: (v) => formatCurrency(v) },
+    ], 'closers')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -79,7 +93,13 @@ export default function AdminClosers() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Closers</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Closers</h1>
+        <Button variant="secondary" onClick={handleExportCSV}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar CSV
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {closers.map((closer) => (
