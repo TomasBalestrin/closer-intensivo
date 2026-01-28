@@ -60,12 +60,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if participant exists by name or external_id
-    const { data: existingParticipant } = await supabase
-      .from('participants')
-      .select('id')
-      .or(`name.eq.${name},external_id.eq.${participant_id}`)
-      .single()
+    // Check if participant exists by external_id first, then by name
+    let existingParticipant = null
+
+    if (participant_id) {
+      const { data } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('external_id', participant_id)
+        .single()
+      existingParticipant = data
+    }
+
+    if (!existingParticipant && name) {
+      const { data } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('name', name)
+        .single()
+      existingParticipant = data
+    }
 
     const participantData = {
       name,
