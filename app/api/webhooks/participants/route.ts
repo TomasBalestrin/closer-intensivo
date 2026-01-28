@@ -79,9 +79,31 @@ export async function POST(request: Request) {
       existingParticipant = data
     }
 
-    // Build participantData with only fields that exist in the database
-    // Note: challenge_answer and desired_change_answer are set by the form analysis API
-    const participantData: Record<string, any> = {
+    // Map open-ended answer fields
+    const challenge_answer = fields?.qual_sua_maior_dificuldade_no_seu_negocio_hoje || null
+    const desired_change_answer = fields?.o_que_pretende_aprender_no_intensivo_da_alta_performance || null
+
+    // Build FULL participantData with ALL fields from the webhook
+    const fullParticipantData: Record<string, any> = {
+      name,
+      email: email || null,
+      phone: phone || null,
+      photo_url: photo_url || null,
+      revenue: revenue || null,
+      niche: niche || null,
+      instagram,
+      external_id: participant_id || null,
+      cpf: cpf || null,
+      badge_name: badge_name || null,
+      partner: partner || null,
+      net_profit: net_profit || null,
+      challenge_answer,
+      desired_change_answer,
+      webhook_data: payload,
+    }
+
+    // Basic fields (fallback if full insert fails due to missing columns)
+    const basicParticipantData: Record<string, any> = {
       name,
       email: email || null,
       phone: phone || null,
@@ -92,23 +114,56 @@ export async function POST(request: Request) {
       external_id: participant_id || null,
     }
 
-    // Optional fields - only include if the webhook provides them
-    if (cpf) participantData.cpf = cpf
-    if (badge_name) participantData.badge_name = badge_name
-    if (partner) participantData.partner = partner
-    if (net_profit) participantData.net_profit = net_profit
+    // Helper: try with full data first, fallback to basic if column is missing
+    async function upsertParticipant(existingId?: string) {
+      const dataToTry = [fullParticipantData, basicParticipantData]
+
+      for (let i = 0; i < dataToTry.length; i++) {
+        const data = dataToTry[i]
+        const isRetry = i > 0
+
+        if (isRetry) {
+          console.warn('Retrying with basic fields only (some columns may not exist in DB)')
+        }
+
+        if (existingId) {
+          const { error } = await supabase
+            .from('participants')
+            .update(data)
+            .eq('id', existingId)
+
+          if (error) {
+            // If column doesn't exist, try with basic data
+            if (error.message?.includes('Could not find') && !isRetry) continue
+            return { error, data: null }
+          }
+          return { error: null, data: { id: existingId } }
+        } else {
+          const { data: newData, error } = await supabase
+            .from('participants')
+            .insert(data)
+            .select('id')
+            .single()
+
+          if (error) {
+            // If column doesn't exist, try with basic data
+            if (error.message?.includes('Could not find') && !isRetry) continue
+            return { error, data: null }
+          }
+          return { error: null, data: newData }
+        }
+      }
+
+      return { error: new Error('All insert attempts failed'), data: null }
+    }
 
     if (existingParticipant) {
-      // Update existing participant
-      const { error: updateError } = await supabase
-        .from('participants')
-        .update(participantData)
-        .eq('id', existingParticipant.id)
+      const { error: updateError } = await upsertParticipant(existingParticipant.id)
 
       if (updateError) {
         console.error('Error updating participant:', updateError)
         return NextResponse.json(
-          { error: 'Erro ao atualizar participante', details: updateError.message },
+          { error: 'Erro ao atualizar participante', details: (updateError as any).message || String(updateError) },
           { status: 500 }
         )
       }
@@ -126,17 +181,12 @@ export async function POST(request: Request) {
         name,
       })
     } else {
-      // Create new participant
-      const { data: newParticipant, error: insertError } = await supabase
-        .from('participants')
-        .insert(participantData)
-        .select('id')
-        .single()
+      const { error: insertError, data: newParticipant } = await upsertParticipant()
 
-      if (insertError) {
+      if (insertError || !newParticipant) {
         console.error('Error creating participant:', insertError)
         return NextResponse.json(
-          { error: 'Erro ao criar participante', details: insertError.message },
+          { error: 'Erro ao criar participante', details: (insertError as any)?.message || String(insertError) },
           { status: 500 }
         )
       }
