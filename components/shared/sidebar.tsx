@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -14,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trophy,
+  Flame,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -84,23 +84,15 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
             {!isCollapsed ? (
               <div className="flex items-center gap-2">
-                <Image
-                  src="/images/logo.png"
-                  alt="Bethel Events"
-                  width={32}
-                  height={32}
-                  className="w-8 h-8"
-                />
+                <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
+                  <Flame className="h-5 w-5 text-white" />
+                </div>
                 <span className="font-semibold text-white">Bethel Events</span>
               </div>
             ) : (
-              <Image
-                src="/images/logo.png"
-                alt="Bethel Events"
-                width={32}
-                height={32}
-                className="w-8 h-8 mx-auto"
-              />
+              <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center mx-auto">
+                <Flame className="h-5 w-5 text-white" />
+              </div>
             )}
             <button
               className={cn(

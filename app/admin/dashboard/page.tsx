@@ -4,7 +4,6 @@ import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
 import { Participant, Sale, User } from '@/lib/types'
 import { Trophy, Users, Target, Calendar, TrendingUp } from 'lucide-react'
-import { CredenciamentoChart, QualificacaoChart, CloserPerformanceChart } from '@/components/shared'
 
 async function getDashboardData() {
   try {
@@ -78,24 +77,6 @@ export default async function AdminDashboard() {
   const data = await getDashboardData()
   const calcConversion = (sales: any[], opp: number) => opp === 0 ? 0 : sales.length / opp
 
-  const credenciamentoData = [
-    { day: 'Dia 1', participantes: data.checkedInDay1, oportunidades: data.oppDay1 },
-    { day: 'Dia 2', participantes: data.checkedInDay2, oportunidades: data.oppDay2 },
-    { day: 'Dia 3', participantes: data.checkedInDay3, oportunidades: data.oppDay3 },
-  ]
-
-  const qualificacaoData = [
-    { name: 'Super', value: data.superQualified, color: '#22c55e' },
-    { name: 'Médio', value: data.medioQualified, color: '#3b82f6' },
-    { name: 'Baixo', value: data.baixoQualified, color: '#ef4444' },
-  ].filter(d => d.value > 0)
-
-  const closerChartData = data.allClosers.slice(0, 5).map(c => ({
-    name: c.name.split(' ')[0],
-    vendas: c.salesCount,
-    valor: c.totalValue,
-  }))
-
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
@@ -166,12 +147,6 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CredenciamentoChart data={credenciamentoData} />
-        {qualificacaoData.length > 0 && <QualificacaoChart data={qualificacaoData} />}
-      </div>
-
       {/* Oportunidades */}
       <section>
         <div className="flex items-center gap-2 mb-4">
@@ -232,41 +207,38 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      {/* Top Closers + Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <h2 className="text-lg font-semibold text-gray-800">TOP 3 Closers</h2>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            {data.topClosers.length === 0 ? (
-              <div className="text-center py-12">
-                <Trophy className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">Nenhum closer com vendas ainda</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {data.topClosers.map((closer, i) => (
-                  <div key={closer.id} className={`flex items-center gap-4 p-4 rounded-xl ${i === 0 ? 'bg-amber-50 border-2 border-amber-200' : i === 1 ? 'bg-gray-50 border border-gray-200' : 'bg-orange-50 border border-orange-200'}`}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}>{i + 1}</div>
-                    <Avatar src={closer.photo_url} alt={closer.name} size="lg" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{closer.name}</h3>
-                      <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                        <span>{closer.salesCount} vendas</span>
-                        <span className="font-medium text-green-600">{formatCurrency(closer.totalValue)}</span>
-                      </div>
+      {/* Top Closers */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="h-5 w-5 text-amber-500" />
+          <h2 className="text-lg font-semibold text-gray-800">TOP 3 Closers</h2>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          {data.topClosers.length === 0 ? (
+            <div className="text-center py-12">
+              <Trophy className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">Nenhum closer com vendas ainda</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {data.topClosers.map((closer, i) => (
+                <div key={closer.id} className={`flex items-center gap-4 p-4 rounded-xl ${i === 0 ? 'bg-amber-50 border-2 border-amber-200' : i === 1 ? 'bg-gray-50 border border-gray-200' : 'bg-orange-50 border border-orange-200'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}>{i + 1}</div>
+                  <Avatar src={closer.photo_url} alt={closer.name} size="lg" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{closer.name}</h3>
+                    <div className="flex flex-col text-sm text-gray-600 mt-1">
+                      <span>{closer.salesCount} vendas</span>
+                      <span className="font-medium text-green-600">{formatCurrency(closer.totalValue)}</span>
                     </div>
-                    {i === 0 && <Trophy className="h-8 w-8 text-amber-500" />}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-        {closerChartData.length > 0 && <CloserPerformanceChart data={closerChartData} />}
-      </div>
+                  {i === 0 && <Trophy className="h-8 w-8 text-amber-500" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   )
 }
