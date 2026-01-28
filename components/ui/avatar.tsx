@@ -28,6 +28,9 @@ export function Avatar({ src, alt, size = 'md', className }: AvatarProps) {
     .join('')
     .toUpperCase()
 
+  // Convert HTTP to HTTPS to avoid mixed content issues
+  const secureUrl = src?.replace(/^http:\/\//i, 'https://')
+
   // Show initials if no src, empty src, or image failed to load
   if (!src || imageError) {
     return (
@@ -48,7 +51,7 @@ export function Avatar({ src, alt, size = 'md', className }: AvatarProps) {
   return (
     <div className={cn('relative rounded-full overflow-hidden', sizes[size], className)}>
       <Image
-        src={src}
+        src={secureUrl || src}
         alt={alt}
         fill
         className="object-cover"
