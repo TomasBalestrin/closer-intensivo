@@ -10,10 +10,13 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Trophy,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Avatar } from '@/components/ui'
+import { Avatar, Badge } from '@/components/ui'
 import { User } from '@/lib/types'
 
 interface SidebarProps {
@@ -24,14 +27,14 @@ interface SidebarProps {
 export function Sidebar({ user, onLogout }: SidebarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const isAdmin = user.role === 'admin'
-  const basePath = isAdmin ? '/admin' : '/closer'
 
   const navigation = isAdmin
     ? [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Participantes', href: '/admin/participantes', icon: Users },
-        { name: 'Closers', href: '/admin/closers', icon: UserCircle },
+        { name: 'Closers', href: '/admin/closers', icon: Trophy },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
     : [
@@ -39,6 +42,15 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         { name: 'Participantes', href: '/closer/participantes', icon: Users },
         { name: 'Meu Painel', href: '/closer/meu-painel', icon: UserCircle },
       ]
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
 
   return (
     <>
@@ -61,18 +73,39 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out',
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          'fixed lg:static inset-y-0 left-0 z-40 sidebar transform transition-all duration-300 ease-in-out',
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          isCollapsed ? 'w-16' : 'w-64'
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-center h-16 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-blue-600">Bethel Events</h1>
+          {/* Header */}
+          <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
+            {!isCollapsed && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
+                  <span className="text-gray-900 font-bold text-sm">B</span>
+                </div>
+                <span className="font-semibold text-white">Bethel Events</span>
+              </div>
+            )}
+            <button
+              className={cn(
+                'hidden lg:flex h-8 w-8 rounded-lg items-center justify-center text-white/70 hover:bg-white/10 transition-colors',
+                isCollapsed && 'mx-auto'
+              )}
+              onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
             {navigation.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -81,36 +114,62 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200',
-                    isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-50'
+                    'sidebar-item',
+                    isActive ? 'sidebar-item-active' : 'sidebar-item-inactive',
+                    isCollapsed && 'justify-center px-2'
                   )}
+                  title={isCollapsed ? item.name : undefined}
                 >
-                  <item.icon className="h-5 w-5" />
-                  <span className="font-medium">{item.name}</span>
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  {!isCollapsed && <span>{item.name}</span>}
                 </Link>
               )
             })}
           </nav>
 
-          {/* User info */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar src={user.photo_url} alt={user.name} size="md" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.name}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+          {/* User Section */}
+          <div className="border-t border-white/10 p-2">
+            {user && (
+              <div
+                className={cn(
+                  'flex items-center gap-3 p-2 rounded-lg',
+                  isCollapsed ? 'justify-center' : ''
+                )}
+              >
+                {user.photo_url ? (
+                  <Avatar src={user.photo_url} alt={user.name} size="md" />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-amber-500 text-xs font-semibold">
+                      {getInitials(user.name)}
+                    </span>
+                  </div>
+                )}
+                {!isCollapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {user.name}
+                    </p>
+                    <Badge
+                      variant={isAdmin ? 'info' : 'success'}
+                      className="text-xs mt-0.5"
+                    >
+                      {isAdmin ? 'Admin' : 'Closer'}
+                    </Badge>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+              className={cn(
+                'w-full mt-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-white/70 hover:bg-white/10 hover:text-red-400 transition-colors',
+                isCollapsed && 'justify-center px-0'
+              )}
+              title={isCollapsed ? 'Sair' : undefined}
             >
               <LogOut className="h-4 w-4" />
-              Sair
+              {!isCollapsed && <span>Sair</span>}
             </button>
           </div>
         </div>

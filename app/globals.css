@@ -3,22 +3,94 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Primary Colors */
+    --primary: 222 47% 31%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Accent (Gold) */
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Background & Foreground */
+    --background: 0 0% 98%;
+    --foreground: 224 71% 4%;
+
+    /* Muted */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+
+    /* Border & Input */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 222 47% 31%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Success */
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    /* Sidebar */
+    --sidebar: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 47% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 20%;
+
+    /* Participant Colors by Revenue */
+    --participant-rosa: 340 82% 65%;
+    --participant-preto: 0 0% 15%;
+    --participant-azul-claro: 199 89% 65%;
+    --participant-verde: 142 71% 45%;
+    --participant-dourado: 38 92% 50%;
+    --participant-laranja: 24 95% 55%;
+
+    /* Qualification Colors */
+    --qualification-super: 142 71% 45%;
+    --qualification-medio: 199 89% 48%;
+    --qualification-baixo: 0 84% 60%;
+
+    /* Chart Colors */
+    --chart-1: 222 47% 31%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 199 89% 48%;
+    --chart-5: 0 84% 60%;
+
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
   * {
     @apply border-gray-200;
   }
 
   body {
     @apply bg-gray-50 text-gray-900;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+    @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
   }
 
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
@@ -33,18 +105,146 @@
     @apply bg-red-600 text-white hover:bg-red-700;
   }
 
+  .btn-ghost {
+    @apply bg-transparent hover:bg-gray-100;
+  }
+
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all;
   }
 
   .label {
     @apply block text-sm font-medium text-gray-700 mb-1;
   }
+
+  /* Sidebar styles */
+  .sidebar {
+    background: hsl(var(--sidebar));
+    color: hsl(var(--sidebar-foreground));
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+  }
+
+  .sidebar-item-active {
+    background: hsl(var(--sidebar-primary));
+    color: hsl(var(--sidebar-primary-foreground));
+  }
+
+  .sidebar-item-inactive {
+    color: hsl(var(--sidebar-foreground) / 0.8);
+  }
+
+  .sidebar-item-inactive:hover {
+    background: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-accent-foreground));
+  }
+
+  /* Stat Card Variants */
+  .stat-card {
+    @apply bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .stat-card-value {
+    @apply text-3xl font-bold text-gray-900;
+  }
+
+  .stat-card-label {
+    @apply text-sm font-medium text-gray-500;
+  }
+
+  /* Qualification Cards */
+  .qual-card-super {
+    @apply border-2 border-green-500/30 bg-green-500/5;
+  }
+
+  .qual-card-medio {
+    @apply border-2 border-blue-400/30 bg-blue-400/5;
+  }
+
+  .qual-card-baixo {
+    @apply border-2 border-red-500/30 bg-red-500/5;
+  }
+
+  /* Badge Colors */
+  .badge-participant-rosa {
+    @apply bg-pink-500/20 text-pink-700 border border-pink-500/30;
+  }
+
+  .badge-participant-preto {
+    @apply bg-gray-800/20 text-gray-800 border border-gray-800/30;
+  }
+
+  .badge-participant-azul-claro {
+    @apply bg-sky-400/20 text-sky-700 border border-sky-400/30;
+  }
+
+  .badge-participant-verde {
+    @apply bg-emerald-500/20 text-emerald-700 border border-emerald-500/30;
+  }
+
+  .badge-participant-dourado {
+    @apply bg-amber-400/20 text-amber-700 border border-amber-400/30;
+  }
+
+  .badge-participant-laranja {
+    @apply bg-orange-500/20 text-orange-700 border border-orange-500/30;
+  }
+
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 3px;
+  }
+
+  /* Skeleton Loader */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
 }
 
 @layer utilities {
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
   .animate-slide-in {
     animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes slideIn {
@@ -54,6 +254,28 @@
     }
     to {
       transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
       opacity: 1;
     }
   }
