@@ -88,7 +88,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 relative flex-shrink-0">
                   <Image
-                    src="/images/logo.png"
+                    src="/icons/logo.png"
                     alt="Bethel Events"
                     fill
                     className="object-contain"
@@ -99,7 +99,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
             ) : (
               <div className="w-8 h-8 relative mx-auto">
                 <Image
-                  src="/images/logo.png"
+                  src="/icons/logo.png"
                   alt="Bethel Events"
                   fill
                   className="object-contain"
