@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Flame } from 'lucide-react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 
@@ -57,8 +57,13 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-xl shadow-amber-500/30">
-              <Flame className="h-10 w-10 text-white" />
+            <div className="h-20 w-20 relative mx-auto">
+              <Image
+                src="/images/logo.png"
+                alt="Bethel Events"
+                fill
+                className="object-contain"
+              />
             </div>
           </div>
           <CardTitle className="text-2xl">Bethel Events</CardTitle>
