@@ -30,10 +30,16 @@ import {
   CheckCircle,
   XCircle,
   Lightbulb,
-  MessageSquare
+  MessageSquare,
+  User,
+  ShoppingCart,
+  Zap,
+  Copy,
 } from 'lucide-react'
-import { Participant, User, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency } from '@/lib/utils'
+import { Participant, User as UserType, Form, Sale } from '@/lib/types'
+import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR } from '@/lib/utils'
+
+type TabType = 'dados' | 'vendas' | 'disc' | 'acoes'
 
 export default function ParticipantDetail() {
   const params = useParams()
@@ -41,8 +47,9 @@ export default function ParticipantDetail() {
   const supabase = createClient()
   const { showToast } = useToast()
 
+  const [activeTab, setActiveTab] = useState<TabType>('dados')
   const [participant, setParticipant] = useState<Participant | null>(null)
-  const [closers, setClosers] = useState<User[]>([])
+  const [closers, setClosers] = useState<UserType[]>([])
   const [forms, setForms] = useState<Form[]>([])
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,23 +85,10 @@ export default function ParticipantDetail() {
     setLoading(true)
 
     const [participantRes, closersRes, formsRes, salesRes] = await Promise.all([
-      supabase
-        .from('participants')
-        .select('*')
-        .eq('id', params.id)
-        .single(),
-      supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'closer'),
-      supabase
-        .from('disc_forms')
-        .select('*')
-        .eq('participant_id', params.id),
-      supabase
-        .from('sales')
-        .select('*')
-        .eq('participant_id', params.id),
+      supabase.from('participants').select('*').eq('id', params.id).single(),
+      supabase.from('users').select('*').eq('role', 'closer'),
+      supabase.from('disc_forms').select('*').eq('participant_id', params.id),
+      supabase.from('sales').select('*, closer:users(*)').eq('participant_id', params.id),
     ])
 
     if (participantRes.data) {
@@ -135,7 +129,6 @@ export default function ParticipantDetail() {
         .eq('id', params.id)
 
       if (error) throw error
-
       showToast('Participante atualizado com sucesso', 'success')
       fetchData()
     } catch (error: any) {
@@ -154,7 +147,6 @@ export default function ParticipantDetail() {
         .eq('id', params.id)
 
       if (error) throw error
-
       showToast('Closer atribuído com sucesso', 'success')
       setAssignCloserModal(false)
       fetchData()
@@ -176,7 +168,6 @@ export default function ParticipantDetail() {
       })
 
       if (error) throw error
-
       showToast('Formulário gerado com sucesso', 'success')
       fetchData()
     } catch (error: any) {
@@ -192,7 +183,6 @@ export default function ParticipantDetail() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
-
       if (!user) throw new Error('Usuário não autenticado')
 
       const { error } = await supabase.from('sales').insert({
@@ -205,21 +195,21 @@ export default function ParticipantDetail() {
       })
 
       if (error) throw error
-
       showToast('Venda registrada com sucesso', 'success')
       setSaleModal(false)
-      setSaleData({
-        product: '',
-        total_value: '',
-        entry_value: '',
-        negotiation_type: '',
-      })
+      setSaleData({ product: '', total_value: '', entry_value: '', negotiation_type: '' })
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao registrar venda', 'error')
     } finally {
       setFormLoading(false)
     }
+  }
+
+  const copyFormLink = (formId: string) => {
+    const url = `${window.location.origin}/form/${formId}`
+    navigator.clipboard.writeText(url)
+    showToast('Link copiado!', 'success')
   }
 
   if (loading) {
@@ -245,542 +235,638 @@ export default function ParticipantDetail() {
   const hasFormCompleted = participant.form_completed_at != null
   const hasDiscProfile = participant.disc_profile != null
 
+  const tabs = [
+    { id: 'dados' as TabType, label: 'Dados', icon: User },
+    { id: 'vendas' as TabType, label: 'Vendas', icon: ShoppingCart, count: sales.length },
+    { id: 'disc' as TabType, label: 'DISC', icon: Brain, badge: participant.disc_profile },
+    { id: 'acoes' as TabType, label: 'Ações', icon: Zap },
+  ]
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
-        {hasDiscProfile && (
-          <Badge variant="info" className="text-lg px-3 py-1">
-            DISC: {participant.disc_profile}
-          </Badge>
-        )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+          <div className="flex items-center gap-3">
+            <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                {participant.is_opportunity && <Badge variant="success">Oportunidade</Badge>}
+                {hasDiscProfile && <Badge variant="info">DISC: {participant.disc_profile}</Badge>}
+                {participant.qualification && (
+                  <Badge variant={participant.qualification === 'super' ? 'success' : participant.qualification === 'medio' ? 'warning' : 'danger'}>
+                    {participant.qualification === 'super' ? 'Super' : participant.qualification === 'medio' ? 'Médio' : 'Baixo'}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Webhook Data */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados do Webhook</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-start gap-4 mb-6">
-                <Avatar src={participant.photo_url} alt={participant.name} size="xl" />
-                <div>
-                  <h3 className="text-lg font-semibold">{participant.name}</h3>
-                  {participant.revenue && (
-                    <p className="text-gray-600">Faturamento: {participant.revenue}</p>
-                  )}
-                  {participant.niche && (
-                    <span
-                      className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full ${getColorClass(
-                        participant.color
-                      )}`}
-                    >
-                      {participant.niche}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Instagram:</span>
-                  {participant.instagram ? (
-                    <a
-                      href={getInstagramUrl(participant.instagram) || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-blue-600 hover:underline inline-flex items-center gap-1"
-                    >
-                      {participant.instagram}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <span className="ml-2 text-gray-400">-</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-gray-500">Credenciou Dia 1:</span>
-                  <span className="ml-2">{participant.checked_in_day1 ? 'Sim' : 'Não'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Credenciou Dia 2:</span>
-                  <span className="ml-2">{participant.checked_in_day2 ? 'Sim' : 'Não'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Credenciou Dia 3:</span>
-                  <span className="ml-2">{participant.checked_in_day3 ? 'Sim' : 'Não'}</span>
-                </div>
-              </div>
-
-              {participant.webhook_data && (
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
-                    Ver dados completos do webhook
-                  </summary>
-                  <pre className="mt-2 p-4 bg-gray-50 rounded text-xs overflow-auto max-h-48">
-                    {JSON.stringify(participant.webhook_data, null, 2)}
-                  </pre>
-                </details>
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="flex gap-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                  {tab.count}
+                </span>
               )}
-            </CardContent>
-          </Card>
+              {tab.badge && (
+                <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-bold">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-          {/* DISC Analysis - Sales Insights */}
-          {hasFormCompleted && hasDiscProfile && (
-            <Card className="border-blue-200 bg-blue-50/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-blue-800">
-                  <Brain className="h-5 w-5" />
-                  Análise DISC - Insights de Venda
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* DISC Scores */}
-                <div className="bg-white rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                    <Target className="h-4 w-4 text-blue-600" />
-                    Perfil DISC: {participant.disc_profile}
-                  </h4>
-                  <div className="grid grid-cols-4 gap-4">
-                    {[
-                      { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', name: 'Dominância' },
-                      { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', name: 'Influência' },
-                      { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', name: 'Estabilidade' },
-                      { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', name: 'Conformidade' },
-                    ].map((score) => (
-                      <div key={score.label} className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">{score.name}</div>
-                        <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden">
-                          <div
-                            className={`absolute bottom-0 left-0 right-0 ${score.color} transition-all`}
-                            style={{ height: `${(score.value || 0) * 10}%` }}
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-2xl font-bold text-gray-800">{score.label}</span>
-                          </div>
-                        </div>
-                        <div className="text-sm font-medium mt-1">{score.value || 0}</div>
-                      </div>
-                    ))}
+      {/* Tab Content */}
+      <div className="mt-6">
+        {/* DADOS TAB */}
+        {activeTab === 'dados' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Webhook Data */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dados do Participante</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">Faturamento:</span>
+                      <p className="font-medium">{participant.revenue || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Nicho:</span>
+                      <p className="font-medium">{participant.niche || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Instagram:</span>
+                      {participant.instagram ? (
+                        <a
+                          href={getInstagramUrl(participant.instagram) || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          {participant.instagram}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <p className="text-gray-400">-</p>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Check-in Dia 1:</span>
+                      <p className={participant.checked_in_day1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {participant.checked_in_day1 ? 'Sim' : 'Não'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Check-in Dia 2:</span>
+                      <p className={participant.checked_in_day2 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {participant.checked_in_day2 ? 'Sim' : 'Não'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Check-in Dia 3:</span>
+                      <p className={participant.checked_in_day3 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {participant.checked_in_day3 ? 'Sim' : 'Não'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+
+              {/* Manual Fields */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Campos Manuais</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Funil de Origem"
+                      value={formData.funnel}
+                      onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                    />
+                    <Select
+                      label="Vendedor/Convidador"
+                      value={formData.seller_closer_id}
+                      onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
+                      options={[
+                        { value: '', label: 'Selecione...' },
+                        ...closers.map(c => ({ value: c.id, label: c.name })),
+                      ]}
+                    />
+                    <Input
+                      label="Mentorado que Convidou"
+                      value={formData.mentee_inviter}
+                      onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
+                    />
+                    <Input
+                      label="Acompanhante"
+                      value={formData.companion}
+                      onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
+                    />
+                    <Select
+                      label="Vezes Chamado"
+                      value={formData.times_called.toString()}
+                      onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
+                      options={[0,1,2,3,4].map(n => ({ value: n.toString(), label: n.toString() }))}
+                    />
+                    <Select
+                      label="Cor"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      options={[
+                        { value: '', label: 'Selecione...' },
+                        { value: 'rosa', label: 'Rosa' },
+                        { value: 'preto', label: 'Preto' },
+                        { value: 'azul_claro', label: 'Azul Claro' },
+                        { value: 'dourado', label: 'Dourado' },
+                        { value: 'laranja', label: 'Laranja' },
+                      ]}
+                    />
+                    <Select
+                      label="Qualificação"
+                      value={formData.qualification}
+                      onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
+                      options={[
+                        { value: '', label: 'Selecione...' },
+                        { value: 'super', label: 'Super Qualificado' },
+                        { value: 'medio', label: 'Médio Qualificado' },
+                        { value: 'baixo', label: 'Baixo Qualificado' },
+                      ]}
+                    />
+                    <div className="flex items-center pt-6">
+                      <Checkbox
+                        id="is_opportunity"
+                        label="É Oportunidade"
+                        checked={formData.is_opportunity}
+                        onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <Button onClick={handleSave} loading={saving}>
+                      Salvar Alterações
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Closer Atribuído</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {assignedCloser ? (
+                    <div className="flex items-center gap-3">
+                      <Avatar src={assignedCloser.photo_url} alt={assignedCloser.name} />
+                      <span className="font-medium">{assignedCloser.name}</span>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">Nenhum closer atribuído</p>
+                  )}
+                  <Button variant="secondary" className="w-full mt-4" onClick={() => setAssignCloserModal(true)}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    {assignedCloser ? 'Alterar' : 'Atribuir'} Closer
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {participant.primary_archetype && (
+                <Card className="border-purple-200 bg-purple-50/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-purple-800">Arquétipos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">{getArchetypeIcon(participant.primary_archetype)}</div>
+                      <p className="font-bold text-purple-800">{participant.primary_archetype}</p>
+                      {participant.secondary_archetype && (
+                        <p className="text-sm text-purple-600">+ {participant.secondary_archetype}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* VENDAS TAB */}
+        {activeTab === 'vendas' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Vendas Realizadas</h2>
+              <Button onClick={() => setSaleModal(true)}>
+                <DollarSign className="h-4 w-4 mr-2" />
+                Registrar Venda
+              </Button>
+            </div>
+
+            {sales.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">Nenhuma venda registrada</p>
+                  <Button className="mt-4" onClick={() => setSaleModal(true)}>
+                    Registrar Primeira Venda
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {sales.map((sale: any) => (
+                  <Card key={sale.id}>
+                    <CardContent className="py-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div>
+                          <span className="text-sm text-gray-500">Produto</span>
+                          <p className="font-medium">{sale.product}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Valor Total</span>
+                          <p className="font-medium text-green-600">{formatCurrency(sale.total_value)}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Entrada</span>
+                          <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Negociação</span>
+                          <p className="font-medium">{sale.negotiation_type}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Closer</span>
+                          <p className="font-medium">{sale.closer?.name || '-'}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Sales Summary */}
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="py-4">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-sm text-green-600">Total Vendas</p>
+                        <p className="text-2xl font-bold text-green-700">{sales.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-green-600">Valor Total</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          {formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-green-600">Total Entradas</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          {formatCurrency(sales.reduce((sum, s) => sum + Number(s.entry_value), 0))}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DISC TAB */}
+        {activeTab === 'disc' && (
+          <div className="space-y-6">
+            {!hasFormCompleted ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 mb-4">Formulário DISC não preenchido</p>
+                  <Button onClick={handleGenerateForm} loading={formLoading}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Gerar Formulário
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* DISC Scores */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      Perfil DISC: {participant.disc_profile}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4">
+                      {[
+                        { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', name: 'Dominância' },
+                        { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', name: 'Influência' },
+                        { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', name: 'Estabilidade' },
+                        { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', name: 'Conformidade' },
+                      ].map((score) => (
+                        <div key={score.label} className="text-center">
+                          <div className="text-xs text-gray-500 mb-1">{score.name}</div>
+                          <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden">
+                            <div
+                              className={`absolute bottom-0 left-0 right-0 ${score.color} transition-all`}
+                              style={{ height: `${(score.value || 0) * 10}%` }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-2xl font-bold text-gray-800">{score.label}</span>
+                            </div>
+                          </div>
+                          <div className="text-sm font-medium mt-1">{score.value || 0}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Personality Summary */}
                 {participant.personality_summary && (
-                  <div className="bg-white rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-purple-600" />
-                      Resumo da Personalidade
-                    </h4>
-                    <p className="text-gray-700">{participant.personality_summary}</p>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-purple-600" />
+                        Resumo da Personalidade
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-700">{participant.personality_summary}</p>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Open Answers */}
                 {(participant.challenge_answer || participant.desired_change_answer) && (
-                  <div className="bg-white rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Respostas Abertas</h4>
-                    {participant.challenge_answer && (
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-500">Maior desafio:</p>
-                        <p className="text-gray-700 italic">&ldquo;{participant.challenge_answer}&rdquo;</p>
-                      </div>
-                    )}
-                    {participant.desired_change_answer && (
-                      <div>
-                        <p className="text-sm text-gray-500">Mudança desejada:</p>
-                        <p className="text-gray-700 italic">&ldquo;{participant.desired_change_answer}&rdquo;</p>
-                      </div>
-                    )}
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Respostas Abertas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {participant.challenge_answer && (
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Maior desafio:</p>
+                          <p className="text-gray-700 italic bg-gray-50 p-3 rounded-lg">&ldquo;{participant.challenge_answer}&rdquo;</p>
+                        </div>
+                      )}
+                      {participant.desired_change_answer && (
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Mudança desejada:</p>
+                          <p className="text-gray-700 italic bg-gray-50 p-3 rounded-lg">&ldquo;{participant.desired_change_answer}&rdquo;</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Quick Tips */}
                 {participant.quick_tips && participant.quick_tips.length > 0 && (
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4" />
-                      Dicas Rápidas
-                    </h4>
-                    <ul className="space-y-1">
-                      {participant.quick_tips.map((tip: string, i: number) => (
-                        <li key={i} className="text-green-700 flex items-start gap-2">
-                          <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          {tip}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <Card className="border-green-200 bg-green-50/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-green-800">
+                        <Lightbulb className="h-5 w-5" />
+                        Dicas Rápidas
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {participant.quick_tips.map((tip: string, i: number) => (
+                          <li key={i} className="text-green-700 flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Decision Triggers */}
                 {participant.decision_triggers && Array.isArray(participant.decision_triggers) && participant.decision_triggers.length > 0 && (
-                  <div className="bg-white rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <Target className="h-4 w-4 text-orange-600" />
-                      Gatilhos de Decisão
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {(participant.decision_triggers as string[]).map((trigger: string, i: number) => (
-                        <span key={i} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
-                          {trigger}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-orange-600" />
+                        Gatilhos de Decisão
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {(participant.decision_triggers as string[]).map((trigger: string, i: number) => (
+                          <span key={i} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                            {trigger}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
-                {/* Predicted Objections with Scripts */}
+                {/* Predicted Objections */}
                 {participant.predicted_objections && Array.isArray(participant.predicted_objections) && participant.predicted_objections.length > 0 && (
-                  <div className="bg-white rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-600" />
-                      Objeções Previstas + Scripts
-                    </h4>
-                    <div className="space-y-4">
-                      {(participant.predicted_objections as Array<{objection: string; script: string}>).map((obj, i: number) => (
-                        <div key={i} className="border-l-4 border-amber-400 pl-4">
-                          <p className="font-medium text-amber-800">&ldquo;{obj.objection}&rdquo;</p>
-                          <p className="text-gray-600 text-sm mt-1">
-                            <span className="font-medium text-gray-700">Resposta: </span>
-                            {obj.script}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                        Objeções Previstas + Scripts
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {(participant.predicted_objections as Array<{objection: string; script: string}>).map((obj, i: number) => (
+                          <div key={i} className="border-l-4 border-amber-400 pl-4 py-2">
+                            <p className="font-medium text-amber-800">&ldquo;{obj.objection}&rdquo;</p>
+                            <p className="text-gray-600 text-sm mt-1">
+                              <span className="font-medium text-gray-700">Resposta: </span>
+                              {obj.script}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Closing Strategies */}
                 {participant.closing_strategies && Array.isArray(participant.closing_strategies) && participant.closing_strategies.length > 0 && (
-                  <div className="bg-white rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Estratégias de Fechamento
-                    </h4>
-                    <div className="space-y-3">
-                      {(participant.closing_strategies as Array<{name: string; script: string}>).map((strategy, i: number) => (
-                        <div key={i} className="bg-green-50 rounded-lg p-3">
-                          <p className="font-medium text-green-800">{strategy.name}</p>
-                          <p className="text-green-700 text-sm mt-1">&ldquo;{strategy.script}&rdquo;</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        Estratégias de Fechamento
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {(participant.closing_strategies as Array<{name: string; script: string}>).map((strategy, i: number) => (
+                          <div key={i} className="bg-green-50 rounded-lg p-3">
+                            <p className="font-medium text-green-800">{strategy.name}</p>
+                            <p className="text-green-700 text-sm mt-1">&ldquo;{strategy.script}&rdquo;</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Things to Avoid */}
                 {participant.things_to_avoid && participant.things_to_avoid.length > 0 && (
-                  <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                    <h4 className="font-medium text-red-800 mb-2 flex items-center gap-2">
-                      <XCircle className="h-4 w-4" />
-                      O Que Evitar
-                    </h4>
-                    <ul className="space-y-1">
-                      {participant.things_to_avoid.map((item: string, i: number) => (
-                        <li key={i} className="text-red-700 flex items-start gap-2">
-                          <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          {item}
-                        </li>
+                  <Card className="border-red-200 bg-red-50/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-red-800">
+                        <XCircle className="h-5 w-5" />
+                        O Que Evitar
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {participant.things_to_avoid.map((item: string, i: number) => (
+                          <li key={i} className="text-red-700 flex items-start gap-2">
+                            <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* AÇÕES TAB */}
+        {activeTab === 'acoes' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Formulário DISC</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button className="w-full" variant="secondary" onClick={handleGenerateForm} loading={formLoading}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Gerar Novo Formulário
+                </Button>
+
+                {forms.length > 0 && (
+                  <div className="border-t pt-4">
+                    <p className="text-sm text-gray-500 mb-2">Formulários existentes:</p>
+                    <div className="space-y-2">
+                      {forms.map((form) => (
+                        <div key={form.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm">{form.completed_at ? 'Respondido' : 'Pendente'}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => copyFormLink(form.id)}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="sm">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
-          )}
 
-          {/* Manual Fields */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Campos Manuais</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Funil de Origem"
-                  value={formData.funnel}
-                  onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
-                />
-                <Select
-                  label="Vendedor/Convidador"
-                  value={formData.seller_closer_id}
-                  onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
-                  options={[
-                    { value: '', label: 'Selecione...' },
-                    ...closers.map(c => ({ value: c.id, label: c.name })),
-                  ]}
-                />
-                <Input
-                  label="Mentorado que Convidou"
-                  value={formData.mentee_inviter}
-                  onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
-                />
-                <Input
-                  label="Acompanhante"
-                  value={formData.companion}
-                  onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                />
-                <Select
-                  label="Quantas Vezes Foi Chamado"
-                  value={formData.times_called.toString()}
-                  onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
-                  options={[
-                    { value: '0', label: '0' },
-                    { value: '1', label: '1' },
-                    { value: '2', label: '2' },
-                    { value: '3', label: '3' },
-                    { value: '4', label: '4' },
-                  ]}
-                />
-                <Select
-                  label="Cor do Participante"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  options={[
-                    { value: '', label: 'Selecione...' },
-                    { value: 'rosa', label: 'Rosa' },
-                    { value: 'preto', label: 'Preto' },
-                    { value: 'azul_claro', label: 'Azul Claro' },
-                    { value: 'dourado', label: 'Dourado' },
-                    { value: 'laranja', label: 'Laranja' },
-                  ]}
-                />
-                <Select
-                  label="Qualificação (apenas admin)"
-                  value={formData.qualification}
-                  onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
-                  options={[
-                    { value: '', label: 'Selecione...' },
-                    { value: 'super', label: 'Super Qualificado' },
-                    { value: 'medio', label: 'Médio Qualificado' },
-                    { value: 'baixo', label: 'Baixo Qualificado' },
-                  ]}
-                />
-                <div className="flex items-center pt-6">
-                  <Checkbox
-                    id="is_opportunity"
-                    label="É Oportunidade"
-                    checked={formData.is_opportunity}
-                    onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
-                  />
-                </div>
-              </div>
-              <div className="mt-6">
-                <Button onClick={handleSave} loading={saving}>
-                  Salvar Alterações
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Legacy Forms (for backwards compatibility) */}
-          {forms.length > 0 && forms.some(f => f.completed_at && !hasDiscProfile) && (
             <Card>
               <CardHeader>
-                <CardTitle>Formulários Anteriores</CardTitle>
+                <CardTitle>Closer</CardTitle>
               </CardHeader>
               <CardContent>
-                {forms.map((form) => (
-                  <div key={form.id} className="border rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-sm text-gray-500">URL do Formulário:</p>
-                        <a
-                          href={form.form_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {typeof window !== 'undefined' ? window.location.origin : ''}{form.form_url}
-                        </a>
-                      </div>
-                      {form.disc_profile && (
-                        <Badge variant="info" className="text-lg px-4 py-2">
-                          {form.disc_profile}
-                        </Badge>
-                      )}
+                {assignedCloser ? (
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar src={assignedCloser.photo_url} alt={assignedCloser.name} size="lg" />
+                    <div>
+                      <p className="font-medium">{assignedCloser.name}</p>
+                      <p className="text-sm text-gray-500">{assignedCloser.email}</p>
                     </div>
-
-                    {form.completed_at ? (
-                      <div className="space-y-4">
-                        {form.disc_description && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Descrição do Perfil</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.disc_description}</p>
-                          </div>
-                        )}
-                        {form.sales_insights && (
-                          <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Insights para Vender</h4>
-                            <p className="text-gray-600 whitespace-pre-wrap">{form.sales_insights}</p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500">Aguardando resposta do participante...</p>
-                    )}
                   </div>
-                ))}
+                ) : (
+                  <p className="text-gray-500 mb-4">Nenhum closer atribuído</p>
+                )}
+                <Button className="w-full" variant="secondary" onClick={() => setAssignCloserModal(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {assignedCloser ? 'Alterar' : 'Atribuir'} Closer
+                </Button>
               </CardContent>
             </Card>
-          )}
 
-          {/* Sales */}
-          {sales.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Vendas Realizadas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {sales.map((sale) => (
-                    <div key={sale.id} className="border rounded-lg p-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Produto:</span>
-                          <p className="font-medium">{sale.product}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Valor Total:</span>
-                          <p className="font-medium">{formatCurrency(sale.total_value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Valor Entrada:</span>
-                          <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Negociação:</span>
-                          <p className="font-medium">{sale.negotiation_type}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Sidebar Actions */}
-        <div className="space-y-4">
-          {/* Archetype Info (Visible to participant) */}
-          {participant.primary_archetype && (
-            <Card className="border-purple-200 bg-purple-50/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-purple-800">Arquétipos</CardTitle>
-                <p className="text-xs text-purple-600">Visível para o participante</p>
+                <CardTitle>Vendas</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center mb-4">
-                  <div className="text-4xl mb-2">
-                    {getArchetypeIcon(participant.primary_archetype)}
-                  </div>
-                  <p className="font-bold text-purple-800">{participant.primary_archetype}</p>
-                  {participant.secondary_archetype && (
-                    <p className="text-sm text-purple-600">
-                      + {participant.secondary_archetype} {getArchetypeIcon(participant.secondary_archetype)}
-                    </p>
-                  )}
+                  <p className="text-3xl font-bold text-green-600">{sales.length}</p>
+                  <p className="text-sm text-gray-500">vendas registradas</p>
                 </div>
-                {participant.archetype_description && (
-                  <p className="text-sm text-gray-600 text-center">
-                    {participant.archetype_description}
-                  </p>
+                <Button className="w-full" onClick={() => setSaleModal(true)}>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Registrar Venda
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Links Rápidos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {participant.instagram && (
+                  <a
+                    href={getInstagramUrl(participant.instagram) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 text-blue-600"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Instagram: {participant.instagram}
+                  </a>
                 )}
               </CardContent>
             </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Closer Atribuído</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {assignedCloser ? (
-                <div className="flex items-center gap-3">
-                  <Avatar src={assignedCloser.photo_url} alt={assignedCloser.name} />
-                  <span className="font-medium">{assignedCloser.name}</span>
-                </div>
-              ) : (
-                <p className="text-gray-500">Nenhum closer atribuído</p>
-              )}
-              <Button
-                variant="secondary"
-                className="w-full mt-4"
-                onClick={() => setAssignCloserModal(true)}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                {assignedCloser ? 'Alterar Closer' : 'Atribuir Closer'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Ações</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={handleGenerateForm}
-                loading={formLoading}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Gerar Formulário
-              </Button>
-              <Button
-                className="w-full"
-                onClick={() => setSaleModal(true)}
-              >
-                <DollarSign className="h-4 w-4 mr-2" />
-                Venda Realizada
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Form Links */}
-          {forms.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Links de Formulários</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {forms.map((form) => (
-                  <div key={form.id} className="text-sm">
-                    <a
-                      href={`/form/${form.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                      <FileText className="h-3 w-3" />
-                      {form.completed_at ? 'Respondido' : 'Pendente'}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Assign Closer Modal */}
-      <Modal
-        isOpen={assignCloserModal}
-        onClose={() => setAssignCloserModal(false)}
-        title="Atribuir Closer"
-      >
+      {/* Modals */}
+      <Modal isOpen={assignCloserModal} onClose={() => setAssignCloserModal(false)} title="Atribuir Closer">
         <div className="space-y-3">
           {closers.map((closer) => (
             <button
@@ -790,56 +876,21 @@ export default function ParticipantDetail() {
             >
               <Avatar src={closer.photo_url} alt={closer.name} />
               <span className="font-medium">{closer.name}</span>
-              {closer.id === participant.closer_id && (
-                <Badge variant="success" className="ml-auto">Atual</Badge>
-              )}
+              {closer.id === participant.closer_id && <Badge variant="success" className="ml-auto">Atual</Badge>}
             </button>
           ))}
         </div>
       </Modal>
 
-      {/* Sale Modal */}
-      <Modal
-        isOpen={saleModal}
-        onClose={() => setSaleModal(false)}
-        title="Registrar Venda"
-      >
+      <Modal isOpen={saleModal} onClose={() => setSaleModal(false)} title="Registrar Venda">
         <form onSubmit={handleRegisterSale} className="space-y-4">
-          <Input
-            label="Produto Vendido"
-            value={saleData.product}
-            onChange={(e) => setSaleData({ ...saleData, product: e.target.value })}
-            required
-          />
-          <Input
-            label="Valor Total do Contrato"
-            type="number"
-            step="0.01"
-            value={saleData.total_value}
-            onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })}
-            required
-          />
-          <Input
-            label="Valor de Entrada"
-            type="number"
-            step="0.01"
-            value={saleData.entry_value}
-            onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })}
-            required
-          />
-          <Input
-            label="Forma de Negociação"
-            value={saleData.negotiation_type}
-            onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })}
-            required
-          />
+          <Input label="Produto Vendido" value={saleData.product} onChange={(e) => setSaleData({ ...saleData, product: e.target.value })} required />
+          <Input label="Valor Total" type="number" step="0.01" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
+          <Input label="Valor Entrada" type="number" step="0.01" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
+          <Input label="Negociação" value={saleData.negotiation_type} onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })} required />
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setSaleModal(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" loading={formLoading}>
-              Registrar Venda
-            </Button>
+            <Button type="button" variant="secondary" onClick={() => setSaleModal(false)}>Cancelar</Button>
+            <Button type="submit" loading={formLoading}>Registrar</Button>
           </div>
         </form>
       </Modal>
@@ -849,18 +900,9 @@ export default function ParticipantDetail() {
 
 function getArchetypeIcon(archetype: string): string {
   const icons: Record<string, string> = {
-    'Inocente': '🌟',
-    'Cara Comum': '🤝',
-    'Herói': '⚔️',
-    'Cuidador': '💝',
-    'Explorador': '🧭',
-    'Rebelde': '🔥',
-    'Amante': '❤️',
-    'Criador': '🎨',
-    'Bobo da Corte': '🎭',
-    'Sábio': '📚',
-    'Mago': '✨',
-    'Governante': '👑'
+    'Inocente': '🌟', 'Cara Comum': '🤝', 'Herói': '⚔️', 'Cuidador': '💝',
+    'Explorador': '🧭', 'Rebelde': '🔥', 'Amante': '❤️', 'Criador': '🎨',
+    'Bobo da Corte': '🎭', 'Sábio': '📚', 'Mago': '✨', 'Governante': '👑'
   }
   return icons[archetype] || '✨'
 }
