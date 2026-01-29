@@ -11,11 +11,11 @@ function BethelLogo() {
   return (
     <div className="flex items-center justify-center gap-3">
       <div className="relative w-10 h-10">
-        <Image src="/icons/logo.png" alt="Bethel" fill className="object-contain" />
+        <Image src="/icons/logo.png" alt="Bethel Events" fill className="object-contain" />
       </div>
       <div className="text-left">
-        <p className="text-white text-xl font-bold leading-tight">Bethel</p>
-        <p className="text-white/60 text-sm leading-tight">Educação</p>
+        <p className="text-white text-xl font-bold leading-tight">Bethel Events</p>
+        <p className="text-white/60 text-sm leading-tight">Sistema de acompanhamento de eventos</p>
       </div>
     </div>
   )
@@ -288,7 +288,7 @@ const BG = 'min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1f3d] to-[#0a16
 function Footer() {
   return (
     <div className="text-center py-6">
-      <p className="text-white/30 text-sm">&copy; 2026 Bethel Educação</p>
+      <p className="text-white/30 text-sm">&copy; 2026 Bethel Events</p>
     </div>
   )
 }
@@ -628,10 +628,7 @@ export default function FormPage() {
             </button>
 
             <div className="text-center">
-              <p className={`text-sm font-medium bg-gradient-to-r ${sectionColor} bg-clip-text text-transparent`}>
-                {section}
-              </p>
-              <p className="text-white/30 text-xs mt-1">
+              <p className="text-white/40 text-sm">
                 {currentQuestion + 1} de {TOTAL_QUESTIONS}
               </p>
             </div>
