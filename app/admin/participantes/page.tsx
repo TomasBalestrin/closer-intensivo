@@ -233,348 +233,315 @@ export default function AdminParticipantes() {
           </div>
         </div>
 
-      {/* Search and Filters */}
-      <div className="space-y-4">
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por nome, email, nicho ou Instagram..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button
-            variant={showFilters ? 'primary' : 'secondary'}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filtros
-          </Button>
-        </div>
-
-        {showFilters && (
-          <div className="p-4 bg-gray-50 rounded-lg space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              <Select
-                label="Funil"
-                value={funnelFilter}
-                onChange={(e) => setFunnelFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todos os funis' },
-                  ...FUNIL_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })),
-                ]}
-              />
-              <Select
-                label="Cor (Faturamento)"
-                value={colorFilter}
-                onChange={(e) => setColorFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todas as cores' },
-                  { value: 'rosa', label: 'Rosa (até R$ 5k)' },
-                  { value: 'preto', label: 'Preto (R$ 5k - 10k)' },
-                  { value: 'azul_claro', label: 'Azul Claro (R$ 10k - 20k)' },
-                  { value: 'verde', label: 'Verde (R$ 20k - 50k)' },
-                  { value: 'dourado', label: 'Dourado (R$ 50k - 100k)' },
-                  { value: 'laranja', label: 'Laranja (R$ 100k+)' },
-                ]}
-              />
-              <Select
-                label="Vendedor/Convidador"
-                value={sellerFilter}
-                onChange={(e) => setSellerFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'unassigned', label: 'Nenhum' },
-                  ...closers.map(c => ({ value: c.id, label: c.name })),
-                ]}
-              />
-              <Select
-                label="Vendedor Atribuído"
-                value={assignedCloserFilter}
-                onChange={(e) => setAssignedCloserFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'unassigned', label: 'Nenhum' },
-                  ...closers.map(c => ({ value: c.id, label: c.name })),
-                ]}
-              />
-              <Select
-                label="É Oportunidade"
-                value={opportunityFilter}
-                onChange={(e) => setOpportunityFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'true', label: 'Sim' },
-                  { value: 'false', label: 'Não' },
-                ]}
-              />
-              <Select
-                label="Foi uma Venda"
-                value={saleFilter}
-                onChange={(e) => setSaleFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'true', label: 'Sim' },
-                  { value: 'false', label: 'Não' },
-                ]}
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por nome, email, nicho ou Instagram..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
               />
             </div>
-            {hasActiveFilters && (
-              <div className="flex justify-end">
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  Limpar Filtros
-                </Button>
+            <Button
+              variant={showFilters ? 'primary' : 'secondary'}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
+            </Button>
+          </div>
+
+          {showFilters && (
+            <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                <Select
+                  label="Funil"
+                  value={funnelFilter}
+                  onChange={(e) => setFunnelFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'Todos os funis' },
+                    ...FUNIL_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })),
+                  ]}
+                />
+                <Select
+                  label="Cor (Faturamento)"
+                  value={colorFilter}
+                  onChange={(e) => setColorFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'Todas as cores' },
+                    { value: 'rosa', label: 'Rosa (até R$ 5k)' },
+                    { value: 'preto', label: 'Preto (R$ 5k - 10k)' },
+                    { value: 'azul_claro', label: 'Azul Claro (R$ 10k - 20k)' },
+                    { value: 'verde', label: 'Verde (R$ 20k - 50k)' },
+                    { value: 'dourado', label: 'Dourado (R$ 50k - 100k)' },
+                    { value: 'laranja', label: 'Laranja (R$ 100k+)' },
+                  ]}
+                />
+                <Select
+                  label="Vendedor/Convidador"
+                  value={sellerFilter}
+                  onChange={(e) => setSellerFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'unassigned', label: 'Nenhum' },
+                    ...closers.map(c => ({ value: c.id, label: c.name })),
+                  ]}
+                />
+                <Select
+                  label="Vendedor Atribuído"
+                  value={assignedCloserFilter}
+                  onChange={(e) => setAssignedCloserFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'unassigned', label: 'Nenhum' },
+                    ...closers.map(c => ({ value: c.id, label: c.name })),
+                  ]}
+                />
+                <Select
+                  label="É Oportunidade"
+                  value={opportunityFilter}
+                  onChange={(e) => setOpportunityFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'true', label: 'Sim' },
+                    { value: 'false', label: 'Não' },
+                  ]}
+                />
+                <Select
+                  label="Foi uma Venda"
+                  value={saleFilter}
+                  onChange={(e) => setSaleFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'true', label: 'Sim' },
+                    { value: 'false', label: 'Não' },
+                  ]}
+                />
               </div>
+              {hasActiveFilters && (
+                <div className="flex justify-end">
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpar Filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Participants Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex items-center gap-2 col-span-full mb-2">
+            <input
+              type="checkbox"
+              checked={selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 rounded border-gray-300"
+            />
+            <span className="text-sm text-gray-600">
+              {selectedParticipants.length > 0 && `${selectedParticipants.length} selecionado(s)`}
+            </span>
+            {selectedParticipants.length > 0 && (
+              <Button
+                size="sm"
+                onClick={() => setShowAssignModal(true)}
+                className="ml-auto"
+              >
+                Atribuir Vendedor
+              </Button>
             )}
+          </div>
+
+          {filteredParticipants.map((participant) => (
+            <Card
+              key={participant.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => router.push(`/admin/participantes/${participant.id}`)}
+            >
+              <div className="flex gap-4">
+                <button
+                  onClick={(e) => toggleSelect(participant.id, e)}
+                  className="mt-1"
+                >
+                  {selectedParticipants.includes(participant.id) ? (
+                    <CheckSquare className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <Square className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+                <Avatar
+                  src={participant.photo_url}
+                  alt={participant.name}
+                  size="lg"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-gray-900 truncate">
+                      {participant.name}
+                    </h3>
+                    {participant.is_opportunity && (
+                      <Badge variant="success">Oportunidade</Badge>
+                    )}
+                    {participant.color && (
+                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color)}`}>
+                        {participant.color === 'rosa' && 'Rosa'}
+                        {participant.color === 'preto' && 'Preto'}
+                        {participant.color === 'azul_claro' && 'Azul Claro'}
+                        {participant.color === 'verde' && 'Verde'}
+                        {participant.color === 'dourado' && 'Dourado'}
+                        {participant.color === 'laranja' && 'Laranja'}
+                      </span>
+                    )}
+                  </div>
+                  {participant.revenue && (
+                    <p className="text-sm text-gray-500">
+                      Faturamento: {participant.revenue}
+                    </p>
+                  )}
+                  {participant.niche && (
+                    <span
+                      className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${getColorClass(
+                        participant.color
+                      )}`}
+                    >
+                      {participant.niche}
+                    </span>
+                  )}
+                  {participant.instagram && (
+                    <a
+                      href={getInstagramUrl(participant.instagram) || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 mt-2 text-sm text-blue-600 hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {participant.instagram}
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-gray-500">
+                <span>
+                  Check-ins: {[
+                    participant.checked_in_day1 && 'D1',
+                    participant.checked_in_day2 && 'D2',
+                    participant.checked_in_day3 && 'D3',
+                  ].filter(Boolean).join(', ') || 'Nenhum'}
+                </span>
+                {participant.hasSale && (
+                  <Badge variant="success">Vendido</Badge>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {filteredParticipants.length === 0 && (
+          <div className="text-center py-12">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Nenhum participante encontrado</p>
           </div>
         )}
       </div>
 
-      {/* Bulk Actions Bar */}
-      {selectedParticipants.length > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="text-blue-800 font-medium">
-            {selectedParticipants.length} selecionado(s)
-          </span>
-          <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(true)}>
-            <Users className="h-4 w-4 mr-2" />
-            Atribuir Closer
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSelectedParticipants([])}>
-            Limpar seleção
-          </Button>
-        </div>
-      )}
-
-      {/* Select All */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={toggleSelectAll}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-        >
-          {selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0 ? (
-            <CheckSquare className="h-5 w-5 text-blue-600" />
-          ) : (
-            <Square className="h-5 w-5" />
-          )}
-          Selecionar todos
-        </button>
-      </div>
-
-      {/* Participants Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredParticipants.map((participant: any) => (
-          <Card
-            key={participant.id}
-            className={`cursor-pointer hover:shadow-lg transition-shadow ${selectedParticipants.includes(participant.id) ? 'ring-2 ring-blue-500' : ''}`}
-            onClick={() => router.push(`/admin/participantes/${participant.id}`)}
-          >
-            <div className="flex items-start gap-4">
-              <button
-                onClick={(e) => toggleSelect(participant.id, e)}
-                className="mt-1"
-              >
-                {selectedParticipants.includes(participant.id) ? (
-                  <CheckSquare className="h-5 w-5 text-blue-600" />
-                ) : (
-                  <Square className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
-              <Avatar
-                src={participant.photo_url}
-                alt={participant.name}
-                size="lg"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-gray-900 truncate">
-                    {participant.name}
-                  </h3>
-                  {participant.is_opportunity && (
-                    <Badge variant="success">Oportunidade</Badge>
-                  )}
-                  {participant.color && (
-                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color)}`}>
-                      {participant.color === 'rosa' && 'Rosa'}
-                      {participant.color === 'preto' && 'Preto'}
-                      {participant.color === 'azul_claro' && 'Azul Claro'}
-                      {participant.color === 'verde' && 'Verde'}
-                      {participant.color === 'dourado' && 'Dourado'}
-                      {participant.color === 'laranja' && 'Laranja'}
-                    </span>
-                  )}
-                </div>
-                {participant.revenue && (
-                  <p className="text-sm text-gray-500">
-                    Faturamento: {participant.revenue}
-                  </p>
-                )}
-                {participant.niche && (
-                  <span
-                    className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${getColorClass(
-                      participant.color
-                    )}`}
-                  >
-                    {participant.niche}
-                  </span>
-                )}
-                {participant.instagram && (
-                  <a
-                    href={getInstagramUrl(participant.instagram) || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 mt-2 text-sm text-blue-600 hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    {participant.instagram}
-                  </a>
-                )}
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-gray-500">
-              <span>
-                Check-ins: {[
-                  participant.checked_in_day1 && 'D1',
-                  participant.checked_in_day2 && 'D2',
-                  participant.checked_in_day3 && 'D3',
-                ].filter(Boolean).join(', ') || 'Nenhum'}
-              </span>
-              {participant.hasSale && (
-                <Badge variant="success">Vendido</Badge>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {filteredParticipants.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Nenhum participante encontrado</p>
-        </div>
-      )}
-
-      {/* Create Participant Modal */}
+      {/* Create Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Novo Participante"
       >
         <form onSubmit={handleCreateParticipant} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Nome *"
-              value={newParticipant.name}
-              onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Nome no Crachá"
-              value={newParticipant.badge_name}
-              onChange={(e) => setNewParticipant({ ...newParticipant, badge_name: e.target.value })}
-              placeholder="Como aparecer no crachá"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Email"
-              type="email"
-              value={newParticipant.email}
-              onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
-              placeholder="email@exemplo.com"
-            />
-            <Input
-              label="Telefone"
-              type="tel"
-              inputMode="tel"
-              value={newParticipant.phone}
-              onChange={(e) => setNewParticipant({ ...newParticipant, phone: e.target.value })}
-              placeholder="(00) 00000-0000"
-            />
-          </div>
+          <Input
+            label="Nome"
+            value={newParticipant.name}
+            onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={newParticipant.email}
+            onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
+          />
+          <Input
+            label="Telefone"
+            value={newParticipant.phone}
+            onChange={(e) => setNewParticipant({ ...newParticipant, phone: e.target.value })}
+          />
           <Input
             label="Instagram"
             value={newParticipant.instagram}
             onChange={(e) => setNewParticipant({ ...newParticipant, instagram: e.target.value })}
-            placeholder="@usuario"
           />
           <Select
-            label="Faturamento (define cor automática)"
+            label="Faturamento"
             value={newParticipant.revenue}
             onChange={(e) => setNewParticipant({ ...newParticipant, revenue: e.target.value })}
-            options={[
-              { value: '', label: 'Selecione o faturamento' },
-              ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
-            ]}
+            options={FATURAMENTO_OPTIONS}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Nicho"
-              value={newParticipant.niche}
-              onChange={(e) => setNewParticipant({ ...newParticipant, niche: e.target.value })}
-            />
-            <Input
-              label="Funil"
-              value={newParticipant.funnel}
-              onChange={(e) => setNewParticipant({ ...newParticipant, funnel: e.target.value })}
-            />
-          </div>
+          <Input
+            label="Nicho"
+            value={newParticipant.niche}
+            onChange={(e) => setNewParticipant({ ...newParticipant, niche: e.target.value })}
+          />
+          <Select
+            label="Funil"
+            value={newParticipant.funnel}
+            onChange={(e) => setNewParticipant({ ...newParticipant, funnel: e.target.value })}
+            options={FUNIL_OPTIONS}
+          />
+          <Input
+            label="Badge"
+            value={newParticipant.badge_name}
+            onChange={(e) => setNewParticipant({ ...newParticipant, badge_name: e.target.value })}
+          />
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
               checked={newParticipant.is_opportunity}
               onChange={(e) => setNewParticipant({ ...newParticipant, is_opportunity: e.target.checked })}
-              className="rounded border-gray-300"
+              className="w-4 h-4 rounded border-gray-300"
             />
-            <span className="text-sm">É uma oportunidade</span>
+            <span className="text-sm text-gray-700">É Oportunidade</span>
           </label>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
               Cancelar
             </Button>
-            <Button type="submit" loading={creating}>
-              Criar Participante
+            <Button type="submit" disabled={creating}>
+              {creating ? 'Criando...' : 'Criar'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Bulk Assign Modal */}
+      {/* Assign Modal */}
       <Modal
         isOpen={showAssignModal}
         onClose={() => setShowAssignModal(false)}
-        title="Atribuir Closer em Massa"
+        title="Atribuir Vendedor"
       >
         <div className="space-y-4">
-          <p className="text-gray-600">
-            Atribuir closer para {selectedParticipants.length} participante(s) selecionado(s).
-          </p>
           <Select
-            label="Selecione o Closer"
+            label="Vendedor"
             value={assignCloserId}
             onChange={(e) => setAssignCloserId(e.target.value)}
-            options={[
-              { value: '', label: 'Selecione...' },
-              ...closers.map(c => ({ value: c.id, label: c.name })),
-            ]}
+            options={closers.map(c => ({ value: c.id, label: c.name }))}
           />
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setShowAssignModal(false)}>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
               Cancelar
             </Button>
-            <Button
-              onClick={handleBulkAssign}
-              loading={assigning}
-              disabled={!assignCloserId}
-            >
-              Atribuir
+            <Button onClick={handleBulkAssign} disabled={assigning || !assignCloserId}>
+              {assigning ? 'Atribuindo...' : 'Atribuir'}
             </Button>
           </div>
         </div>
       </Modal>
-      </div>
     </>
   )
 }
