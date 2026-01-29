@@ -17,6 +17,7 @@ export default function AdminParticipantes() {
   const [search, setSearch] = useState('')
   const [funnelFilter, setFunnelFilter] = useState('')
   const [sellerFilter, setSellerFilter] = useState('')
+  const [unassignedFilter, setUnassignedFilter] = useState(false)
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
@@ -84,7 +85,7 @@ export default function AdminParticipantes() {
       p.niche?.toLowerCase().includes(searchLower) ||
       p.instagram?.toLowerCase().includes(searchLower)
     const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-    const matchesSeller = !sellerFilter || p.seller_closer_id === sellerFilter
+    const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
     const matchesOpportunity = opportunityFilter === '' ||
       (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
     const matchesSale = saleFilter === '' ||
@@ -102,6 +103,7 @@ export default function AdminParticipantes() {
     setOpportunityFilter('')
     setSaleFilter('')
     setColorFilter('')
+    setUnassignedFilter(false)
   }
 
   // Export to CSV
@@ -281,6 +283,7 @@ export default function AdminParticipantes() {
                 onChange={(e) => setSellerFilter(e.target.value)}
                 options={[
                   { value: '', label: 'Todos' },
+                  { value: 'unassigned', label: 'Nenhum' },
                   ...closers.map(c => ({ value: c.id, label: c.name })),
                 ]}
               />
