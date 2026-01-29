@@ -20,7 +20,7 @@ export function getColorClass(color: string | null): string {
   const colorMap: Record<string, string> = {
     rosa: 'bg-pink-500 text-white',
     preto: 'bg-gray-900 text-white',
-    azul_claro: 'bg-sky-400 text-white',
+    azul_claro: 'bg-blue-400 text-white',
     verde: 'bg-green-500 text-white',
     dourado: 'bg-yellow-500 text-black',
     laranja: 'bg-orange-500 text-white',
