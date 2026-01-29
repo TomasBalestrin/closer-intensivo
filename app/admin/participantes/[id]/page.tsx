@@ -60,6 +60,7 @@ export default function ParticipantDetail() {
 
   const [assignCloserModal, setAssignCloserModal] = useState(false)
   const [saleModal, setSaleModal] = useState(false)
+  const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -88,6 +89,8 @@ export default function ParticipantDetail() {
 
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null)
+  const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -314,6 +317,30 @@ export default function ParticipantDetail() {
     setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '' })
   }
 
+  const handleDeleteParticipant = async () => {
+    setDeleting(true)
+    try {
+      // Delete related records first (sales, disc_forms), then the participant
+      const participantId = params.id as string
+
+      // Delete sales
+      await supabase.from('sales').delete().eq('participant_id', participantId)
+      // Delete disc_forms
+      await supabase.from('disc_forms').delete().eq('participant_id', participantId)
+      // Delete participant
+      const { error } = await supabase.from('participants').delete().eq('id', participantId)
+
+      if (error) throw error
+      showToast('Participante excluído com sucesso', 'success')
+      router.push('/admin/participantes')
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao excluir participante', 'error')
+    } finally {
+      setDeleting(false)
+      setDeleteParticipantModal(false)
+    }
+  }
+
   const getFormCode = (form: any) => form.short_code || form.id
 
   const copyFormLink = (form: any) => {
@@ -398,7 +425,9 @@ export default function ParticipantDetail() {
             Voltar
           </Button>
           <div className="flex items-center gap-3">
-            <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
+            <button onClick={() => participant.photo_url && setPhotoModal(true)} className={participant.photo_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}>
+              <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
+            </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
               <div className="flex items-center gap-2 mt-1">
@@ -413,6 +442,10 @@ export default function ParticipantDetail() {
             </div>
           </div>
         </div>
+        <Button variant="danger" onClick={() => setDeleteParticipantModal(true)}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Excluir
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -1202,6 +1235,53 @@ export default function ParticipantDetail() {
           <Button variant="danger" onClick={handleDeleteSale} loading={formLoading}>
             Excluir Venda
           </Button>
+        </div>
+      </Modal>
+
+      {/* Photo Preview Modal */}
+      {photoModal && participant?.photo_url && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPhotoModal(false)}>
+          <div className="relative max-w-lg max-h-[80vh]">
+            <img
+              src={participant.photo_url}
+              alt={participant.name}
+              className="max-w-full max-h-[80vh] rounded-xl object-contain"
+            />
+            <button
+              onClick={() => setPhotoModal(false)}
+              className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-gray-100"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Participant Confirmation Modal */}
+      <Modal isOpen={deleteParticipantModal} onClose={() => setDeleteParticipantModal(false)} title="Excluir Participante">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+            <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-red-800">Tem certeza que deseja excluir este participante?</p>
+              <p className="text-sm text-red-600 mt-1">
+                Todos os dados serão removidos permanentemente, incluindo vendas, formulários e análises DISC.
+              </p>
+            </div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600">Participante: <strong>{participant.name}</strong></p>
+            {participant.email && <p className="text-sm text-gray-500">{participant.email}</p>}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setDeleteParticipantModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDeleteParticipant} loading={deleting}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Participante
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

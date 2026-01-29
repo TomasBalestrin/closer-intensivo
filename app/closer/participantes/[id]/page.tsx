@@ -56,6 +56,7 @@ export default function CloserParticipantDetail() {
   const [saving, setSaving] = useState(false)
 
   const [saleModal, setSaleModal] = useState(false)
+  const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -290,7 +291,9 @@ export default function CloserParticipantDetail() {
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
           <div className="flex items-start gap-4">
-            <Avatar src={participant.photo_url} alt={participant.name} size="xl" className="border-4 border-white/30" />
+            <button onClick={() => participant.photo_url && setPhotoModal(true)} className={participant.photo_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}>
+              <Avatar src={participant.photo_url} alt={participant.name} size="xl" className="border-4 border-white/30" />
+            </button>
             <div className="flex-1">
               <h1 className="text-2xl font-bold">{participant.name}</h1>
               <div className="flex flex-wrap items-center gap-3 mt-2 text-white/80 text-sm">
@@ -982,6 +985,25 @@ export default function CloserParticipantDetail() {
           </div>
         </form>
       </Modal>
+
+      {/* Photo Preview Modal */}
+      {photoModal && participant?.photo_url && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPhotoModal(false)}>
+          <div className="relative max-w-lg max-h-[80vh]">
+            <img
+              src={participant.photo_url}
+              alt={participant.name}
+              className="max-w-full max-h-[80vh] rounded-xl object-contain"
+            />
+            <button
+              onClick={() => setPhotoModal(false)}
+              className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-gray-100"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
