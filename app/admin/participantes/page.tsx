@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Loading, Modal } from '@/components/ui'
 import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square } from 'lucide-react'
 import { Participant, User } from '@/lib/types'
-import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue } from '@/lib/utils'
 
 export default function AdminParticipantes() {
   const router = useRouter()
@@ -19,6 +19,7 @@ export default function AdminParticipantes() {
   const [sellerFilter, setSellerFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
+  const [colorFilter, setColorFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // Modal states
@@ -75,8 +76,6 @@ export default function AdminParticipantes() {
     setLoading(false)
   }
 
-  const funnels = [...new Set(participants.map(p => p.funnel).filter(Boolean))]
-
   const filteredParticipants = participants.filter((p: any) => {
     const searchLower = search.toLowerCase()
     const matchesSearch = !search ||
@@ -90,17 +89,19 @@ export default function AdminParticipantes() {
       (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
     const matchesSale = saleFilter === '' ||
       (saleFilter === 'true' ? p.hasSale : !p.hasSale)
+    const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
 
-    return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale
+    return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale && matchesColor
   })
 
-  const hasActiveFilters = funnelFilter || sellerFilter || opportunityFilter || saleFilter
+  const hasActiveFilters = funnelFilter || sellerFilter || opportunityFilter || saleFilter || colorFilter
 
   const clearFilters = () => {
     setFunnelFilter('')
     setSellerFilter('')
     setOpportunityFilter('')
     setSaleFilter('')
+    setColorFilter('')
   }
 
   // Export to CSV
@@ -249,14 +250,28 @@ export default function AdminParticipantes() {
 
         {showFilters && (
           <div className="p-4 bg-gray-50 rounded-lg space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               <Select
                 label="Funil"
                 value={funnelFilter}
                 onChange={(e) => setFunnelFilter(e.target.value)}
                 options={[
                   { value: '', label: 'Todos os funis' },
-                  ...funnels.map(f => ({ value: f!, label: f! })),
+                  ...FUNIL_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })),
+                ]}
+              />
+              <Select
+                label="Cor (Faturamento)"
+                value={colorFilter}
+                onChange={(e) => setColorFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todas as cores' },
+                  { value: 'rosa', label: 'Rosa (até R$ 5k)' },
+                  { value: 'preto', label: 'Preto (R$ 5k - 10k)' },
+                  { value: 'azul_claro', label: 'Azul Claro (R$ 10k - 20k)' },
+                  { value: 'verde', label: 'Verde (R$ 20k - 50k)' },
+                  { value: 'dourado', label: 'Dourado (R$ 50k - 100k)' },
+                  { value: 'laranja', label: 'Laranja (R$ 100k+)' },
                 ]}
               />
               <Select
