@@ -152,14 +152,25 @@ export default function CloserParticipantDetail() {
     }
   }
 
+  const generateShortCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    let code = ''
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return code
+  }
+
   const handleGenerateForm = async () => {
     setFormLoading(true)
     try {
       const formId = crypto.randomUUID()
+      const shortCode = generateShortCode()
       const { error } = await supabase.from('disc_forms').insert({
         id: formId,
         participant_id: params.id as string,
         answers: {},
+        short_code: shortCode,
       })
 
       if (error) throw error
@@ -210,8 +221,11 @@ export default function CloserParticipantDetail() {
     }
   }
 
-  const copyFormLink = (formId: string) => {
-    const url = `${window.location.origin}/form/${formId}`
+  const getFormCode = (form: any) => form.short_code || form.id
+
+  const copyFormLink = (form: any) => {
+    const code = getFormCode(form)
+    const url = `${window.location.origin}/form/${code}`
     navigator.clipboard.writeText(url)
     showToast('Link copiado!', 'success')
   }
@@ -376,10 +390,10 @@ export default function CloserParticipantDetail() {
                     {forms.map((form) => (
                       <div key={form.id} className="flex items-center justify-center gap-2">
                         <span className="text-xs text-gray-500 truncate max-w-[200px]">
-                          /form/{form.id}
+                          /form/{getFormCode(form)}
                         </span>
                         <button
-                          onClick={() => copyFormLink(form.id)}
+                          onClick={() => copyFormLink(form)}
                           className="text-blue-600 hover:text-blue-700"
                         >
                           <Copy className="h-3 w-3" />

@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Bethel Events',
-  description: 'Sistema de Acompanhamento de Vendas e Participação em Eventos',
+  description: 'Bethel Events',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

@@ -19,13 +19,26 @@ export async function GET(
   try {
     const supabase = getSupabase()
     const formId = params.id
+    const isShortCode = formId.length <= 8 && !/^[0-9a-f]{8}-/.test(formId)
 
-    // Try to find form in disc_forms table
-    const { data: formData, error: formError } = await supabase
-      .from('disc_forms')
-      .select('*, participant:participants(*)')
-      .eq('id', formId)
-      .single()
+    // Try to find form in disc_forms table (by short_code first, then by UUID)
+    let formData = null
+    if (isShortCode) {
+      const { data } = await supabase
+        .from('disc_forms')
+        .select('*, participant:participants(*)')
+        .eq('short_code', formId)
+        .single()
+      formData = data
+    }
+    if (!formData) {
+      const { data } = await supabase
+        .from('disc_forms')
+        .select('*, participant:participants(*)')
+        .eq('id', formId)
+        .single()
+      formData = data
+    }
 
     if (formData?.participant) {
       // Form is only truly completed if it has completed_at AND actual answers stored
