@@ -14,54 +14,102 @@ const ARCHETYPE_MAP: Record<string, Record<string, string>> = {
 }
 
 // Descrições positivas dos arquétipos (visíveis para participante)
-export const ARCHETYPE_DESCRIPTIONS: Record<string, { description: string; icon: string }> = {
+export const ARCHETYPE_DESCRIPTIONS: Record<string, { description: string; icon: string; motto: string; traits: string[]; strengths: string[]; detailedDescription: string }> = {
   'Inocente': {
     description: 'Você enxerga o mundo com otimismo e acredita genuinamente no bem. Sua pureza de intenções inspira as pessoas ao seu redor.',
-    icon: '🌟'
+    icon: '🌟',
+    motto: '"Acredito que tudo pode dar certo."',
+    traits: ['Otimista', 'Confiante', 'Esperançoso', 'Autêntico'],
+    strengths: ['Fé inabalável no potencial humano', 'Capacidade de ver o lado bom de tudo', 'Transmite paz e confiança', 'Inspira os outros a acreditarem'],
+    detailedDescription: 'O Inocente é aquele que mantém a fé mesmo diante das adversidades. Você possui um dom natural de enxergar beleza e potencial onde outros veem problemas. Sua presença transmite segurança e esperança, criando um ambiente onde as pessoas se sentem livres para sonhar. Você não é ingênuo — é corajoso o suficiente para acreditar que o mundo pode ser melhor, e essa crença genuína se torna contagiante.'
   },
   'Cara Comum': {
     description: 'Você valoriza conexões autênticas e pertencimento. As pessoas se sentem à vontade com você porque é genuíno e acessível.',
-    icon: '🤝'
+    icon: '🤝',
+    motto: '"Somos todos iguais e cada um importa."',
+    traits: ['Acessível', 'Empático', 'Realista', 'Solidário'],
+    strengths: ['Conexão genuína com pessoas de todos os tipos', 'Cria ambientes de inclusão e pertencimento', 'Humildade que gera confiança', 'Força na simplicidade'],
+    detailedDescription: 'O Cara Comum possui o poder da conexão verdadeira. Você não precisa de títulos ou status para influenciar — sua autenticidade é sua maior força. As pessoas confiam em você porque sentem que é real, sem máscaras ou pretensões. Essa capacidade de se conectar com qualquer pessoa, independente de quem seja, é uma habilidade rara e extremamente valiosa. Você constrói pontes onde outros constroem muros.'
   },
   'Herói': {
     description: 'Você tem coragem para enfrentar desafios e determinação para vencer. Não desiste fácil e inspira outros com sua força.',
-    icon: '⚔️'
+    icon: '⚔️',
+    motto: '"Onde há um desafio, há uma oportunidade de crescer."',
+    traits: ['Corajoso', 'Determinado', 'Disciplinado', 'Resiliente'],
+    strengths: ['Não recua diante de desafios', 'Capacidade de inspirar outros pela ação', 'Resiliência acima da média', 'Mentalidade de crescimento constante'],
+    detailedDescription: 'O Herói é movido pela superação. Você não foge dos problemas — vai de frente, com coragem e determinação. Sua maior força não é nunca cair, mas sim levantar toda vez. As pessoas ao seu redor se sentem mais fortes só por estarem perto de você, porque sua energia de luta é contagiante. Você prova que limites são apenas pontos de partida para quem tem garra suficiente.'
   },
   'Cuidador': {
     description: 'Você tem um coração generoso e se realiza ajudando os outros. Sua empatia e cuidado fazem diferença na vida das pessoas.',
-    icon: '💝'
+    icon: '💝',
+    motto: '"Cuidar dos outros é minha forma de mudar o mundo."',
+    traits: ['Generoso', 'Empático', 'Protetor', 'Altruísta'],
+    strengths: ['Empatia profunda e genuína', 'Capacidade de prever necessidades dos outros', 'Cria laços de confiança duradouros', 'Força que vem do amor ao próximo'],
+    detailedDescription: 'O Cuidador encontra sua realização no bem-estar dos outros. Você tem uma sensibilidade especial para perceber quando alguém precisa de apoio — muitas vezes antes mesmo da pessoa perceber. Essa capacidade de acolher e nutrir relações é o alicerce de equipes fortes e famílias unidas. Sua generosidade não é fraqueza; é sua maior demonstração de força. Você entende que cuidar dos outros é uma forma poderosa de construir um legado.'
   },
   'Explorador': {
     description: 'Você busca liberdade e novas experiências. Sua curiosidade te leva a descobrir caminhos que outros nem imaginam.',
-    icon: '🧭'
+    icon: '🧭',
+    motto: '"A vida começa onde a zona de conforto termina."',
+    traits: ['Aventureiro', 'Curioso', 'Independente', 'Adaptável'],
+    strengths: ['Capacidade de se reinventar constantemente', 'Encontra oportunidades onde outros veem o desconhecido', 'Adaptação rápida a novas situações', 'Coragem para trilhar caminhos próprios'],
+    detailedDescription: 'O Explorador é movido pela descoberta. Você sente que a vida é grande demais para ser vivida de forma pequena. Onde outros veem risco, você vê possibilidade. Sua inquietude não é nervosismo — é a energia de quem sabe que sempre há algo novo para aprender e conquistar. Você inspira as pessoas ao seu redor a também saírem da rotina e ousarem viver com mais intensidade e propósito.'
   },
   'Rebelde': {
     description: 'Você questiona o status quo e não tem medo de ser diferente. Sua autenticidade abre portas para mudanças necessárias.',
-    icon: '🔥'
+    icon: '🔥',
+    motto: '"Regras existem para serem questionadas."',
+    traits: ['Autêntico', 'Destemido', 'Visionário', 'Disruptivo'],
+    strengths: ['Coragem de pensar diferente', 'Capacidade de desafiar o que não funciona', 'Autenticidade inabalável', 'Motor de mudanças necessárias'],
+    detailedDescription: 'O Rebelde é o catalisador de mudanças. Você não aceita as coisas simplesmente porque "sempre foi assim". Essa capacidade de questionar é o que move a evolução. Enquanto outros seguem o fluxo, você tem a coragem de dizer "isso pode ser melhor" — e mais importante, tem a energia para fazer diferente. Sua autenticidade é magnética e inspira outros a também serem verdadeiros consigo mesmos.'
   },
   'Amante': {
     description: 'Você valoriza conexões profundas e momentos especiais. Sua paixão pela vida contagia quem está perto.',
-    icon: '❤️'
+    icon: '❤️',
+    motto: '"Viver com paixão é viver de verdade."',
+    traits: ['Apaixonado', 'Sensível', 'Comprometido', 'Envolvente'],
+    strengths: ['Capacidade de criar conexões emocionais profundas', 'Presença magnética e envolvente', 'Valoriza a beleza em tudo', 'Compromisso intenso com o que ama'],
+    detailedDescription: 'O Amante vive com intensidade e propósito. Você não faz nada pela metade — quando se envolve, é de corpo e alma. Essa paixão se reflete em tudo: nos relacionamentos, no trabalho, nos sonhos. As pessoas são naturalmente atraídas pela sua energia porque você vive de forma autêntica e intensa. Sua capacidade de se conectar emocionalmente é um dom raro que transforma encontros comuns em momentos memoráveis.'
   },
   'Criador': {
     description: 'Você tem visão artística e necessidade de expressar sua originalidade. Suas criações deixam sua marca única no mundo.',
-    icon: '🎨'
+    icon: '🎨',
+    motto: '"Se posso imaginar, posso criar."',
+    traits: ['Criativo', 'Original', 'Visionário', 'Expressivo'],
+    strengths: ['Imaginação sem limites', 'Capacidade de transformar ideias em realidade', 'Visão única do mundo', 'Expressão autêntica que inspira'],
+    detailedDescription: 'O Criador transforma o invisível em visível. Você possui uma mente que não para de gerar ideias, soluções e possibilidades. Onde outros veem o que é, você enxerga o que poderia ser. Essa capacidade de imaginar e materializar é o que move a inovação e o progresso. Sua originalidade não é apenas sobre arte — é sobre uma forma única de ver e moldar o mundo ao seu redor, deixando sua marca em tudo que toca.'
   },
   'Bobo da Corte': {
     description: 'Você traz leveza e alegria por onde passa. Seu humor e espontaneidade tornam a vida mais divertida para todos.',
-    icon: '🎭'
+    icon: '🎭',
+    motto: '"A vida é muito importante para ser levada a sério."',
+    traits: ['Divertido', 'Espontâneo', 'Perspicaz', 'Carismático'],
+    strengths: ['Transforma ambientes com sua energia', 'Capacidade de aliviar tensões', 'Inteligência disfarçada de humor', 'Conecta pessoas através da alegria'],
+    detailedDescription: 'O Bobo da Corte é muito mais do que humor — é inteligência emocional em sua forma mais pura. Você tem o dom de ler ambientes e pessoas, usando a leveza para desarmar conflitos, aproximar pessoas e trazer perspectiva. Historicamente, o Bobo da Corte era o único que podia dizer verdades ao rei. Assim é você: usa o humor para comunicar o que precisa ser dito, tornando verdades difíceis mais fáceis de aceitar. Sua alegria é contagiante e transformadora.'
   },
   'Sábio': {
     description: 'Você busca entender o mundo em profundidade. Seu conhecimento e reflexão trazem clareza para situações complexas.',
-    icon: '📚'
+    icon: '📚',
+    motto: '"O conhecimento é a chave que abre todas as portas."',
+    traits: ['Analítico', 'Reflexivo', 'Objetivo', 'Estratégico'],
+    strengths: ['Pensamento profundo e estratégico', 'Capacidade de simplificar o complexo', 'Visão clara em momentos de confusão', 'Confiança baseada em conhecimento'],
+    detailedDescription: 'O Sábio busca a verdade acima de tudo. Você tem uma mente que não se contenta com respostas superficiais — precisa entender o porquê das coisas. Essa profundidade de pensamento te permite enxergar padrões e soluções que outros não percebem. As pessoas recorrem a você quando precisam de clareza, porque sua capacidade de analisar e sintetizar informações traz luz a situações complexas. Seu conhecimento não é apenas teórico — é sabedoria aplicada.'
   },
   'Mago': {
     description: 'Você acredita em transformação e faz acontecer. Sua visão de possibilidades transforma sonhos em realidade.',
-    icon: '✨'
+    icon: '✨',
+    motto: '"Toda realidade pode ser transformada."',
+    traits: ['Transformador', 'Intuitivo', 'Visionário', 'Carismático'],
+    strengths: ['Capacidade de transformar realidades', 'Visão além do óbvio', 'Intuição apurada para oportunidades', 'Poder de catalisar mudanças'],
+    detailedDescription: 'O Mago é o agente de transformação. Você enxerga possibilidades onde outros veem impossibilidades. Sua maior força é a capacidade de pegar uma situação aparentemente travada e encontrar a chave que muda tudo. As pessoas se sentem renovadas perto de você porque sua energia transmite a mensagem de que é possível mudar, crescer e evoluir. Você não aceita o destino como ele é — você o recria.'
   },
   'Governante': {
     description: 'Você tem presença natural e capacidade de organizar o caos. Sua liderança traz ordem e direção.',
-    icon: '👑'
+    icon: '👑',
+    motto: '"Liderar é servir com excelência."',
+    traits: ['Líder', 'Organizado', 'Responsável', 'Confiável'],
+    strengths: ['Presença de comando natural', 'Capacidade de organizar caos em ordem', 'Visão estratégica de longo prazo', 'Inspira confiança e segurança'],
+    detailedDescription: 'O Governante é o pilar que sustenta. Você tem uma presença natural que faz as pessoas confiarem na sua direção. Não é sobre controle — é sobre responsabilidade. Você assume o que precisa ser feito e organiza o caminho para que todos cheguem onde precisam. Sua liderança não vem do título, mas da sua capacidade de criar ordem, dar direção e manter todos alinhados com um propósito maior.'
   }
 }
 
@@ -186,6 +234,10 @@ export function getCombinedDescription(primary: string, secondary: string): stri
 export function getArchetypeInfo(archetype: string) {
   return ARCHETYPE_DESCRIPTIONS[archetype] || {
     description: 'Uma personalidade única e especial.',
-    icon: '✨'
+    icon: '✨',
+    motto: '',
+    traits: [],
+    strengths: [],
+    detailedDescription: ''
   }
 }
