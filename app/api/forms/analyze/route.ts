@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { calculateArchetypes, getCombinedDescription, getArchetypeInfo } from '@/lib/archetypes'
 import { calculateDISC, getDISCProfileInfo, getDISCTraitInfo } from '@/lib/disc'
 
+export const maxDuration = 60
+
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -100,6 +102,9 @@ IMPORTANTE:
 - Scripts devem ser frases prontas para usar na ligação
 - Responda APENAS o JSON, sem texto adicional`
 
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 15000)
+
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -112,7 +117,10 @@ IMPORTANTE:
             max_tokens: 2000,
             messages: [{ role: 'user', content: prompt }],
           }),
+          signal: controller.signal,
         })
+
+        clearTimeout(timeout)
 
         if (response.ok) {
           const data = await response.json()
@@ -145,7 +153,6 @@ IMPORTANTE:
         primary_archetype: archetypeResult.primary,
         secondary_archetype: archetypeResult.secondary,
         archetype_description: combinedDescription,
-        archetype_scores: archetypeResult.scores,
 
         // Hidden - only for closers (DISC)
         disc_profile: discResult.profile,
