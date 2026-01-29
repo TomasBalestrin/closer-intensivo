@@ -407,6 +407,8 @@ export default function ParticipantDetail() {
   // Check if form is truly completed (has completed_at AND has actual answers)
   const completedForms = forms.filter((f: any) => f.completed_at != null && f.answers && Object.keys(f.answers).length > 0)
   const hasCompletedForms = completedForms.length > 0
+  const pendingForms = forms.filter((f: any) => !f.completed_at || !f.answers || Object.keys(f.answers).length === 0)
+  const hasPendingForms = pendingForms.length > 0
 
   const tabs = [
     { id: 'dados' as TabType, label: 'Dados', icon: User },
@@ -841,8 +843,10 @@ export default function ParticipantDetail() {
         {/* DISC TAB */}
         {activeTab === 'disc' && (
           <div className="space-y-6">
-            {/* No DISC profile and no completed forms - show generate button */}
-            {!hasDiscProfile && !hasCompletedForms && (
+            {/* ═══════════════════════════════════════════════ */}
+            {/* STATE 1: No forms generated yet */}
+            {/* ═══════════════════════════════════════════════ */}
+            {!hasDiscProfile && !hasCompletedForms && !hasPendingForms && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -851,16 +855,69 @@ export default function ParticipantDetail() {
                     <FileText className="h-4 w-4 mr-2" />
                     Gerar Formulário
                   </Button>
-                  {forms.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-4">
-                      {forms.length} formulário(s) pendente(s) de resposta
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* No DISC profile but has completed forms - show reprocess option */}
+            {/* ═══════════════════════════════════════════════ */}
+            {/* STATE 2: Forms generated, awaiting response */}
+            {/* ═══════════════════════════════════════════════ */}
+            {!hasDiscProfile && !hasCompletedForms && hasPendingForms && (
+              <Card>
+                <CardContent className="py-10">
+                  <div className="text-center mb-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+                      <RefreshCw className="h-8 w-8 text-amber-500 animate-[spin_3s_linear_infinite]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-1">Aguardando resposta</h3>
+                    <p className="text-gray-500 text-sm">
+                      O formulário foi enviado. Assim que o participante responder, a análise aparecerá aqui.
+                    </p>
+                  </div>
+                  <div className="space-y-3 max-w-md mx-auto">
+                    {pendingForms.map((form: any) => (
+                      <div key={form.id} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge variant="warning">Pendente</Badge>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => copyFormLink(form)} title="Copiar link">
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <a href={`/form/${getFormCode(form)}`} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="sm" title="Abrir formulário">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={typeof window !== 'undefined' ? `${window.location.origin}/form/${getFormCode(form)}` : `/form/${getFormCode(form)}`}
+                            className="flex-1 text-xs p-2 bg-white border rounded text-gray-600 font-mono"
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                          />
+                          <Button size="sm" onClick={() => copyFormLink(form)}>
+                            Copiar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-center mt-6">
+                    <Button variant="secondary" onClick={handleGenerateForm} loading={formLoading}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Gerar Novo Formulário
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ═══════════════════════════════════════════════ */}
+            {/* STATE 3: Form completed but not processed */}
+            {/* ═══════════════════════════════════════════════ */}
             {!hasDiscProfile && hasCompletedForms && (
               <Card>
                 <CardContent className="py-12 text-center">
@@ -877,80 +934,157 @@ export default function ParticipantDetail() {
               </Card>
             )}
 
-            {/* Has DISC profile - show DISC data */}
+            {/* ═══════════════════════════════════════════════ */}
+            {/* STATE 4: Has DISC profile - Full Analysis */}
+            {/* ═══════════════════════════════════════════════ */}
             {hasDiscProfile && (
               <>
-                {/* DISC Scores */}
+                {/* ── Perfil Comportamental ── */}
+                <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-blue-600" />
+                      Perfil Comportamental
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* DISC Profile badge */}
+                    <div className="flex items-center gap-4 p-4 bg-white/80 rounded-xl border border-blue-100">
+                      <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">
+                        {participant.disc_profile?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Perfil DISC</p>
+                        <p className="text-lg font-bold text-gray-800">
+                          {participant.disc_profile === 'D' ? 'Dominância' :
+                           participant.disc_profile === 'I' ? 'Influência' :
+                           participant.disc_profile === 'S' ? 'Estabilidade' :
+                           participant.disc_profile === 'C' ? 'Conformidade' :
+                           participant.disc_profile}
+                        </p>
+                      </div>
+                      {participant.primary_archetype && (
+                        <div className="ml-auto text-right">
+                          <p className="text-sm text-gray-500">Arquétipo</p>
+                          <p className="text-lg font-bold text-purple-700">
+                            {getArchetypeIcon(participant.primary_archetype)} {participant.primary_archetype}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Personality Summary */}
+                    {participant.personality_summary && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-blue-600" />
+                          Quem é essa pessoa
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{participant.personality_summary}</p>
+                      </div>
+                    )}
+
+                    {/* DISC Analysis description from API */}
+                    {participant.disc_analysis && (participant.disc_analysis as any).profile_description && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
+                        <h4 className="font-semibold text-gray-800 mb-2">Como se comporta</h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant.disc_analysis as any).profile_description}</p>
+                      </div>
+                    )}
+
+                    {/* Archetype + Secondary */}
+                    {participant.primary_archetype && participant.archetype_description && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-purple-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <span>{getArchetypeIcon(participant.primary_archetype)}</span>
+                          {participant.primary_archetype}
+                          {participant.secondary_archetype && (
+                            <span className="text-gray-400 font-normal text-sm">+ {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}</span>
+                          )}
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{participant.archetype_description}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* ── DISC Scores ── */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Target className="h-5 w-5 text-blue-600" />
-                      Perfil DISC: {participant.disc_profile}
+                      Scores DISC
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="space-y-4">
                       {[
-                        { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', name: 'Dominância' },
-                        { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', name: 'Influência' },
-                        { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', name: 'Estabilidade' },
-                        { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', name: 'Conformidade' },
-                      ].map((score) => (
-                        <div key={score.label} className="text-center">
-                          <div className="text-xs text-gray-500 mb-1">{score.name}</div>
-                          <div className="relative h-24 bg-gray-100 rounded-lg overflow-hidden">
-                            <div
-                              className={`absolute bottom-0 left-0 right-0 ${score.color} transition-all`}
-                              style={{ height: `${(score.value || 0) * 10}%` }}
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-2xl font-bold text-gray-800">{score.label}</span>
+                        { label: 'D', value: participant.disc_score_d, color: 'bg-red-500', lightColor: 'bg-red-100', textColor: 'text-red-700', name: 'Dominância' },
+                        { label: 'I', value: participant.disc_score_i, color: 'bg-yellow-500', lightColor: 'bg-yellow-100', textColor: 'text-yellow-700', name: 'Influência' },
+                        { label: 'S', value: participant.disc_score_s, color: 'bg-green-500', lightColor: 'bg-green-100', textColor: 'text-green-700', name: 'Estabilidade' },
+                        { label: 'C', value: participant.disc_score_c, color: 'bg-blue-500', lightColor: 'bg-blue-100', textColor: 'text-blue-700', name: 'Conformidade' },
+                      ].map((score) => {
+                        const total = (participant.disc_score_d || 0) + (participant.disc_score_i || 0) + (participant.disc_score_s || 0) + (participant.disc_score_c || 0)
+                        const pct = total > 0 ? Math.round(((score.value || 0) / total) * 100) : 0
+                        return (
+                          <div key={score.label} className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg ${score.lightColor} flex items-center justify-center`}>
+                              <span className={`text-sm font-bold ${score.textColor}`}>{score.label}</span>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm text-gray-600">{score.name}</span>
+                                <span className={`text-sm font-bold ${score.textColor}`}>{pct}%</span>
+                              </div>
+                              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${score.color} rounded-full transition-all`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
                             </div>
                           </div>
-                          <div className="text-sm font-medium mt-1">{score.value || 0}</div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Personality Summary */}
-                {participant.personality_summary && (
+                {/* ── Open Answers ── */}
+                {(participant.challenge_answer || participant.desired_change_answer) && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5 text-purple-600" />
-                        Resumo da Personalidade
+                        <MessageSquare className="h-5 w-5 text-indigo-600" />
+                        Respostas Abertas do Participante
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700">{participant.personality_summary}</p>
+                    <CardContent className="space-y-4">
+                      {participant.challenge_answer && (
+                        <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                          <p className="text-xs uppercase tracking-wider text-indigo-500 font-semibold mb-2">Maior desafio atual</p>
+                          <p className="text-gray-700 italic">&ldquo;{participant.challenge_answer}&rdquo;</p>
+                        </div>
+                      )}
+                      {participant.desired_change_answer && (
+                        <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                          <p className="text-xs uppercase tracking-wider text-indigo-500 font-semibold mb-2">Mudança desejada</p>
+                          <p className="text-gray-700 italic">&ldquo;{participant.desired_change_answer}&rdquo;</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Open Answers */}
-                {(participant.challenge_answer || participant.desired_change_answer) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Respostas Abertas</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {participant.challenge_answer && (
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Maior desafio:</p>
-                          <p className="text-gray-700 italic bg-gray-50 p-3 rounded-lg">&ldquo;{participant.challenge_answer}&rdquo;</p>
-                        </div>
-                      )}
-                      {participant.desired_change_answer && (
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Mudança desejada:</p>
-                          <p className="text-gray-700 italic bg-gray-50 p-3 rounded-lg">&ldquo;{participant.desired_change_answer}&rdquo;</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                {/* ═══════════════════════════════════════════════ */}
+                {/* INSIGHTS DE VENDAS */}
+                {/* ═══════════════════════════════════════════════ */}
+                <div className="pt-2">
+                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4">
+                    <Zap className="h-5 w-5 text-amber-500" />
+                    Insights para Vender para {participant.name?.split(' ')[0]}
+                  </h2>
+                </div>
 
                 {/* Quick Tips */}
                 {participant.quick_tips && participant.quick_tips.length > 0 && (
@@ -958,15 +1092,15 @@ export default function ParticipantDetail() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-green-800">
                         <Lightbulb className="h-5 w-5" />
-                        Dicas Rápidas
+                        Dicas Rápidas para Abordagem
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ul className="space-y-2">
+                      <ul className="space-y-3">
                         {participant.quick_tips.map((tip: string, i: number) => (
-                          <li key={i} className="text-green-700 flex items-start gap-2">
-                            <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            {tip}
+                          <li key={i} className="text-green-700 flex items-start gap-3 p-2 bg-green-50 rounded-lg">
+                            <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-green-500" />
+                            <span>{tip}</span>
                           </li>
                         ))}
                       </ul>
@@ -982,37 +1116,45 @@ export default function ParticipantDetail() {
                         <Target className="h-5 w-5 text-orange-600" />
                         Gatilhos de Decisão
                       </CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">O que faz essa pessoa decidir comprar</p>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="space-y-2">
                         {(participant.decision_triggers as string[]).map((trigger: string, i: number) => (
-                          <span key={i} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
-                            {trigger}
-                          </span>
+                          <div key={i} className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-orange-200 text-orange-800 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                            <span className="text-gray-700">{trigger}</span>
+                          </div>
                         ))}
                       </div>
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Predicted Objections */}
+                {/* Predicted Objections + How to Handle */}
                 {participant.predicted_objections && Array.isArray(participant.predicted_objections) && participant.predicted_objections.length > 0 && (
-                  <Card>
+                  <Card className="border-amber-200">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-amber-600" />
-                        Objeções Previstas + Scripts
+                        Objeções Previstas e Como Contornar
                       </CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">Objeções que essa pessoa provavelmente vai trazer e scripts prontos para responder</p>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         {(participant.predicted_objections as Array<{objection: string; script: string}>).map((obj, i: number) => (
-                          <div key={i} className="border-l-4 border-amber-400 pl-4 py-2">
-                            <p className="font-medium text-amber-800">&ldquo;{obj.objection}&rdquo;</p>
-                            <p className="text-gray-600 text-sm mt-1">
-                              <span className="font-medium text-gray-700">Resposta: </span>
-                              {obj.script}
-                            </p>
+                          <div key={i} className="rounded-xl border border-amber-200 overflow-hidden">
+                            <div className="bg-amber-50 p-4 border-b border-amber-200">
+                              <p className="font-semibold text-amber-800 flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                                Objeção: &ldquo;{obj.objection}&rdquo;
+                              </p>
+                            </div>
+                            <div className="p-4 bg-white">
+                              <p className="text-xs uppercase tracking-wider text-green-600 font-semibold mb-2">Como contornar:</p>
+                              <p className="text-gray-700 leading-relaxed">{obj.script}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1022,19 +1164,24 @@ export default function ParticipantDetail() {
 
                 {/* Closing Strategies */}
                 {participant.closing_strategies && Array.isArray(participant.closing_strategies) && participant.closing_strategies.length > 0 && (
-                  <Card>
+                  <Card className="border-green-200">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         Estratégias de Fechamento
                       </CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">Scripts prontos para fechar a venda com essa pessoa</p>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         {(participant.closing_strategies as Array<{name: string; script: string}>).map((strategy, i: number) => (
-                          <div key={i} className="bg-green-50 rounded-lg p-3">
-                            <p className="font-medium text-green-800">{strategy.name}</p>
-                            <p className="text-green-700 text-sm mt-1">&ldquo;{strategy.script}&rdquo;</p>
+                          <div key={i} className="rounded-xl border border-green-200 overflow-hidden">
+                            <div className="bg-green-50 px-4 py-2 border-b border-green-200">
+                              <p className="font-semibold text-green-800 text-sm">{strategy.name}</p>
+                            </div>
+                            <div className="p-4 bg-white">
+                              <p className="text-gray-700 italic">&ldquo;{strategy.script}&rdquo;</p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1048,15 +1195,38 @@ export default function ParticipantDetail() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-red-800">
                         <XCircle className="h-5 w-5" />
-                        O Que Evitar
+                        O Que NÃO Fazer com Esse Participante
                       </CardTitle>
+                      <p className="text-sm text-red-600/70 mt-1">Erros que podem travar a negociação</p>
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
                         {participant.things_to_avoid.map((item: string, i: number) => (
-                          <li key={i} className="text-red-700 flex items-start gap-2">
-                            <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            {item}
+                          <li key={i} className="text-red-700 flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
+                            <XCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-red-400" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sales Approach */}
+                {participant.sales_approach && Array.isArray(participant.sales_approach) && participant.sales_approach.length > 0 && (
+                  <Card className="border-blue-200 bg-blue-50/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-blue-800">
+                        <Zap className="h-5 w-5" />
+                        Abordagem de Vendas Recomendada
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {(participant.sales_approach as string[]).map((tip: string, i: number) => (
+                          <li key={i} className="text-blue-700 flex items-start gap-3 p-2 bg-blue-50 rounded-lg">
+                            <Lightbulb className="h-5 w-5 mt-0.5 flex-shrink-0 text-blue-400" />
+                            <span>{tip}</span>
                           </li>
                         ))}
                       </ul>

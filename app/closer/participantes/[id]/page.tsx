@@ -35,6 +35,7 @@ import {
   Phone,
   Mail,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency } from '@/lib/utils'
@@ -251,6 +252,9 @@ export default function CloserParticipantDetail() {
 
   // Check if participant has DISC profile data
   const hasDiscProfile = participant?.disc_profile
+  const completedForms = forms.filter((f: any) => f.completed_at != null && f.answers && Object.keys(f.answers).length > 0)
+  const pendingForms = forms.filter((f: any) => !f.completed_at || !f.answers || Object.keys(f.answers).length === 0)
+  const hasPendingForms = pendingForms.length > 0
 
   if (loading) {
     return (
@@ -378,7 +382,7 @@ export default function CloserParticipantDetail() {
       {/* DISC Tab */}
       {activeTab === 'disc' && (
         <div className="space-y-6">
-          {!hasDiscProfile ? (
+          {!hasDiscProfile && !hasPendingForms ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -387,24 +391,57 @@ export default function CloserParticipantDetail() {
                   <FileText className="h-4 w-4 mr-2" />
                   Gerar Formulário
                 </Button>
-                {forms.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-gray-400">Links de formulário:</p>
-                    {forms.map((form) => (
-                      <div key={form.id} className="flex items-center justify-center gap-2">
-                        <span className="text-xs text-gray-500 truncate max-w-[200px]">
-                          /form/{getFormCode(form)}
-                        </span>
-                        <button
-                          onClick={() => copyFormLink(form)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+              </CardContent>
+            </Card>
+          ) : !hasDiscProfile && hasPendingForms ? (
+            <Card>
+              <CardContent className="py-10">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+                    <RefreshCw className="h-8 w-8 text-amber-500 animate-[spin_3s_linear_infinite]" />
                   </div>
-                )}
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">Aguardando resposta</h3>
+                  <p className="text-gray-500 text-sm">
+                    O formulário foi enviado. Assim que o participante responder, a análise aparecerá aqui.
+                  </p>
+                </div>
+                <div className="space-y-3 max-w-md mx-auto">
+                  {pendingForms.map((form: any) => (
+                    <div key={form.id} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="warning">Pendente</Badge>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => copyFormLink(form)} title="Copiar link">
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <a href={`/form/${getFormCode(form)}`} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="sm" title="Abrir formulário">
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </a>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={typeof window !== 'undefined' ? `${window.location.origin}/form/${getFormCode(form)}` : `/form/${getFormCode(form)}`}
+                          className="flex-1 text-xs p-2 bg-white border rounded text-gray-600 font-mono"
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                        />
+                        <Button size="sm" onClick={() => copyFormLink(form)}>
+                          Copiar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-center mt-6">
+                  <Button variant="secondary" onClick={handleGenerateForm} loading={formLoading}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Gerar Novo Formulário
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : (
