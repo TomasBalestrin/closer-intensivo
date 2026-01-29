@@ -532,7 +532,7 @@ export default function ParticipantDetail() {
                   <CardTitle>Dados do Participante</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Faturamento:</span>
                       <p className="font-medium">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</p>
@@ -809,7 +809,7 @@ export default function ParticipantDetail() {
                   <Card key={sale.id}>
                     <CardContent className="py-4">
                       <div className="flex items-start justify-between gap-4">
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 flex-1">
                           <div>
                             <span className="text-sm text-gray-500">Produto</span>
                             <p className="font-medium">{sale.product_name}</p>
@@ -855,7 +855,7 @@ export default function ParticipantDetail() {
                 {/* Sales Summary */}
                 <Card className="bg-green-50 border-green-200">
                   <CardContent className="py-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                       <div>
                         <p className="text-sm text-green-600">Total Vendas</p>
                         <p className="text-2xl font-bold text-green-700">{sales.length}</p>

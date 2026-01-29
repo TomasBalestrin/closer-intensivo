@@ -203,7 +203,7 @@ export default function AdminDashboard() {
       {/* Por Qualificação - Row Cards */}
       <section>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Por Qualificação</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Alto Qualificadas */}
           <div className="bg-white rounded-xl border-l-4 border-l-emerald-500 border border-gray-200 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
