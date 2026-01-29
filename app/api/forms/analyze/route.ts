@@ -16,7 +16,7 @@ function getSupabase() {
 
 export async function POST(request: Request) {
   try {
-    const { participantId, answers, challengeAnswer, desiredChangeAnswer } = await request.json()
+    const { participantId, formId, answers, challengeAnswer, desiredChangeAnswer } = await request.json()
     const supabase = getSupabase()
 
     // Calculate archetypes (visible to participant)
@@ -182,6 +182,35 @@ IMPORTANTE:
         { error: 'Error saving analysis' },
         { status: 500 }
       )
+    }
+
+    // Also update disc_forms record with completion status and answers
+    if (formId) {
+      const { error: formUpdateError } = await supabase
+        .from('disc_forms')
+        .update({
+          completed_at: new Date().toISOString(),
+          answers: answers,
+        })
+        .eq('id', formId)
+
+      if (formUpdateError) {
+        console.error('Error updating disc_form:', formUpdateError)
+      }
+    } else {
+      // Try to find and update disc_forms by participant_id
+      const { error: formUpdateError } = await supabase
+        .from('disc_forms')
+        .update({
+          completed_at: new Date().toISOString(),
+          answers: answers,
+        })
+        .eq('participant_id', participantId)
+        .is('completed_at', null)
+
+      if (formUpdateError) {
+        console.error('Error updating disc_form by participant:', formUpdateError)
+      }
     }
 
     // Return only the visible data (archetypes)
