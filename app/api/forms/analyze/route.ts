@@ -145,50 +145,64 @@ IMPORTANTE:
       }
     }
 
-    // Update participant with all analysis data
-    const { error: updateError } = await supabase
+    // Update participant with all analysis data (fault-tolerant)
+    // Try full update first, fallback to minimal if columns don't exist
+    const fullUpdate = {
+      primary_archetype: archetypeResult.primary,
+      secondary_archetype: archetypeResult.secondary,
+      archetype_description: combinedDescription,
+      disc_profile: discResult.profile,
+      disc_score_d: discResult.scores.D,
+      disc_score_i: discResult.scores.I,
+      disc_score_s: discResult.scores.S,
+      disc_score_c: discResult.scores.C,
+      disc_analysis: {
+        profile_name: discProfileInfo.profile,
+        profile_description: discProfileInfo.description,
+        primary_trait: primaryTraitInfo,
+        secondary_trait: secondaryTraitInfo
+      },
+      personality_summary: salesAnalysis.personality_summary,
+      sales_approach: salesAnalysis.sales_approach,
+      decision_triggers: salesAnalysis.decision_triggers,
+      predicted_objections: salesAnalysis.predicted_objections,
+      closing_strategies: salesAnalysis.closing_strategies,
+      things_to_avoid: salesAnalysis.things_to_avoid,
+      quick_tips: salesAnalysis.quick_tips,
+      challenge_answer: challengeAnswer,
+      desired_change_answer: desiredChangeAnswer,
+      form_completed_at: new Date().toISOString()
+    }
+
+    const minimalUpdate = {
+      form_completed_at: new Date().toISOString(),
+      webhook_data: {
+        archetypes: { primary: archetypeResult.primary, secondary: archetypeResult.secondary, description: combinedDescription },
+        disc: { profile: discResult.profile, scores: discResult.scores },
+        salesAnalysis,
+        challengeAnswer,
+        desiredChangeAnswer,
+      }
+    }
+
+    // Try full update
+    let { error: updateError } = await supabase
       .from('participants')
-      .update({
-        // Visible to participant (archetypes)
-        primary_archetype: archetypeResult.primary,
-        secondary_archetype: archetypeResult.secondary,
-        archetype_description: combinedDescription,
-
-        // Hidden - only for closers (DISC)
-        disc_profile: discResult.profile,
-        disc_score_d: discResult.scores.D,
-        disc_score_i: discResult.scores.I,
-        disc_score_s: discResult.scores.S,
-        disc_score_c: discResult.scores.C,
-        disc_analysis: {
-          profile_name: discProfileInfo.profile,
-          profile_description: discProfileInfo.description,
-          primary_trait: primaryTraitInfo,
-          secondary_trait: secondaryTraitInfo
-        },
-
-        // Sales insights (hidden - only for closers)
-        personality_summary: salesAnalysis.personality_summary,
-        sales_approach: salesAnalysis.sales_approach,
-        decision_triggers: salesAnalysis.decision_triggers,
-        predicted_objections: salesAnalysis.predicted_objections,
-        closing_strategies: salesAnalysis.closing_strategies,
-        things_to_avoid: salesAnalysis.things_to_avoid,
-        quick_tips: salesAnalysis.quick_tips,
-
-        // Open answers
-        challenge_answer: challengeAnswer,
-        desired_change_answer: desiredChangeAnswer,
-        form_completed_at: new Date().toISOString()
-      })
+      .update(fullUpdate)
       .eq('id', participantId)
 
+    // If full update fails (missing columns), try minimal
     if (updateError) {
-      console.error('Error updating participant:', updateError)
-      return NextResponse.json(
-        { error: 'Error saving analysis' },
-        { status: 500 }
-      )
+      console.error('Full update failed, trying minimal:', updateError.message)
+      const { error: minError } = await supabase
+        .from('participants')
+        .update(minimalUpdate)
+        .eq('id', participantId)
+
+      if (minError) {
+        console.error('Minimal update also failed:', minError.message)
+        // Don't block - still return result to user
+      }
     }
 
     // Also update disc_forms record with completion status and answers
