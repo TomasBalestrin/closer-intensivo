@@ -105,6 +105,7 @@ export default function ParticipantDetail() {
 
     if (participantRes.data) {
       setParticipant(participantRes.data)
+      const normalizedRev = normalizeRevenue(participantRes.data.revenue) || ''
       setFormData({
         funnel: participantRes.data.funnel || '',
         seller_closer_id: participantRes.data.seller_closer_id || '',
@@ -113,13 +114,13 @@ export default function ParticipantDetail() {
         companion: participantRes.data.companion || '',
         is_opportunity: participantRes.data.is_opportunity,
         times_called: participantRes.data.times_called,
-        color: participantRes.data.color || '',
-        qualification: participantRes.data.qualification || '',
+        color: getColorFromRevenue(normalizedRev) || participantRes.data.color || '',
+        qualification: getQualificationFromRevenue(normalizedRev) || participantRes.data.qualification || '',
         cpf: participantRes.data.cpf || '',
         badge_name: participantRes.data.badge_name || '',
         net_profit: participantRes.data.net_profit || '',
         partner: participantRes.data.partner || '',
-        revenue: normalizeRevenue(participantRes.data.revenue) || '',
+        revenue: normalizedRev,
       })
     }
 
@@ -216,6 +217,7 @@ export default function ParticipantDetail() {
         participant_id: params.id as string,
         closer_id: participant?.closer_id || user.id,
         product_name: saleData.product_name,
+        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
         negotiation_type: saleData.negotiation_type,
@@ -254,6 +256,7 @@ export default function ParticipantDetail() {
         .from('sales')
         .update({
           product_name: saleData.product_name,
+          amount: parseFloat(saleData.total_value),
           total_value: parseFloat(saleData.total_value),
           entry_value: parseFloat(saleData.entry_value),
           negotiation_type: saleData.negotiation_type,

@@ -191,6 +191,7 @@ async function processarVenda(body: any, supabase: any) {
       participant_id: participant.id,
       closer_id: participant.closer_id || '00000000-0000-0000-0000-000000000000',
       product_name: produto,
+      amount: parseFloat(valor_total),
       total_value: parseFloat(valor_total),
       entry_value: parseFloat(valor_entrada),
       negotiation_type: body.negotiation_type || body.metodo_pagamento || 'webhook',
