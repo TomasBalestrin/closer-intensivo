@@ -32,6 +32,10 @@ async function processarParticipante(body: any, supabase: any) {
   const photo_url = fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos || fields?.photo_url
   const external_id = body?.participant_id || body?.external_id
 
+  // Extract is_opportunity from webhook payload
+  const rawOpportunity = fields?.is_opportunity ?? fields?.oportunidade ?? body?.is_opportunity ?? body?.oportunidade
+  const is_opportunity = rawOpportunity === true || rawOpportunity === 'true' || rawOpportunity === 'sim' || rawOpportunity === 'Sim' || rawOpportunity === 'yes' || rawOpportunity === '1'
+
   if (!name) {
     return { status: 400, error: 'Nome é obrigatório' }
   }
@@ -73,6 +77,7 @@ async function processarParticipante(body: any, supabase: any) {
     net_profit: net_profit || null,
     color,
     qualification,
+    is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
     webhook_data: body,
   }
 
