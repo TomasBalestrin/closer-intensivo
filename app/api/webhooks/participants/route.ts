@@ -51,6 +51,10 @@ export async function POST(request: Request) {
     const net_profit = fields?.qual_seu_lucro_liquido_mensal
     const photo_url = fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos
 
+    // Extract is_opportunity from webhook payload
+    const rawOpportunity = fields?.is_opportunity ?? fields?.oportunidade ?? payload?.is_opportunity ?? payload?.oportunidade
+    const is_opportunity = rawOpportunity === true || rawOpportunity === 'true' || rawOpportunity === 'sim' || rawOpportunity === 'Sim' || rawOpportunity === 'yes' || rawOpportunity === '1'
+
     if (!name) {
       return NextResponse.json(
         { error: 'Nome completo é obrigatório (fields.nome_completo)' },
@@ -122,6 +126,7 @@ export async function POST(request: Request) {
       net_profit: net_profit || null,
       challenge_answer,
       desired_change_answer,
+      is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
       webhook_data: payload,
     }
 
@@ -135,6 +140,7 @@ export async function POST(request: Request) {
       niche: niche || null,
       instagram,
       external_id: participant_id || null,
+      is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
     }
 
     // Helper: try with full data first, fallback to basic if column is missing
@@ -261,7 +267,11 @@ export async function GET() {
         quanto_voce_fatura_por_mes: 'string',
         qual_seu_lucro_liquido_mensal: 'string',
         qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos: 'string (URL)',
+        is_opportunity: 'boolean | string (true/false/sim/não)',
+        oportunidade: 'string (alias para is_opportunity)',
       },
+      is_opportunity: 'boolean | string (campo raiz alternativo)',
+      oportunidade: 'string (campo raiz alternativo)',
     },
   })
 }
