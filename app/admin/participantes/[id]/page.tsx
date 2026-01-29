@@ -89,6 +89,8 @@ export default function ParticipantDetail() {
 
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null)
+  const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -315,6 +317,30 @@ export default function ParticipantDetail() {
     setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '' })
   }
 
+  const handleDeleteParticipant = async () => {
+    setDeleting(true)
+    try {
+      // Delete related records first (sales, disc_forms), then the participant
+      const participantId = params.id as string
+
+      // Delete sales
+      await supabase.from('sales').delete().eq('participant_id', participantId)
+      // Delete disc_forms
+      await supabase.from('disc_forms').delete().eq('participant_id', participantId)
+      // Delete participant
+      const { error } = await supabase.from('participants').delete().eq('id', participantId)
+
+      if (error) throw error
+      showToast('Participante excluído com sucesso', 'success')
+      router.push('/admin/participantes')
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao excluir participante', 'error')
+    } finally {
+      setDeleting(false)
+      setDeleteParticipantModal(false)
+    }
+  }
+
   const getFormCode = (form: any) => form.short_code || form.id
 
   const copyFormLink = (form: any) => {
@@ -416,6 +442,10 @@ export default function ParticipantDetail() {
             </div>
           </div>
         </div>
+        <Button variant="danger" onClick={() => setDeleteParticipantModal(true)}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Excluir
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -1226,6 +1256,34 @@ export default function ParticipantDetail() {
           </div>
         </div>
       )}
+
+      {/* Delete Participant Confirmation Modal */}
+      <Modal isOpen={deleteParticipantModal} onClose={() => setDeleteParticipantModal(false)} title="Excluir Participante">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+            <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-red-800">Tem certeza que deseja excluir este participante?</p>
+              <p className="text-sm text-red-600 mt-1">
+                Todos os dados serão removidos permanentemente, incluindo vendas, formulários e análises DISC.
+              </p>
+            </div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600">Participante: <strong>{participant.name}</strong></p>
+            {participant.email && <p className="text-sm text-gray-500">{participant.email}</p>}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setDeleteParticipantModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDeleteParticipant} loading={deleting}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Participante
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
