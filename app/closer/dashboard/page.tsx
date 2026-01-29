@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { StatsCard } from '@/components/shared'
-import { TopClosers } from '@/components/shared/top-closers'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
+import TopClosersRealtime from './TopClosersRealtime'
 
 async function getCloserDashboardData(closerId: string) {
   try {
@@ -19,16 +19,6 @@ async function getCloserDashboardData(closerId: string) {
       .select('*')
       .eq('closer_id', closerId)
 
-    // Get all closers for top 3
-    const { data: allClosers } = await supabase
-      .from('users')
-      .select('*')
-      .eq('role', 'closer')
-
-    const { data: allSales } = await supabase
-      .from('sales')
-      .select('*')
-
     const checkedInParticipants = participants?.filter(
       p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
     ).length || 0
@@ -43,17 +33,6 @@ async function getCloserDashboardData(closerId: string) {
     const salesCount = sales?.length || 0
     const conversionRate = checkedInOpportunities > 0 ? salesCount / checkedInOpportunities : 0
 
-    // Top 3 closers
-    const closerStats = allClosers?.map(closer => {
-      const closerSales = allSales?.filter(s => s.closer_id === closer.id) || []
-      return {
-        ...closer,
-        salesCount: closerSales.length,
-        totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
-        entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
-      }
-    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3) || []
-
     return {
       checkedInParticipants,
       checkedInOpportunities,
@@ -61,7 +40,6 @@ async function getCloserDashboardData(closerId: string) {
       conversionRate,
       totalSalesValue,
       totalEntryValue,
-      topClosers: closerStats,
     }
   } catch (error) {
     console.error('Error fetching closer dashboard data:', error)
@@ -72,7 +50,6 @@ async function getCloserDashboardData(closerId: string) {
       conversionRate: 0,
       totalSalesValue: 0,
       totalEntryValue: 0,
-      topClosers: [],
     }
   }
 }
@@ -133,8 +110,8 @@ export default async function CloserDashboard() {
         </div>
       </section>
 
-      {/* Top 3 Closers - shared component, same for all users */}
-      <TopClosers closers={data.topClosers} />
+      {/* Top 3 Closers - Realtime shared component */}
+      <TopClosersRealtime />
     </div>
   )
 }

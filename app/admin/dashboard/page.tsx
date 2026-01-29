@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Loading } from '@/components/ui'
@@ -19,12 +19,31 @@ export default function AdminDashboard() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [sales, setSales] = useState<(Sale & { closer: User })[]>([])
   const [closers, setClosers] = useState<User[]>([])
-  const hasFetched = useRef(false)
 
   useEffect(() => {
-    if (hasFetched.current) return
-    hasFetched.current = true
     fetchData()
+  }, [])
+
+  // Realtime subscription para atualizar vendas automaticamente
+  useEffect(() => {
+    const channel = supabase
+      .channel('sales-changes-admin')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sales',
+        },
+        () => {
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const fetchData = async () => {
