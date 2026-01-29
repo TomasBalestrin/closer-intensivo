@@ -2,10 +2,28 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Button, Card, CardContent, Loading } from '@/components/ui'
-import { CheckCircle, Sparkles, ChevronRight, ChevronLeft, Flame } from 'lucide-react'
+import { Loading } from '@/components/ui'
+import { CheckCircle, Sparkles, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react'
 
-// 10 Perguntas de Arquétipos (6 opções cada - distribuição equilibrada)
+// ── Bethel Logo SVG Component ──
+function BethelLogo() {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 12C8 8 11 6 15 6H33C37 6 40 8 40 12V16C40 20 37 22 33 22H20L32 22C36 22 39 24 39 28V32C39 36 36 38 32 38H12C8 38 6 36 6 32V28" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M15 6V22M12 38V22" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+      </svg>
+      <div className="text-left">
+        <p className="text-white text-xl font-bold leading-tight">Bethel</p>
+        <p className="text-white/60 text-sm leading-tight">Educação</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Questions Data ──
+
+// 10 Perguntas de Arquétipos (6 opções cada)
 const archetypeQuestions = [
   {
     id: 'q1',
@@ -247,7 +265,7 @@ const openQuestions = [
   }
 ]
 
-// Total de perguntas por seção
+// Totals
 const ARCHETYPE_COUNT = archetypeQuestions.length
 const DISC_COUNT = discQuestions.length
 const OPEN_COUNT = openQuestions.length
@@ -261,6 +279,18 @@ interface ArchetypeResult {
   primaryDescription: string
   secondaryDescription: string
   combinedDescription: string
+}
+
+// ── Background wrapper ──
+const BG = 'min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1f3d] to-[#0a1628]'
+
+// ── Footer ──
+function Footer() {
+  return (
+    <div className="text-center py-6">
+      <p className="text-white/30 text-sm">&copy; 2026 Bethel Educação</p>
+    </div>
+  )
 }
 
 export default function FormPage() {
@@ -283,26 +313,14 @@ export default function FormPage() {
 
   const fetchData = async () => {
     setLoading(true)
-
     try {
       const response = await fetch(`/api/forms/${params.id}`)
-
-      if (!response.ok) {
-        setLoading(false)
-        return
-      }
-
+      if (!response.ok) { setLoading(false); return }
       const data = await response.json()
-
-      if (!data.found) {
-        setLoading(false)
-        return
-      }
+      if (!data.found) { setLoading(false); return }
 
       setParticipant(data.participant)
-      if (data.form?.id) {
-        setFormId(data.form.id)
-      }
+      if (data.form?.id) setFormId(data.form.id)
 
       if (data.isCompleted) {
         setSubmitted(true)
@@ -321,63 +339,47 @@ export default function FormPage() {
     } catch (error) {
       console.error('Error loading form:', error)
     }
-
     setLoading(false)
   }
 
   const getArchetypeIcon = (archetype: string): string => {
     const icons: Record<string, string> = {
-      'Inocente': '🌟',
-      'Cara Comum': '🤝',
-      'Herói': '⚔️',
-      'Cuidador': '💝',
-      'Explorador': '🧭',
-      'Rebelde': '🔥',
-      'Amante': '❤️',
-      'Criador': '🎨',
-      'Bobo da Corte': '🎭',
-      'Sábio': '📚',
-      'Mago': '✨',
-      'Governante': '👑'
+      'Inocente': '🌟', 'Cara Comum': '🤝', 'Herói': '⚔️',
+      'Cuidador': '💝', 'Explorador': '🧭', 'Rebelde': '🔥',
+      'Amante': '❤️', 'Criador': '🎨', 'Bobo da Corte': '🎭',
+      'Sábio': '📚', 'Mago': '✨', 'Governante': '👑'
     }
     return icons[archetype] || '✨'
   }
 
-  // Get current question data
   const getCurrentQuestionData = () => {
     if (currentQuestion < ARCHETYPE_COUNT) {
       return {
         type: 'archetype',
         data: archetypeQuestions[currentQuestion],
         section: 'Descobrindo seu Arquétipo',
-        sectionColor: 'from-purple-600 to-indigo-600'
+        sectionColor: 'from-sky-400 to-blue-500'
       }
     } else if (currentQuestion < ARCHETYPE_COUNT + DISC_COUNT) {
-      const discIndex = currentQuestion - ARCHETYPE_COUNT
       return {
         type: 'disc',
-        data: discQuestions[discIndex],
+        data: discQuestions[currentQuestion - ARCHETYPE_COUNT],
         section: 'Seu Perfil Comportamental',
-        sectionColor: 'from-blue-600 to-cyan-600'
+        sectionColor: 'from-emerald-400 to-teal-500'
       }
     } else {
-      const openIndex = currentQuestion - ARCHETYPE_COUNT - DISC_COUNT
       return {
         type: 'open',
-        data: openQuestions[openIndex],
+        data: openQuestions[currentQuestion - ARCHETYPE_COUNT - DISC_COUNT],
         section: 'Últimas Perguntas',
-        sectionColor: 'from-amber-500 to-orange-500'
+        sectionColor: 'from-amber-400 to-orange-500'
       }
     }
   }
 
   const handleSelectOption = (questionId: string, value: string) => {
     setAnswers({ ...answers, [questionId]: value })
-
-    // Auto-advance after selection with delay
-    setTimeout(() => {
-      handleNext()
-    }, 400)
+    setTimeout(() => handleNext(), 400)
   }
 
   const handleNext = () => {
@@ -401,12 +403,8 @@ export default function FormPage() {
   }
 
   const handleSubmit = async () => {
-    if (!openAnswers.challenge || !openAnswers.desired_change) {
-      return
-    }
-
+    if (!openAnswers.challenge || !openAnswers.desired_change) return
     setSubmitting(true)
-
     try {
       const response = await fetch('/api/forms/analyze', {
         method: 'POST',
@@ -419,17 +417,9 @@ export default function FormPage() {
           desiredChangeAnswer: openAnswers.desired_change,
         }),
       })
-
-      if (!response.ok) {
-        throw new Error('Analysis API error')
-      }
-
+      if (!response.ok) throw new Error('Analysis API error')
       const result = await response.json()
-
-      if (result.archetypes) {
-        setArchetypeResult(result.archetypes)
-      }
-
+      if (result.archetypes) setArchetypeResult(result.archetypes)
       setSubmitted(true)
     } catch (error) {
       console.error('Submit error:', error)
@@ -439,171 +429,180 @@ export default function FormPage() {
     }
   }
 
-  // Check if current question is answered
-  const isCurrentAnswered = () => {
-    const { type, data } = getCurrentQuestionData()
-    if (type === 'open') {
-      return !!openAnswers[data.id]
-    }
-    return !!answers[data.id]
-  }
-
-  // Calculate progress
   const progress = ((currentQuestion + 1) / TOTAL_QUESTIONS) * 100
 
+  // ── Loading ──
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className={`${BG} flex items-center justify-center`}>
         <Loading size="lg" />
       </div>
     )
   }
 
+  // ── Not Found ──
   if (!participant) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
-        <Card className="max-w-md bg-white/10 backdrop-blur-lg border-white/20">
-          <CardContent className="text-center py-12">
-            <p className="text-white/80">Formulário não encontrado ou link inválido.</p>
-          </CardContent>
-        </Card>
+      <div className={`${BG} flex flex-col`}>
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="max-w-md w-full text-center">
+            <BethelLogo />
+            <div className="mt-10 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-2xl p-10">
+              <p className="text-white/70 text-lg">Formulário não encontrado ou link inválido.</p>
+            </div>
+          </div>
+        </div>
+        <Footer />
       </div>
     )
   }
 
-  // Result Screen
+  // ── Result Screen ──
   if (submitted && archetypeResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8 px-4">
+      <div className={`${BG} py-8 px-4`}>
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mb-6 shadow-2xl shadow-amber-500/30">
+          <div className="text-center mb-6">
+            <BethelLogo />
+          </div>
+
+          <div className="text-center mb-10 mt-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mb-6 shadow-2xl shadow-amber-500/20">
               <Sparkles className="h-10 w-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
               Parabéns, {participant?.name?.split(' ')[0]}!
             </h1>
-            <p className="text-white/70">
+            <p className="text-white/50 text-lg">
               Descobrimos seu arquétipo de personalidade
             </p>
           </div>
 
           {/* Primary Archetype */}
-          <Card className="mb-6 bg-white/10 backdrop-blur-lg border-white/20 overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-center">
+          <div className="mb-6 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-sky-500/80 to-blue-600/80 p-8 text-center">
               <div className="text-7xl mb-4">{archetypeResult.primaryIcon}</div>
-              <p className="text-purple-200 text-sm mb-1">Seu arquétipo principal é</p>
+              <p className="text-sky-200 text-sm mb-1">Seu arquétipo principal é</p>
               <h2 className="text-3xl font-bold text-white">
                 {archetypeResult.primary}
               </h2>
             </div>
-          </Card>
+          </div>
 
           {/* Secondary Archetype */}
-          <Card className="mb-6 bg-white/10 backdrop-blur-lg border-white/20">
-            <CardContent className="p-6 text-center">
-              <div className="text-5xl mb-3">{archetypeResult.secondaryIcon}</div>
-              <p className="text-white/60 text-sm mb-1">Com traços de</p>
-              <p className="text-xl font-semibold text-white">
-                {archetypeResult.secondary}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="mb-6 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-2xl p-8 text-center">
+            <div className="text-5xl mb-3">{archetypeResult.secondaryIcon}</div>
+            <p className="text-white/40 text-sm mb-1">Com traços de</p>
+            <p className="text-xl font-semibold text-white">
+              {archetypeResult.secondary}
+            </p>
+          </div>
 
           {/* Combined Description */}
-          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-white mb-3">O que isso significa:</h3>
-              <p className="text-white/80 leading-relaxed">
-                {archetypeResult.combinedDescription}
-              </p>
-              <div className="mt-6 pt-4 border-t border-white/10 text-center">
-                <div className="inline-flex items-center gap-2 text-green-400 text-sm">
-                  <CheckCircle className="h-4 w-4" />
-                  Suas respostas foram salvas com sucesso
-                </div>
+          <div className="bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-2xl p-8">
+            <h3 className="font-semibold text-white mb-4 text-lg">O que isso significa:</h3>
+            <p className="text-white/70 leading-relaxed text-base">
+              {archetypeResult.combinedDescription}
+            </p>
+            <div className="mt-6 pt-5 border-t border-white/[0.08] text-center">
+              <div className="inline-flex items-center gap-2 text-emerald-400 text-sm">
+                <CheckCircle className="h-4 w-4" />
+                Suas respostas foram salvas com sucesso
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
+          <Footer />
         </div>
       </div>
     )
   }
 
-  // Simple thank you if submitted without result
+  // ── Simple thank you ──
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
-        <Card className="max-w-md bg-white/10 backdrop-blur-lg border-white/20">
-          <CardContent className="text-center py-12">
-            <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">
-              Obrigado, {participant?.name?.split(' ')[0]}!
-            </h2>
-            <p className="text-white/70">
-              Suas respostas foram enviadas com sucesso.
-            </p>
-          </CardContent>
-        </Card>
+      <div className={`${BG} flex flex-col`}>
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="max-w-md w-full text-center">
+            <BethelLogo />
+            <div className="mt-10 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-2xl p-10">
+              <CheckCircle className="h-16 w-16 text-emerald-400 mx-auto mb-5" />
+              <h2 className="text-2xl font-bold text-white mb-3">
+                Obrigado, {participant?.name?.split(' ')[0]}!
+              </h2>
+              <p className="text-white/50">
+                Suas respostas foram enviadas com sucesso.
+              </p>
+            </div>
+          </div>
+        </div>
+        <Footer />
       </div>
     )
   }
 
-  // Intro Screen
+  // ══════════════════════════════════════
+  // ── INTRO SCREEN (Bethel Design) ──
+  // ══════════════════════════════════════
   if (showIntro) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 mb-8 shadow-2xl shadow-amber-500/30">
-            <Flame className="h-10 w-10 text-white" />
+      <div className={`${BG} flex flex-col`}>
+        <div className="flex-1 flex items-center justify-center px-4 py-10">
+          <div className="max-w-lg w-full text-center">
+            {/* Logo */}
+            <BethelLogo />
+
+            {/* Title */}
+            <h1 className="mt-10 text-4xl md:text-5xl font-bold italic text-white leading-tight">
+              Intensivo da Alta<br />Performance
+            </h1>
+
+            {/* Subtitle */}
+            <p className="mt-5 text-white/50 text-lg md:text-xl">
+              Transforme seu potencial em resultados extraordinários
+            </p>
+
+            {/* Description */}
+            <p className="mt-8 text-white/40 text-base leading-relaxed max-w-md mx-auto">
+              Você está prestes a dar o primeiro passo rumo à alta performance.
+              Este teste rápido de 3 minutos revelará seus arquétipos de personalidade
+              e perfil comportamental.
+            </p>
+
+            {/* Greeting Card */}
+            <div className="mt-10 bg-white/[0.07] backdrop-blur-xl border border-white/[0.1] rounded-2xl py-8 px-6">
+              <p className="text-white/50 text-lg">Olá,</p>
+              <p className="text-white text-2xl font-bold mt-1">
+                {participant?.name}!
+              </p>
+            </div>
+
+            {/* CTA Button */}
+            <button
+              onClick={() => setShowIntro(false)}
+              className="mt-8 w-full max-w-md mx-auto bg-white text-[#0a1628] font-semibold text-lg py-4 px-8 rounded-full hover:bg-white/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-white/10"
+            >
+              Iniciar Minha Jornada
+              <ArrowRight className="h-5 w-5" />
+            </button>
           </div>
-
-          <h1 className="text-3xl font-bold text-white mb-4">
-            Olá, {participant?.name?.split(' ')[0]}! 👋
-          </h1>
-
-          <p className="text-white/70 mb-8 text-lg leading-relaxed">
-            Vamos descobrir seu <span className="text-purple-400 font-semibold">arquétipo de personalidade</span>.
-            São apenas algumas perguntas rápidas sobre quem você é.
-          </p>
-
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 text-left">
-            <div className="flex items-center gap-3 text-white/80 mb-3">
-              <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-sm">⏱️</div>
-              <span>Leva cerca de <strong className="text-white">3-5 minutos</strong></span>
-            </div>
-            <div className="flex items-center gap-3 text-white/80 mb-3">
-              <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-sm">🎯</div>
-              <span>Responda com <strong className="text-white">sinceridade</strong></span>
-            </div>
-            <div className="flex items-center gap-3 text-white/80">
-              <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-sm">✨</div>
-              <span>Não existem respostas <strong className="text-white">certas ou erradas</strong></span>
-            </div>
-          </div>
-
-          <Button
-            size="lg"
-            onClick={() => setShowIntro(false)}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-xl shadow-lg shadow-purple-500/30 transition-all hover:scale-[1.02]"
-          >
-            Começar
-            <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
         </div>
+        <Footer />
       </div>
     )
   }
 
-  // Question Screen
+  // ══════════════════════════════════════
+  // ── QUESTION SCREEN ──
+  // ══════════════════════════════════════
   const { type, data, section, sectionColor } = getCurrentQuestionData()
   const isLastQuestion = currentQuestion === TOTAL_QUESTIONS - 1
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className={BG}>
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 z-50">
-        <div className="h-1 bg-white/10">
+        <div className="h-1 bg-white/[0.06]">
           <div
             className={`h-full bg-gradient-to-r ${sectionColor} transition-all duration-500 ease-out`}
             style={{ width: `${progress}%` }}
@@ -612,26 +611,33 @@ export default function FormPage() {
       </div>
 
       {/* Header */}
-      <div className="pt-8 pb-4 px-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <button
-            onClick={handlePrev}
-            disabled={currentQuestion === 0}
-            className="p-2 rounded-full bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-
-          <div className="text-center">
-            <p className={`text-sm font-medium bg-gradient-to-r ${sectionColor} bg-clip-text text-transparent`}>
-              {section}
-            </p>
-            <p className="text-white/50 text-xs mt-1">
-              {currentQuestion + 1} de {TOTAL_QUESTIONS}
-            </p>
+      <div className="pt-6 pb-2 px-4">
+        <div className="max-w-2xl mx-auto">
+          {/* Logo small */}
+          <div className="flex items-center justify-center mb-4 opacity-60 scale-75">
+            <BethelLogo />
           </div>
 
-          <div className="w-9" /> {/* Spacer for alignment */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={handlePrev}
+              disabled={currentQuestion === 0}
+              className="p-2.5 rounded-full bg-white/[0.07] text-white/50 hover:bg-white/[0.12] hover:text-white/80 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            <div className="text-center">
+              <p className={`text-sm font-medium bg-gradient-to-r ${sectionColor} bg-clip-text text-transparent`}>
+                {section}
+              </p>
+              <p className="text-white/30 text-xs mt-1">
+                {currentQuestion + 1} de {TOTAL_QUESTIONS}
+              </p>
+            </div>
+
+            <div className="w-10" />
+          </div>
         </div>
       </div>
 
@@ -639,14 +645,14 @@ export default function FormPage() {
       <div className="px-4 pb-8">
         <div className={`max-w-2xl mx-auto transition-all duration-200 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
 
-          {/* Question */}
-          <div className="mb-8">
+          {/* Question Text */}
+          <div className="my-8">
             <h2 className="text-2xl md:text-3xl font-bold text-white text-center leading-tight">
               {data.question}
             </h2>
           </div>
 
-          {/* Options for multiple choice */}
+          {/* Multiple Choice Options */}
           {type !== 'open' && 'options' in data && (
             <div className="space-y-3">
               {data.options.map((option, index) => {
@@ -657,22 +663,22 @@ export default function FormPage() {
                   <button
                     key={option.value}
                     onClick={() => handleSelectOption(data.id, option.value)}
-                    className={`w-full p-4 rounded-xl text-left transition-all duration-200 flex items-start gap-4 group ${
+                    className={`w-full p-4 rounded-2xl text-left transition-all duration-200 flex items-start gap-4 group ${
                       isSelected
-                        ? `bg-gradient-to-r ${sectionColor} text-white shadow-lg`
-                        : 'bg-white/10 backdrop-blur-sm text-white/90 hover:bg-white/20 border border-white/10 hover:border-white/30'
+                        ? `bg-gradient-to-r ${sectionColor} text-white shadow-lg shadow-blue-500/10`
+                        : 'bg-white/[0.07] backdrop-blur-sm text-white/80 hover:bg-white/[0.12] border border-white/[0.08] hover:border-white/[0.15]'
                     }`}
                   >
-                    <span className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${
+                    <span className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-colors ${
                       isSelected
-                        ? 'bg-white/30 text-white'
-                        : 'bg-white/10 text-white/70 group-hover:bg-white/20'
+                        ? 'bg-white/25 text-white'
+                        : 'bg-white/[0.08] text-white/50 group-hover:bg-white/[0.12] group-hover:text-white/70'
                     }`}>
                       {letters[index]}
                     </span>
-                    <span className="flex-1 pt-1">{option.label}</span>
+                    <span className="flex-1 pt-1.5 text-[15px] leading-snug">{option.label}</span>
                     {isSelected && (
-                      <CheckCircle className="h-5 w-5 flex-shrink-0 mt-1" />
+                      <CheckCircle className="h-5 w-5 flex-shrink-0 mt-1.5 text-white" />
                     )}
                   </button>
                 )
@@ -680,50 +686,48 @@ export default function FormPage() {
             </div>
           )}
 
-          {/* Open question */}
+          {/* Open Question */}
           {type === 'open' && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <textarea
                 value={openAnswers[data.id] || ''}
                 onChange={(e) => setOpenAnswers({ ...openAnswers, [data.id]: e.target.value })}
                 placeholder={'placeholder' in data ? data.placeholder : ''}
-                className="w-full p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none min-h-[150px]"
+                className="w-full p-5 rounded-2xl bg-white/[0.07] backdrop-blur-sm border border-white/[0.1] text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-transparent resize-none min-h-[160px] text-base"
                 rows={5}
               />
 
               {isLastQuestion ? (
-                <Button
-                  size="lg"
+                <button
                   onClick={handleSubmit}
-                  loading={submitting}
-                  disabled={!openAnswers.challenge || !openAnswers.desired_change}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-4 rounded-xl shadow-lg shadow-amber-500/30 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                  disabled={submitting || !openAnswers.challenge || !openAnswers.desired_change}
+                  className="w-full bg-white text-[#0a1628] font-semibold text-lg py-4 px-8 rounded-full hover:bg-white/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-white/10"
                 >
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Descobrir meu Arquétipo
-                </Button>
+                  {submitting ? (
+                    <div className="h-5 w-5 border-2 border-[#0a1628]/30 border-t-[#0a1628] rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Descobrir meu Arquétipo
+                    </>
+                  )}
+                </button>
               ) : (
-                <Button
-                  size="lg"
+                <button
                   onClick={handleNext}
                   disabled={!openAnswers[data.id]}
-                  className={`w-full bg-gradient-to-r ${sectionColor} hover:opacity-90 text-white font-semibold py-4 rounded-xl shadow-lg transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100`}
+                  className="w-full bg-white text-[#0a1628] font-semibold text-lg py-4 px-8 rounded-full hover:bg-white/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-lg shadow-white/10"
                 >
                   Continuar
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Button>
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Navigation hint for mobile */}
-      <div className="fixed bottom-6 left-0 right-0 text-center pointer-events-none">
-        <p className="text-white/30 text-xs">
-          {type !== 'open' ? 'Toque para selecionar' : ''}
-        </p>
-      </div>
+      <Footer />
     </div>
   )
 }
