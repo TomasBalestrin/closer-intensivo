@@ -57,7 +57,7 @@ export default function AdminParticipantes() {
     const [participantsRes, closersRes, salesRes] = await Promise.all([
       supabase
         .from('participants')
-        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*), assigned_closer:users!participants_assigned_closer_id_fkey(*)')
+        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*)')
         .order('created_at', { ascending: false }),
       supabase
         .from('users')
