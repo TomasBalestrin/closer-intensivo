@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import Image from 'next/image'
 import { Loading } from '@/components/ui'
 import { CheckCircle, Sparkles, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react'
 
-// ── Bethel Logo SVG Component ──
+// ── Bethel Logo Component ──
 function BethelLogo() {
   return (
     <div className="flex items-center justify-center gap-3">
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 12C8 8 11 6 15 6H33C37 6 40 8 40 12V16C40 20 37 22 33 22H20L32 22C36 22 39 24 39 28V32C39 36 36 38 32 38H12C8 38 6 36 6 32V28" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M15 6V22M12 38V22" stroke="white" strokeWidth="3" strokeLinecap="round"/>
-      </svg>
+      <div className="relative w-10 h-10">
+        <Image src="/icons/logo.png" alt="Bethel" fill className="object-contain" />
+      </div>
       <div className="text-left">
         <p className="text-white text-xl font-bold leading-tight">Bethel</p>
         <p className="text-white/60 text-sm leading-tight">Educação</p>
