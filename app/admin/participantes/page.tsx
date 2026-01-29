@@ -57,7 +57,7 @@ export default function AdminParticipantes() {
     const [participantsRes, closersRes, salesRes] = await Promise.all([
       supabase
         .from('participants')
-        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*)')
+        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*), assigned_closer:users!participants_assigned_closer_id_fkey(*)')
         .order('created_at', { ascending: false }),
       supabase
         .from('users')
@@ -385,14 +385,14 @@ export default function AdminParticipantes() {
                     {participant.is_opportunity && (
                       <Badge variant="success">Oportunidade</Badge>
                     )}
-                    {participant.color && (
-                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color)}`}>
-                        {participant.color === 'rosa' && 'Rosa'}
-                        {participant.color === 'preto' && 'Preto'}
-                        {participant.color === 'azul_claro' && 'Azul Claro'}
-                        {participant.color === 'verde' && 'Verde'}
-                        {participant.color === 'dourado' && 'Dourado'}
-                        {participant.color === 'laranja' && 'Laranja'}
+                    {(participant.color || getColorFromRevenue(participant.revenue)) && (
+                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color || getColorFromRevenue(participant.revenue))}`}>
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'rosa' && 'Rosa'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'preto' && 'Preto'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'azul_claro' && 'Azul Claro'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'verde' && 'Verde'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'dourado' && 'Dourado'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'laranja' && 'Laranja'}
                       </span>
                     )}
                   </div>
