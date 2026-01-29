@@ -1,205 +1,567 @@
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+'use client'
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button, Input, Select, Card, Avatar, Badge, Loading, Modal } from '@/components/ui'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square } from 'lucide-react'
+import { Participant, User } from '@/lib/types'
+import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue } from '@/lib/utils'
 
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
-}
+export default function AdminParticipantes() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; hasSale?: boolean })[]>([])
+  const [closers, setClosers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [funnelFilter, setFunnelFilter] = useState('')
+  const [sellerFilter, setSellerFilter] = useState('')
+  const [unassignedFilter, setUnassignedFilter] = useState(false)
+  const [opportunityFilter, setOpportunityFilter] = useState('')
+  const [saleFilter, setSaleFilter] = useState('')
+  const [colorFilter, setColorFilter] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
 
-export function formatPercentage(value: number): string {
-  return `${(value * 100).toFixed(1)}%`
-}
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
+  const [assignCloserId, setAssignCloserId] = useState('')
 
-export function getColorClass(color: string | null): string {
-  const colorMap: Record<string, string> = {
-    rosa: 'bg-pink-500 text-white',
-    preto: 'bg-gray-900 text-white',
-    azul_claro: 'bg-blue-400 text-white',
-    verde: 'bg-green-500 text-white',
-    dourado: 'bg-yellow-500 text-black',
-    laranja: 'bg-orange-500 text-white',
+  // Import centralized options from utils
+
+  // Create participant form
+  const [newParticipant, setNewParticipant] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    instagram: '',
+    revenue: '',
+    niche: '',
+    funnel: '',
+    badge_name: '',
+    is_opportunity: false,
+  })
+  const [creating, setCreating] = useState(false)
+  const [assigning, setAssigning] = useState(false)
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+
+    const [participantsRes, closersRes, salesRes] = await Promise.all([
+      supabase
+        .from('participants')
+        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'closer'),
+      supabase
+        .from('sales')
+        .select('participant_id'),
+    ])
+
+    const participantsWithSales = participantsRes.data?.map(p => ({
+      ...p,
+      hasSale: salesRes.data?.some(s => s.participant_id === p.id) || false,
+    })) || []
+
+    setParticipants(participantsWithSales)
+    setClosers(closersRes.data || [])
+    setLoading(false)
   }
-  return color ? colorMap[color] || 'bg-gray-200 text-gray-800' : 'bg-gray-200 text-gray-800'
-}
 
-export function getQualificationClass(qualification: string | null): string {
-  const qualMap: Record<string, string> = {
-    baixo: 'bg-red-100 text-red-800',
-    medio: 'bg-amber-100 text-amber-800',
-    alto: 'bg-green-100 text-green-800',
+  const filteredParticipants = participants.filter((p: any) => {
+    const searchLower = search.toLowerCase()
+    const matchesSearch = !search ||
+      p.name?.toLowerCase().includes(searchLower) ||
+      p.email?.toLowerCase().includes(searchLower) ||
+      p.niche?.toLowerCase().includes(searchLower) ||
+      p.instagram?.toLowerCase().includes(searchLower)
+    const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
+    const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
+    const matchesOpportunity = opportunityFilter === '' ||
+      (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
+    const matchesSale = saleFilter === '' ||
+      (saleFilter === 'true' ? p.hasSale : !p.hasSale)
+    const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
+
+    return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale && matchesColor
+  })
+
+  const hasActiveFilters = funnelFilter || sellerFilter || opportunityFilter || saleFilter || colorFilter
+
+  const clearFilters = () => {
+    setFunnelFilter('')
+    setSellerFilter('')
+    setOpportunityFilter('')
+    setSaleFilter('')
+    setColorFilter('')
+    setUnassignedFilter(false)
   }
-  return qualification ? qualMap[qualification] || '' : ''
-}
 
-// Revenue options with color and qualification mapping
-export const FATURAMENTO_OPTIONS = [
-  { value: 'Até R$ 5.000,00', label: 'Até R$ 5.000,00', color: 'rosa', qualification: 'baixo', max: 5000 },
-  { value: 'R$ 5.000,00 até R$ 10.000,00', label: 'R$ 5.000,00 até R$ 10.000,00', color: 'preto', qualification: 'baixo', max: 10000 },
-  { value: 'R$ 10.000,00 até R$ 20.000,00', label: 'R$ 10.000,00 até R$ 20.000,00', color: 'azul_claro', qualification: 'medio', max: 20000 },
-  { value: 'R$ 20.000,00 até R$ 50.000,00', label: 'R$ 20.000,00 até R$ 50.000,00', color: 'verde', qualification: 'medio', max: 50000 },
-  { value: 'R$ 50.000,00 até R$ 100.000,00', label: 'R$ 50.000,00 até R$ 100.000,00', color: 'dourado', qualification: 'alto', max: 100000 },
-  { value: 'R$ 100.000,00 até R$ 250.000,00', label: 'R$ 100.000,00 até R$ 250.000,00', color: 'laranja', qualification: 'alto', max: 250000 },
-  { value: 'R$ 250.000,00 até R$ 500.000,00', label: 'R$ 250.000,00 até R$ 500.000,00', color: 'laranja', qualification: 'alto', max: 500000 },
-  { value: 'Acima de R$ 500.000,00', label: 'Acima de R$ 500.000,00', color: 'laranja', qualification: 'alto', max: Infinity },
-]
+  // Export to CSV
+  const handleExportCSV = () => {
+    const dataToExport = selectedParticipants.length > 0
+      ? filteredParticipants.filter(p => selectedParticipants.includes(p.id))
+      : filteredParticipants
 
-// Normalize any revenue string to a matching FATURAMENTO_OPTIONS value
-// Handles formats like: "R$ 20.000,00 até 50.000,00", "R$ 20.000 a R$ 50.000", etc.
-export function normalizeRevenue(revenue: string | null): string {
-  if (!revenue) return ''
-  // Check if already matches an option exactly
-  const exact = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
-  if (exact) return exact.value
-  // Extract numbers from string
-  const numbers = revenue.replace(/[R$\s]/g, '').match(/[\d.]+/g)
-  if (!numbers || numbers.length === 0) return revenue
-  // Parse the max number (second number, or only number)
-  const maxNum = numbers.length > 1
-    ? parseFloat(numbers[1].replace(/\./g, '').replace(',', '.'))
-    : parseFloat(numbers[0].replace(/\./g, '').replace(',', '.'))
-  // Handle "Até" / below minimum
-  if (revenue.toLowerCase().startsWith('até') || revenue.toLowerCase().startsWith('ate')) {
-    return FATURAMENTO_OPTIONS[0].value
+    exportToCSV(dataToExport, [
+      { key: 'name', label: 'Nome' },
+      { key: 'instagram', label: 'Instagram' },
+      { key: 'revenue', label: 'Faturamento' },
+      { key: 'niche', label: 'Nicho' },
+      { key: 'funnel', label: 'Funil' },
+      { key: 'is_opportunity', label: 'É Oportunidade', format: (v) => formatBoolean(v) },
+      { key: 'qualification', label: 'Qualificação' },
+      { key: 'checked_in_day1', label: 'Check-in Dia 1', format: (v) => formatBoolean(v) },
+      { key: 'checked_in_day2', label: 'Check-in Dia 2', format: (v) => formatBoolean(v) },
+      { key: 'checked_in_day3', label: 'Check-in Dia 3', format: (v) => formatBoolean(v) },
+      { key: 'seller_closer.name', label: 'Vendedor/Convidador' },
+      { key: 'primary_archetype', label: 'Arquétipo Primário' },
+      { key: 'disc_profile', label: 'Perfil DISC' },
+    ], 'participantes')
   }
-  // Handle "Acima de R$ X" - find the range where the number fits as a minimum
-  if (revenue.toLowerCase().includes('acima')) {
-    const num = parseFloat((numbers[0] || '0').replace(/\./g, '').replace(',', '.'))
-    // Find the first range whose max is greater than the extracted number
-    const range = FATURAMENTO_OPTIONS.find(opt => num < opt.max && opt.max !== Infinity)
-    if (range) return range.value
-    return FATURAMENTO_OPTIONS[FATURAMENTO_OPTIONS.length - 1].value
+
+  // Create participant
+  const handleCreateParticipant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreating(true)
+
+    try {
+      const color = getColorFromRevenue(newParticipant.revenue)
+
+      const { error } = await supabase.from('participants').insert({
+        name: newParticipant.name,
+        email: newParticipant.email || null,
+        phone: newParticipant.phone || null,
+        instagram: newParticipant.instagram || null,
+        revenue: newParticipant.revenue || null,
+        niche: newParticipant.niche || null,
+        funnel: newParticipant.funnel || null,
+        badge_name: newParticipant.badge_name || null,
+        is_opportunity: newParticipant.is_opportunity,
+        color: color,
+      })
+
+      if (error) throw error
+
+      setShowCreateModal(false)
+      setNewParticipant({ name: '', email: '', phone: '', instagram: '', revenue: '', niche: '', funnel: '', badge_name: '', is_opportunity: false })
+      fetchData()
+    } catch (error) {
+      console.error('Error creating participant:', error)
+      alert('Erro ao criar participante')
+    } finally {
+      setCreating(false)
+    }
   }
-  // Find matching range by max value
-  const match = FATURAMENTO_OPTIONS.find(opt => opt.max === maxNum)
-  if (match) return match.value
-  // Fuzzy: find closest range
-  const closest = FATURAMENTO_OPTIONS.find(opt => maxNum <= opt.max)
-  if (closest) return closest.value
-  return revenue
-}
 
-// Get color from revenue string (handles any format)
-export function getColorFromRevenue(revenue: string | null): string | null {
-  if (!revenue) return null
-  const normalized = normalizeRevenue(revenue)
-  const option = FATURAMENTO_OPTIONS.find(opt => opt.value === normalized)
-  return option?.color || null
-}
+  // Bulk assign closer
+  const handleBulkAssign = async () => {
+    if (!assignCloserId || selectedParticipants.length === 0) return
 
-// Get qualification from revenue string (handles any format)
-export function getQualificationFromRevenue(revenue: string | null): string | null {
-  if (!revenue) return null
-  const normalized = normalizeRevenue(revenue)
-  const option = FATURAMENTO_OPTIONS.find(opt => opt.value === normalized)
-  return option?.qualification || null
-}
+    setAssigning(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({ seller_closer_id: assignCloserId })
+        .in('id', selectedParticipants)
 
-// Funnel options
-export const FUNIL_OPTIONS = [
-  { value: '', label: 'Selecione...' },
-  { value: 'nenhum', label: 'Nenhum' },
-  { value: '50_scripts', label: '50 scripts' },
-  { value: 'teste_arquetipos', label: 'Teste dos Arquetipos' },
-  { value: 'mpm', label: 'MPM' },
-  { value: 'implementacao_ia_julia', label: 'Implementacao de IA da Julia' },
-  { value: 'social_selling_julia', label: 'Social Selling Julia' },
-  { value: 'social_selling_cleiton', label: 'Social Selling Cleiton' },
-  { value: 'social_selling_bethel', label: 'Social Selling Bethel' },
-  { value: 'social_selling_kennedy', label: 'Social Selling Kennedy' },
-  { value: 'formulario_instagram_cleiton', label: 'Formulario Instagram Cleiton' },
-  { value: 'formulario_instagram_julia', label: 'Formulario Instagram Julia' },
-  { value: 'formulario_instagram_kennedy', label: 'Formulario Instagram Kennedy' },
-  { value: 'formulario_youtube', label: 'Formulario Youtube' },
-  { value: 'indicacao_aluno', label: 'Indicacao de Aluno' },
-  { value: 'indicacao_mentorado', label: 'Indicacao de Mentorado' },
-  { value: 'indicacao_vendedor', label: 'Indicacao de Vendedor' },
-  { value: 'indicacao_elite_premium', label: 'Indicacao Elite Premium' },
-  { value: 'implementacao_comercial', label: 'Implementacao Comercial' },
-  { value: 'implementacao_personalizada_ia', label: 'Implementacao Personalizada IA' },
-  { value: 'mentoria_julia', label: 'Mentoria Julia' },
-  { value: 'elite_premium', label: 'Elite Premium' },
-  { value: 'bethel_club', label: 'Bethel Club' },
-]
+      if (error) throw error
 
-// Parse currency string to number
-export function parseCurrency(value: string): number {
-  const clean = value.replace(/[R$\s.]/g, '').replace(',', '.')
-  return parseFloat(clean) || 0
-}
+      setShowAssignModal(false)
+      setSelectedParticipants([])
+      setAssignCloserId('')
+      fetchData()
+    } catch (error) {
+      console.error('Error assigning closer:', error)
+      alert('Erro ao atribuir closer')
+    } finally {
+      setAssigning(false)
+    }
+  }
 
-export function generateFormUrl(formId: string): string {
-  return `/form/${formId}`
-}
+  // Toggle selection
+  const toggleSelectAll = () => {
+    if (selectedParticipants.length === filteredParticipants.length) {
+      setSelectedParticipants([])
+    } else {
+      setSelectedParticipants(filteredParticipants.map(p => p.id))
+    }
+  }
 
-export function getInstagramUrl(handle: string | null): string | null {
-  if (!handle) return null
-  const cleanHandle = handle.replace('@', '').replace('https://instagram.com/', '').replace('https://www.instagram.com/', '')
-  return `https://instagram.com/${cleanHandle}`
-}
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedParticipants(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
+  }
 
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + '...'
-}
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loading size="lg" />
+      </div>
+    )
+  }
 
-// CSV Export utilities
-export function exportToCSV<T extends Record<string, any>>(
-  data: T[],
-  columns: { key: keyof T | string; label: string; format?: (value: any, row: T) => string }[],
-  filename: string
-): void {
-  if (data.length === 0) return
+  return (
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">Participantes</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+            <Button variant="secondary" onClick={handleExportCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo
+            </Button>
+          </div>
+        </div>
 
-  // Create header row
-  const header = columns.map(col => `"${col.label}"`).join(',')
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar por nome, email, nicho ou Instagram..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant={showFilters ? 'primary' : 'secondary'}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros
+          </Button>
+        </div>
 
-  // Create data rows
-  const rows = data.map(row => {
-    return columns.map(col => {
-      const keys = (col.key as string).split('.')
-      let value: any = row
-      for (const key of keys) {
-        value = value?.[key]
-      }
+        {showFilters && (
+          <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              <Select
+                label="Funil"
+                value={funnelFilter}
+                onChange={(e) => setFunnelFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos os funis' },
+                  ...FUNIL_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })),
+                ]}
+              />
+              <Select
+                label="Cor (Faturamento)"
+                value={colorFilter}
+                onChange={(e) => setColorFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todas as cores' },
+                  { value: 'rosa', label: 'Rosa (até R$ 5k)' },
+                  { value: 'preto', label: 'Preto (R$ 5k - 10k)' },
+                  { value: 'azul_claro', label: 'Azul Claro (R$ 10k - 20k)' },
+                  { value: 'verde', label: 'Verde (R$ 20k - 50k)' },
+                  { value: 'dourado', label: 'Dourado (R$ 50k - 100k)' },
+                  { value: 'laranja', label: 'Laranja (R$ 100k+)' },
+                ]}
+              />
+              <Select
+                label="Vendedor/Convidador"
+                value={sellerFilter}
+                onChange={(e) => setSellerFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'unassigned', label: 'Nenhum' },
+                  ...closers.map(c => ({ value: c.id, label: c.name })),
+                ]}
+              />
+              <Select
+                label="É Oportunidade"
+                value={opportunityFilter}
+                onChange={(e) => setOpportunityFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Sim' },
+                  { value: 'false', label: 'Não' },
+                ]}
+              />
+              <Select
+                label="Foi uma Venda"
+                value={saleFilter}
+                onChange={(e) => setSaleFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Sim' },
+                  { value: 'false', label: 'Não' },
+                ]}
+              />
+            </div>
+            {hasActiveFilters && (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Limpar Filtros
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-      if (col.format) {
-        value = col.format(value, row)
-      }
+      {/* Bulk Actions Bar */}
+      {selectedParticipants.length > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <span className="text-blue-800 font-medium">
+            {selectedParticipants.length} selecionado(s)
+          </span>
+          <Button variant="secondary" size="sm" onClick={() => setShowAssignModal(true)}>
+            <Users className="h-4 w-4 mr-2" />
+            Atribuir Closer
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedParticipants([])}>
+            Limpar seleção
+          </Button>
+        </div>
+      )}
 
-      // Escape quotes and wrap in quotes
-      if (value === null || value === undefined) {
-        return '""'
-      }
-      return `"${String(value).replace(/"/g, '""')}"`
-    }).join(',')
-  }).join('\n')
+      {/* Select All */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleSelectAll}
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+        >
+          {selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0 ? (
+            <CheckSquare className="h-5 w-5 text-blue-600" />
+          ) : (
+            <Square className="h-5 w-5" />
+          )}
+          Selecionar todos
+        </button>
+      </div>
 
-  const csv = `${header}\n${rows}`
+      {/* Participants Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredParticipants.map((participant: any) => (
+          <Card
+            key={participant.id}
+            className={`cursor-pointer hover:shadow-lg transition-shadow ${selectedParticipants.includes(participant.id) ? 'ring-2 ring-blue-500' : ''}`}
+            onClick={() => router.push(`/admin/participantes/${participant.id}`)}
+          >
+            <div className="flex items-start gap-4">
+              <button
+                onClick={(e) => toggleSelect(participant.id, e)}
+                className="mt-1"
+              >
+                {selectedParticipants.includes(participant.id) ? (
+                  <CheckSquare className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <Square className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+              <Avatar
+                src={participant.photo_url}
+                alt={participant.name}
+                size="lg"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-gray-900 truncate">
+                    {participant.name}
+                  </h3>
+                  {participant.is_opportunity && (
+                    <Badge variant="success">Oportunidade</Badge>
+                  )}
+                  {participant.color && (
+                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color)}`}>
+                      {participant.color === 'rosa' && 'Rosa'}
+                      {participant.color === 'preto' && 'Preto'}
+                      {participant.color === 'azul_claro' && 'Azul Claro'}
+                      {participant.color === 'verde' && 'Verde'}
+                      {participant.color === 'dourado' && 'Dourado'}
+                      {participant.color === 'laranja' && 'Laranja'}
+                    </span>
+                  )}
+                </div>
+                {participant.revenue && (
+                  <p className="text-sm text-gray-500">
+                    Faturamento: {participant.revenue}
+                  </p>
+                )}
+                {participant.niche && (
+                  <span
+                    className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${getColorClass(
+                      participant.color
+                    )}`}
+                  >
+                    {participant.niche}
+                  </span>
+                )}
+                {participant.instagram && (
+                  <a
+                    href={getInstagramUrl(participant.instagram) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 mt-2 text-sm text-blue-600 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {participant.instagram}
+                  </a>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-gray-500">
+              <span>
+                Check-ins: {[
+                  participant.checked_in_day1 && 'D1',
+                  participant.checked_in_day2 && 'D2',
+                  participant.checked_in_day3 && 'D3',
+                ].filter(Boolean).join(', ') || 'Nenhum'}
+              </span>
+              {participant.hasSale && (
+                <Badge variant="success">Vendido</Badge>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
 
-  // Create and trigger download
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
+      {filteredParticipants.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Nenhum participante encontrado</p>
+        </div>
+      )}
 
-export function formatDateBR(date: string | Date | null): string {
-  if (!date) return ''
-  const d = new Date(date)
-  return d.toLocaleDateString('pt-BR')
-}
+      {/* Create Participant Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Novo Participante"
+      >
+        <form onSubmit={handleCreateParticipant} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nome *"
+              value={newParticipant.name}
+              onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Nome no Crachá"
+              value={newParticipant.badge_name}
+              onChange={(e) => setNewParticipant({ ...newParticipant, badge_name: e.target.value })}
+              placeholder="Como aparecer no crachá"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Email"
+              type="email"
+              value={newParticipant.email}
+              onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
+              placeholder="email@exemplo.com"
+            />
+            <Input
+              label="Telefone"
+              type="tel"
+              inputMode="tel"
+              value={newParticipant.phone}
+              onChange={(e) => setNewParticipant({ ...newParticipant, phone: e.target.value })}
+              placeholder="(00) 00000-0000"
+            />
+          </div>
+          <Input
+            label="Instagram"
+            value={newParticipant.instagram}
+            onChange={(e) => setNewParticipant({ ...newParticipant, instagram: e.target.value })}
+            placeholder="@usuario"
+          />
+          <Select
+            label="Faturamento (define cor automática)"
+            value={newParticipant.revenue}
+            onChange={(e) => setNewParticipant({ ...newParticipant, revenue: e.target.value })}
+            options={[
+              { value: '', label: 'Selecione o faturamento' },
+              ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
+            ]}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nicho"
+              value={newParticipant.niche}
+              onChange={(e) => setNewParticipant({ ...newParticipant, niche: e.target.value })}
+            />
+            <Input
+              label="Funil"
+              value={newParticipant.funnel}
+              onChange={(e) => setNewParticipant({ ...newParticipant, funnel: e.target.value })}
+            />
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={newParticipant.is_opportunity}
+              onChange={(e) => setNewParticipant({ ...newParticipant, is_opportunity: e.target.checked })}
+              className="rounded border-gray-300"
+            />
+            <span className="text-sm">É uma oportunidade</span>
+          </label>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={creating}>
+              Criar Participante
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-export function formatBoolean(value: boolean | null): string {
-  return value ? 'Sim' : 'Não'
+      {/* Bulk Assign Modal */}
+      <Modal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        title="Atribuir Closer em Massa"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Atribuir closer para {selectedParticipants.length} participante(s) selecionado(s).
+          </p>
+          <Select
+            label="Selecione o Closer"
+            value={assignCloserId}
+            onChange={(e) => setAssignCloserId(e.target.value)}
+            options={[
+              { value: '', label: 'Selecione...' },
+              ...closers.map(c => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setShowAssignModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkAssign}
+              loading={assigning}
+              disabled={!assignCloserId}
+            >
+              Atribuir
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      </div>
+    </>
+  )
 }
