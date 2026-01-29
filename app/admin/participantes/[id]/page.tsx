@@ -60,6 +60,7 @@ export default function ParticipantDetail() {
 
   const [assignCloserModal, setAssignCloserModal] = useState(false)
   const [saleModal, setSaleModal] = useState(false)
+  const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -398,7 +399,9 @@ export default function ParticipantDetail() {
             Voltar
           </Button>
           <div className="flex items-center gap-3">
-            <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
+            <button onClick={() => participant.photo_url && setPhotoModal(true)} className={participant.photo_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}>
+              <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
+            </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
               <div className="flex items-center gap-2 mt-1">
@@ -1204,6 +1207,25 @@ export default function ParticipantDetail() {
           </Button>
         </div>
       </Modal>
+
+      {/* Photo Preview Modal */}
+      {photoModal && participant?.photo_url && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPhotoModal(false)}>
+          <div className="relative max-w-lg max-h-[80vh]">
+            <img
+              src={participant.photo_url}
+              alt={participant.name}
+              className="max-w-full max-h-[80vh] rounded-xl object-contain"
+            />
+            <button
+              onClick={() => setPhotoModal(false)}
+              className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-gray-100"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
