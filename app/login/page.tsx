@@ -26,20 +26,34 @@ export default function LoginPage() {
       })
 
       if (authError) {
-        setError('Email ou senha inválidos')
+        if (authError.message?.includes('Invalid login credentials')) {
+          setError('Email ou senha inválidos. Verifique suas credenciais.')
+        } else if (authError.message?.includes('Email not confirmed')) {
+          setError('Email não confirmado. Contate o administrador.')
+        } else if (authError.message?.includes('too many requests')) {
+          setError('Muitas tentativas de login. Aguarde alguns minutos e tente novamente.')
+        } else {
+          setError(`Erro de autenticação: ${authError.message}`)
+        }
         setLoading(false)
         return
       }
 
       if (data.user) {
         // Get user role
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('role')
           .eq('id', data.user.id)
           .single()
 
-        if (userData?.role === 'admin') {
+        if (userError || !userData) {
+          setError('Usuário autenticado mas não encontrado no sistema. Contate o administrador.')
+          setLoading(false)
+          return
+        }
+
+        if (userData.role === 'admin') {
           router.push('/admin/dashboard')
         } else {
           router.push('/closer/dashboard')
@@ -47,7 +61,7 @@ export default function LoginPage() {
         router.refresh()
       }
     } catch (err) {
-      setError('Ocorreu um erro ao fazer login')
+      setError('Ocorreu um erro ao fazer login. Tente novamente.')
       setLoading(false)
     }
   }
