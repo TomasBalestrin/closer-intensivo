@@ -38,6 +38,7 @@ import {
   RefreshCw,
   Pencil,
   Trash2,
+  Sparkles,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue } from '@/lib/utils'
@@ -124,6 +125,10 @@ export default function ParticipantDetail() {
             archetype_description: wd.archetypes?.description,
             disc_analysis: wd.disc_analysis,
             personality_summary: wd.salesAnalysis?.personality_summary,
+            behavioral_profile: wd.salesAnalysis?.behavioral_profile,
+            archetype_disc_combo: wd.salesAnalysis?.archetype_disc_combo,
+            how_to_approach: wd.salesAnalysis?.how_to_approach,
+            communication_style: wd.salesAnalysis?.communication_style,
             sales_approach: wd.salesAnalysis?.sales_approach,
             decision_triggers: wd.salesAnalysis?.decision_triggers,
             predicted_objections: wd.salesAnalysis?.predicted_objections,
@@ -976,7 +981,7 @@ export default function ParticipantDetail() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* DISC Profile badge */}
+                    {/* DISC Profile badge + Archetype */}
                     <div className="flex items-center gap-4 p-4 bg-white/80 rounded-xl border border-blue-100">
                       <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">
                         {participant.disc_profile?.charAt(0)}
@@ -996,12 +1001,15 @@ export default function ParticipantDetail() {
                           <p className="text-sm text-gray-500">Arquétipo</p>
                           <p className="text-lg font-bold text-purple-700">
                             {getArchetypeIcon(participant.primary_archetype)} {participant.primary_archetype}
+                            {participant.secondary_archetype && (
+                              <span className="text-gray-400 font-normal text-sm"> + {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}</span>
+                            )}
                           </p>
                         </div>
                       )}
                     </div>
 
-                    {/* Personality Summary */}
+                    {/* Quem é essa pessoa - AI personality summary */}
                     {participant.personality_summary && (
                       <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
                         <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -1012,16 +1020,34 @@ export default function ParticipantDetail() {
                       </div>
                     )}
 
-                    {/* DISC Analysis description from API */}
-                    {participant.disc_analysis && (participant.disc_analysis as any).profile_description && (
+                    {/* Perfil Comportamental Detalhado - AI behavioral_profile */}
+                    {(participant as any).behavioral_profile && (
                       <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
-                        <h4 className="font-semibold text-gray-800 mb-2">Como se comporta</h4>
-                        <p className="text-gray-700 leading-relaxed">{(participant.disc_analysis as any).profile_description}</p>
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <Brain className="h-4 w-4 text-indigo-600" />
+                          Comportamento e Padrões
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant as any).behavioral_profile}</p>
                       </div>
                     )}
 
-                    {/* Archetype + Secondary */}
-                    {participant.primary_archetype && participant.archetype_description && (
+                    {/* Combinação DISC + Arquétipos - AI archetype_disc_combo */}
+                    {(participant as any).archetype_disc_combo && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-purple-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-600" />
+                          {participant.primary_archetype ? `${getArchetypeIcon(participant.primary_archetype)} ${participant.primary_archetype}` : 'Arquétipo'}
+                          {participant.secondary_archetype && (
+                            <span className="text-gray-400 font-normal text-sm">+ {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}</span>
+                          )}
+                          <span className="text-gray-400 font-normal text-sm">× DISC {participant.disc_profile}</span>
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant as any).archetype_disc_combo}</p>
+                      </div>
+                    )}
+
+                    {/* Fallback: static archetype description when AI combo not available */}
+                    {!(participant as any).archetype_disc_combo && participant.primary_archetype && participant.archetype_description && (
                       <div className="p-4 bg-white/80 rounded-xl border border-purple-100">
                         <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                           <span>{getArchetypeIcon(participant.primary_archetype)}</span>
@@ -1031,6 +1057,36 @@ export default function ParticipantDetail() {
                           )}
                         </h4>
                         <p className="text-gray-700 leading-relaxed">{participant.archetype_description}</p>
+                      </div>
+                    )}
+
+                    {/* Estilo de Comunicação - AI communication_style */}
+                    {(participant as any).communication_style && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-amber-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-amber-600" />
+                          Estilo de Comunicação
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant as any).communication_style}</p>
+                      </div>
+                    )}
+
+                    {/* Como Abordar - AI how_to_approach */}
+                    {(participant as any).how_to_approach && (
+                      <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                        <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-green-600" />
+                          Como Agir com Essa Pessoa
+                        </h4>
+                        <p className="text-green-900 leading-relaxed">{(participant as any).how_to_approach}</p>
+                      </div>
+                    )}
+
+                    {/* Fallback: static DISC behavior when no AI personality */}
+                    {!participant.personality_summary && participant.disc_analysis && (participant.disc_analysis as any).profile_description && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
+                        <h4 className="font-semibold text-gray-800 mb-2">Como se comporta</h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant.disc_analysis as any).profile_description}</p>
                       </div>
                     )}
                   </CardContent>
