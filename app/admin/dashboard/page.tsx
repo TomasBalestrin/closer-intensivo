@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Avatar, Loading } from '@/components/ui'
@@ -18,12 +18,31 @@ export default function AdminDashboard() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [sales, setSales] = useState<(Sale & { closer: User })[]>([])
   const [closers, setClosers] = useState<User[]>([])
-  const hasFetched = useRef(false)
 
   useEffect(() => {
-    if (hasFetched.current) return
-    hasFetched.current = true
     fetchData()
+  }, [])
+
+  // Realtime subscription para atualizar vendas automaticamente
+  useEffect(() => {
+    const channel = supabase
+      .channel('sales-changes-admin')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sales',
+        },
+        () => {
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const fetchData = async () => {
@@ -92,18 +111,18 @@ export default function AdminDashboard() {
 
   const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
 
-  // Top closers - memoized (GLOBAL - não afetado pelo filtro de dia)
-const topClosers = useMemo(() => {
-  return closers.map(closer => {
-    const closerSales = sales.filter(s => s.closer_id === closer.id)  // ← usa 'sales' ao invés de 'filteredSales'
-    return {
-      ...closer,
-      salesCount: closerSales.length,
-      totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
-      entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
-    }
-  }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
-}, [closers, sales])  // ← dependência agora é 'sales'
+  // Top closers - memoized (GLOBAL - igual para todos, não afetado pelo filtro de dia)
+  const topClosers = useMemo(() => {
+    return closers.map(closer => {
+      const closerSales = sales.filter(s => s.closer_id === closer.id)
+      return {
+        ...closer,
+        salesCount: closerSales.length,
+        totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
+        entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
+      }
+    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
+  }, [closers, sales])
 
   const { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue } = stats
   const { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales } = qualificationStats
@@ -299,7 +318,7 @@ const topClosers = useMemo(() => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {topClosers.map((closer, i) => (
-                <div key={closer.id} className={`flex items-center gap-4 p-4 rounded-xl ${i === 0 ? 'bg-amber-50 border-2 border-amber-200' : i === 1 ? 'bg-gray-50 border border-gray-200' : 'bg-orange-50 border border-orange-200'}`}>
+                <div key={closer.id} className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-300 ${i === 0 ? 'bg-amber-50 border-2 border-amber-200' : i === 1 ? 'bg-gray-50 border border-gray-200' : 'bg-orange-50 border border-orange-200'}`}>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}>{i + 1}</div>
                   <Avatar src={closer.photo_url} alt={closer.name} size="lg" />
                   <div className="flex-1">
