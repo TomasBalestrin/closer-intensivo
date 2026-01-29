@@ -244,6 +244,14 @@ IMPORTANTE:
         secondaryIcon: secondaryInfo.icon,
         primaryDescription: primaryInfo.description,
         secondaryDescription: secondaryInfo.description,
+        primaryMotto: primaryInfo.motto || '',
+        secondaryMotto: secondaryInfo.motto || '',
+        primaryTraits: primaryInfo.traits || [],
+        secondaryTraits: secondaryInfo.traits || [],
+        primaryStrengths: primaryInfo.strengths || [],
+        secondaryStrengths: secondaryInfo.strengths || [],
+        primaryDetailedDescription: primaryInfo.detailedDescription || '',
+        secondaryDetailedDescription: secondaryInfo.detailedDescription || '',
         combinedDescription
       }
     })
