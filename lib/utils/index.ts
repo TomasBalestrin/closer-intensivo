@@ -39,27 +39,60 @@ export function getQualificationClass(qualification: string | null): string {
 
 // Revenue options with color and qualification mapping
 export const FATURAMENTO_OPTIONS = [
-  { value: 'Até R$ 5.000', label: 'Até R$ 5.000', color: 'rosa', qualification: 'baixo' },
-  { value: 'R$ 5.000 a R$ 10.000', label: 'R$ 5.000 a R$ 10.000', color: 'preto', qualification: 'baixo' },
-  { value: 'R$ 10.000 a R$ 20.000', label: 'R$ 10.000 a R$ 20.000', color: 'azul_claro', qualification: 'medio' },
-  { value: 'R$ 20.000 a R$ 50.000', label: 'R$ 20.000 a R$ 50.000', color: 'verde', qualification: 'medio' },
-  { value: 'R$ 50.000 a R$ 100.000', label: 'R$ 50.000 a R$ 100.000', color: 'dourado', qualification: 'alto' },
-  { value: 'R$ 100.000 a R$ 250.000', label: 'R$ 100.000 a R$ 250.000', color: 'laranja', qualification: 'alto' },
-  { value: 'R$ 250.000 a R$ 500.000', label: 'R$ 250.000 a R$ 500.000', color: 'laranja', qualification: 'alto' },
-  { value: 'Acima de R$ 500.000', label: 'Acima de R$ 500.000', color: 'laranja', qualification: 'alto' },
+  { value: 'Até R$ 5.000,00', label: 'Até R$ 5.000,00', color: 'rosa', qualification: 'baixo', max: 5000 },
+  { value: 'R$ 5.000,00 até R$ 10.000,00', label: 'R$ 5.000,00 até R$ 10.000,00', color: 'preto', qualification: 'baixo', max: 10000 },
+  { value: 'R$ 10.000,00 até R$ 20.000,00', label: 'R$ 10.000,00 até R$ 20.000,00', color: 'azul_claro', qualification: 'medio', max: 20000 },
+  { value: 'R$ 20.000,00 até R$ 50.000,00', label: 'R$ 20.000,00 até R$ 50.000,00', color: 'verde', qualification: 'medio', max: 50000 },
+  { value: 'R$ 50.000,00 até R$ 100.000,00', label: 'R$ 50.000,00 até R$ 100.000,00', color: 'dourado', qualification: 'alto', max: 100000 },
+  { value: 'R$ 100.000,00 até R$ 250.000,00', label: 'R$ 100.000,00 até R$ 250.000,00', color: 'laranja', qualification: 'alto', max: 250000 },
+  { value: 'R$ 250.000,00 até R$ 500.000,00', label: 'R$ 250.000,00 até R$ 500.000,00', color: 'laranja', qualification: 'alto', max: 500000 },
+  { value: 'Acima de R$ 500.000,00', label: 'Acima de R$ 500.000,00', color: 'laranja', qualification: 'alto', max: Infinity },
 ]
 
-// Get color from revenue string
+// Normalize any revenue string to a matching FATURAMENTO_OPTIONS value
+// Handles formats like: "R$ 20.000,00 até 50.000,00", "R$ 20.000 a R$ 50.000", etc.
+export function normalizeRevenue(revenue: string | null): string {
+  if (!revenue) return ''
+  // Check if already matches an option exactly
+  const exact = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
+  if (exact) return exact.value
+  // Extract numbers from string
+  const numbers = revenue.replace(/[R$\s]/g, '').match(/[\d.]+/g)
+  if (!numbers || numbers.length === 0) return revenue
+  // Parse the max number (second number, or only number)
+  const maxNum = numbers.length > 1
+    ? parseFloat(numbers[1].replace(/\./g, '').replace(',', '.'))
+    : parseFloat(numbers[0].replace(/\./g, '').replace(',', '.'))
+  // Handle "Até" / below minimum
+  if (revenue.toLowerCase().startsWith('até') || revenue.toLowerCase().startsWith('ate')) {
+    return FATURAMENTO_OPTIONS[0].value
+  }
+  // Handle "Acima" / above maximum
+  if (revenue.toLowerCase().includes('acima')) {
+    return FATURAMENTO_OPTIONS[FATURAMENTO_OPTIONS.length - 1].value
+  }
+  // Find matching range by max value
+  const match = FATURAMENTO_OPTIONS.find(opt => opt.max === maxNum)
+  if (match) return match.value
+  // Fuzzy: find closest range
+  const closest = FATURAMENTO_OPTIONS.find(opt => maxNum <= opt.max)
+  if (closest) return closest.value
+  return revenue
+}
+
+// Get color from revenue string (handles any format)
 export function getColorFromRevenue(revenue: string | null): string | null {
   if (!revenue) return null
-  const option = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
+  const normalized = normalizeRevenue(revenue)
+  const option = FATURAMENTO_OPTIONS.find(opt => opt.value === normalized)
   return option?.color || null
 }
 
-// Get qualification from revenue string
+// Get qualification from revenue string (handles any format)
 export function getQualificationFromRevenue(revenue: string | null): string | null {
   if (!revenue) return null
-  const option = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
+  const normalized = normalizeRevenue(revenue)
+  const option = FATURAMENTO_OPTIONS.find(opt => opt.value === normalized)
   return option?.qualification || null
 }
 

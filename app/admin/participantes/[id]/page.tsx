@@ -40,7 +40,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue } from '@/lib/utils'
 
 type TabType = 'dados' | 'vendas' | 'disc' | 'acoes'
 
@@ -119,7 +119,7 @@ export default function ParticipantDetail() {
         badge_name: participantRes.data.badge_name || '',
         net_profit: participantRes.data.net_profit || '',
         partner: participantRes.data.partner || '',
-        revenue: participantRes.data.revenue || '',
+        revenue: normalizeRevenue(participantRes.data.revenue) || '',
       })
     }
 
