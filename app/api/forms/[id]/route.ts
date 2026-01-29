@@ -28,7 +28,9 @@ export async function GET(
       .single()
 
     if (formData?.participant) {
-      const isCompleted = !!(formData.completed_at || formData.participant.form_completed_at)
+      // Only check this specific form's completed_at, NOT the participant's global form_completed_at
+      // A participant may have completed a previous form but this one is still pending
+      const isCompleted = !!formData.completed_at
       return NextResponse.json({
         found: true,
         participant: formData.participant,
