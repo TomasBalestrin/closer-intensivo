@@ -92,18 +92,18 @@ export default function AdminDashboard() {
 
   const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
 
-  // Top closers - memoized
-  const topClosers = useMemo(() => {
-    return closers.map(closer => {
-      const closerSales = filteredSales.filter(s => s.closer_id === closer.id)
-      return {
-        ...closer,
-        salesCount: closerSales.length,
-        totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
-        entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
-      }
-    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
-  }, [closers, filteredSales])
+  // Top closers - memoized (GLOBAL - não afetado pelo filtro de dia)
+const topClosers = useMemo(() => {
+  return closers.map(closer => {
+    const closerSales = sales.filter(s => s.closer_id === closer.id)  // ← usa 'sales' ao invés de 'filteredSales'
+    return {
+      ...closer,
+      salesCount: closerSales.length,
+      totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
+      entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
+    }
+  }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
+}, [closers, sales])  // ← dependência agora é 'sales'
 
   const { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue } = stats
   const { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales } = qualificationStats
