@@ -565,8 +565,7 @@ export default function FormPage() {
             {/* Description */}
             <p className="mt-8 text-white/40 text-base leading-relaxed max-w-md mx-auto">
               Você está prestes a dar o primeiro passo rumo à alta performance.
-              Este teste rápido de 3 minutos revelará seus arquétipos de personalidade
-              e perfil comportamental.
+              Responda as perguntas a seguir para iniciar sua jornada.
             </p>
 
             {/* Greeting Card */}
