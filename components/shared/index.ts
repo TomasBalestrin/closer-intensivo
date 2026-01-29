@@ -1,5 +1,7 @@
 export { Sidebar } from './sidebar'
 export { DashboardLayout } from './dashboard-layout'
 export { StatsCard } from './stats-card'
+export { TopClosers } from './top-closers'
+export type { TopCloserData } from './top-closers'
 export { CredenciamentoChart, QualificacaoChart, CloserPerformanceChart } from './dashboard-charts'
 export { Skeleton, CardSkeleton, StatsSkeleton } from './skeleton'

@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { StatsCard } from '@/components/shared'
+import { TopClosers } from '@/components/shared/top-closers'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
-import { Avatar } from '@/components/ui'
-import { Award } from 'lucide-react'
 
 async function getCloserDashboardData(closerId: string) {
   try {
@@ -134,57 +133,8 @@ export default async function CloserDashboard() {
         </div>
       </section>
 
-      {/* Top 3 Closers */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Top 3 Closers</h2>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          {data.topClosers.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">Nenhum closer com vendas ainda</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {data.topClosers.map((closer, index) => (
-                <div
-                  key={closer.id}
-                  className={`text-center p-4 rounded-lg ${
-                    index === 0 ? 'bg-yellow-50' : index === 1 ? 'bg-gray-50' : 'bg-orange-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-center mb-3">
-                    <Award
-                      className={`h-8 w-8 ${
-                        index === 0
-                          ? 'text-yellow-500'
-                          : index === 1
-                          ? 'text-gray-400'
-                          : 'text-orange-500'
-                      }`}
-                    />
-                    <span className="text-2xl font-bold ml-1">{index + 1}º</span>
-                  </div>
-                  <Avatar
-                    src={closer.photo_url}
-                    alt={closer.name}
-                    size="xl"
-                    className="mx-auto mb-3"
-                  />
-                  <h3 className="font-semibold text-gray-900">{closer.name}</h3>
-                  <div className="mt-3 space-y-1 text-sm">
-                    <p className="text-gray-600">
-                      Vendas: <span className="font-medium">{closer.salesCount}</span>
-                    </p>
-                    <p className="text-gray-600">
-                      Valor: <span className="font-medium">{formatCurrency(closer.totalValue)}</span>
-                    </p>
-                    <p className="text-gray-600">
-                      Entrada: <span className="font-medium">{formatCurrency(closer.entryValue)}</span>
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Top 3 Closers - shared component, same for all users */}
+      <TopClosers closers={data.topClosers} />
     </div>
   )
 }
