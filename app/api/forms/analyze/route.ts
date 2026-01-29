@@ -43,6 +43,10 @@ export async function POST(request: Request) {
     // Prepare default sales insights
     let salesAnalysis = {
       personality_summary: '',
+      behavioral_profile: '',
+      archetype_disc_combo: '',
+      how_to_approach: '',
+      communication_style: '',
       sales_approach: discProfileInfo.approachTips,
       decision_triggers: primaryTraitInfo?.motivators || [],
       predicted_objections: generateDefaultObjections(discResult.primary, discResult.secondary),
@@ -55,7 +59,7 @@ export async function POST(request: Request) {
     const openaiKey = process.env.OPENAI_API_KEY
     if (openaiKey) {
       try {
-        const prompt = `Analise os seguintes dados e gere insights de venda ESPECÍFICOS e ACIONÁVEIS.
+        const prompt = `Analise os seguintes dados e gere uma análise COMPLETA do perfil comportamental e insights de venda.
 
 ## Dados do Participante
 - Nome: ${participant?.name || 'Não informado'}
@@ -67,6 +71,11 @@ export async function POST(request: Request) {
 - ${discProfileInfo.description}
 - Primário: ${primaryTraitInfo?.name} - ${primaryTraitInfo?.buyingStyle}
 - Secundário: ${secondaryTraitInfo?.name}
+
+## Arquétipos de Personalidade
+- Arquétipo Primário: ${archetypeResult.primary} - ${primaryInfo.description}
+- Arquétipo Secundário: ${archetypeResult.secondary} - ${secondaryInfo.description}
+- Combinação: ${combinedDescription}
 
 ## Respostas Abertas
 - Maior desafio atual: "${challengeAnswer || 'Não informado'}"
@@ -80,30 +89,38 @@ export async function POST(request: Request) {
 
 Gere um JSON com EXATAMENTE esta estrutura:
 {
-  "personality_summary": "Resumo de 2-3 frases sobre como essa pessoa pensa, decide e o que valoriza. Seja específico ao nicho dela.",
-  "decision_triggers": ["gatilho1", "gatilho2", "gatilho3"],
+  "personality_summary": "Análise detalhada de 4-6 frases sobre quem é essa pessoa. Descreva como ela pensa, toma decisões, o que valoriza na vida e nos negócios, como se comporta em grupo e individualmente. Combine as informações do perfil DISC com os arquétipos para criar um retrato completo. Personalize ao nicho e faturamento.",
+  "behavioral_profile": "Análise aprofundada de 4-5 frases sobre o comportamento dessa pessoa. Como ela age sob pressão, como lida com conflitos, qual seu ritmo de tomada de decisão, como se relaciona com autoridade, como reage a mudanças. Baseie-se no perfil DISC ${discResult.profile} e no arquétipo ${archetypeResult.primary}.",
+  "archetype_disc_combo": "Análise de 3-4 frases combinando o arquétipo ${archetypeResult.primary} + ${archetypeResult.secondary} com o perfil DISC ${discResult.profile}. Explique como essa combinação específica se manifesta na personalidade, nos pontos fortes e nas vulnerabilidades dessa pessoa.",
+  "how_to_approach": "Guia prático de 4-5 frases sobre COMO se comunicar e agir com essa pessoa. Tom de voz ideal, linguagem corporal, ritmo da conversa, o que falar primeiro, o que evitar no início. Seja específico e acionável.",
+  "communication_style": "2-3 frases sobre o estilo de comunicação dessa pessoa: como ela fala, o que espera ouvir, se prefere dados ou histórias, se é direta ou indireta.",
+  "decision_triggers": ["gatilho1", "gatilho2", "gatilho3", "gatilho4", "gatilho5"],
   "predicted_objections": [
-    {"objection": "objeção específica", "script": "script palavra por palavra de como responder"},
+    {"objection": "objeção específica ao nicho", "script": "script palavra por palavra de como responder"},
     {"objection": "objeção 2", "script": "script 2"},
-    {"objection": "objeção 3", "script": "script 3"}
+    {"objection": "objeção 3", "script": "script 3"},
+    {"objection": "objeção 4", "script": "script 4"}
   ],
   "closing_strategies": [
-    {"name": "nome da técnica", "script": "frase exata de fechamento"},
+    {"name": "nome da técnica", "script": "frase exata de fechamento personalizada"},
     {"name": "técnica 2", "script": "frase 2"},
     {"name": "técnica 3", "script": "frase 3"}
   ],
-  "things_to_avoid": ["erro1", "erro2", "erro3"],
-  "quick_tips": ["dica1", "dica2", "dica3"]
+  "things_to_avoid": ["erro1 - explique por que evitar", "erro2 - explique", "erro3 - explique", "erro4 - explique"],
+  "quick_tips": ["dica prática 1", "dica prática 2", "dica prática 3", "dica prática 4"]
 }
 
 IMPORTANTE:
-- Personalize para o NICHO da pessoa
-- Use o DESAFIO e a MUDANÇA DESEJADA nas objeções e fechamentos
+- Personalize TUDO para o NICHO e FATURAMENTO da pessoa
+- Use o DESAFIO e a MUDANÇA DESEJADA para contextualizar
+- A personality_summary deve ser RICA e DETALHADA, não genérica
+- O behavioral_profile deve explicar padrões de comportamento reais
+- O how_to_approach deve ser um guia prático que qualquer vendedor possa seguir
 - Scripts devem ser frases prontas para usar na ligação
 - Responda APENAS o JSON, sem texto adicional`
 
         const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 25000)
+        const timeout = setTimeout(() => controller.abort(), 30000)
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -113,12 +130,12 @@ IMPORTANTE:
           },
           body: JSON.stringify({
             model: 'gpt-4o-mini',
-            max_tokens: 2000,
+            max_tokens: 3000,
             temperature: 0.7,
             messages: [
               {
                 role: 'system',
-                content: 'Você é um especialista em perfis comportamentais e vendas consultivas. Responda APENAS com JSON válido, sem texto adicional, sem markdown.'
+                content: 'Você é um especialista em perfis comportamentais DISC, arquétipos de personalidade e vendas consultivas. Gere análises profundas e personalizadas. Responda APENAS com JSON válido, sem texto adicional, sem markdown.'
               },
               { role: 'user', content: prompt }
             ],

@@ -36,6 +36,8 @@ import {
   Mail,
   Sparkles,
   RefreshCw,
+  Zap,
+  User as UserIcon,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS } from '@/lib/utils'
@@ -126,6 +128,10 @@ export default function CloserParticipantDetail() {
             archetype_description: wd.archetypes?.description,
             disc_analysis: wd.disc_analysis,
             personality_summary: wd.salesAnalysis?.personality_summary,
+            behavioral_profile: wd.salesAnalysis?.behavioral_profile,
+            archetype_disc_combo: wd.salesAnalysis?.archetype_disc_combo,
+            how_to_approach: wd.salesAnalysis?.how_to_approach,
+            communication_style: wd.salesAnalysis?.communication_style,
             sales_approach: wd.salesAnalysis?.sales_approach,
             decision_triggers: wd.salesAnalysis?.decision_triggers,
             predicted_objections: wd.salesAnalysis?.predicted_objections,
@@ -654,18 +660,74 @@ export default function CloserParticipantDetail() {
                 </Card>
               </div>
 
-              {/* Additional Info Below */}
-              {/* Personality Summary */}
-              {participant.personality_summary && (
-                <Card>
+              {/* ── Análise de Perfil Detalhada ── */}
+              {(participant.personality_summary || (participant as any).behavioral_profile || (participant as any).how_to_approach) && (
+                <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-purple-600" />
-                      Resumo da Personalidade
+                      <UserIcon className="h-5 w-5 text-blue-600" />
+                      Análise de Perfil
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-700">{participant.personality_summary}</p>
+                  <CardContent className="space-y-4">
+                    {/* Quem é essa pessoa */}
+                    {participant.personality_summary && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-blue-600" />
+                          Quem é essa pessoa
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{participant.personality_summary}</p>
+                      </div>
+                    )}
+
+                    {/* Comportamento e Padrões */}
+                    {(participant as any).behavioral_profile && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-blue-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <Brain className="h-4 w-4 text-indigo-600" />
+                          Comportamento e Padrões
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant as any).behavioral_profile}</p>
+                      </div>
+                    )}
+
+                    {/* Combinação DISC + Arquétipos */}
+                    {(participant as any).archetype_disc_combo && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-purple-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-purple-600" />
+                          {participant.primary_archetype ? `${getArchetypeIcon(participant.primary_archetype)} ${participant.primary_archetype}` : 'Arquétipo'}
+                          {participant.secondary_archetype && (
+                            <span className="text-gray-400 font-normal text-sm">+ {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}</span>
+                          )}
+                          <span className="text-gray-400 font-normal text-sm">× DISC {participant.disc_profile}</span>
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant as any).archetype_disc_combo}</p>
+                      </div>
+                    )}
+
+                    {/* Estilo de Comunicação */}
+                    {(participant as any).communication_style && (
+                      <div className="p-4 bg-white/80 rounded-xl border border-amber-100">
+                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-amber-600" />
+                          Estilo de Comunicação
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">{(participant as any).communication_style}</p>
+                      </div>
+                    )}
+
+                    {/* Como Agir com Essa Pessoa */}
+                    {(participant as any).how_to_approach && (
+                      <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                        <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-green-600" />
+                          Como Agir com Essa Pessoa
+                        </h4>
+                        <p className="text-green-900 leading-relaxed">{(participant as any).how_to_approach}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
