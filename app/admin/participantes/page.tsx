@@ -11,7 +11,7 @@ import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
-  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; hasSale?: boolean })[]>([])
+  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; closer?: User | null; hasSale?: boolean })[]>([])
   const [closers, setClosers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -28,8 +28,6 @@ export default function AdminParticipantes() {
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [assignCloserId, setAssignCloserId] = useState('')
-
-  // Import centralized options from utils
 
   // Create participant form
   const [newParticipant, setNewParticipant] = useState({
