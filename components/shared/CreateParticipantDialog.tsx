@@ -10,20 +10,11 @@ import {
   useToast,
 } from '@/components/ui'
 import { Plus } from 'lucide-react'
+import { FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, getColorClass, getQualificationClass } from '@/lib/utils'
 
 interface CreateParticipantDialogProps {
   onSuccess: () => void
 }
-
-// Mapeamento de faturamento para cor
-const FATURAMENTO_OPTIONS = [
-  { value: 'Até R$ 5.000,00', label: 'Até R$ 5.000,00', color: 'rosa' },
-  { value: 'R$ 5.000,00 até R$ 10.000,00', label: 'R$ 5.000 a R$ 10.000', color: 'preto' },
-  { value: 'R$ 10.000,00 até R$ 30.000,00', label: 'R$ 10.000 a R$ 30.000', color: 'azul_claro' },
-  { value: 'R$ 30.000,00 até R$ 50.000,00', label: 'R$ 30.000 a R$ 50.000', color: 'dourado' },
-  { value: 'R$ 50.000,00 até R$ 100.000,00', label: 'R$ 50.000 a R$ 100.000', color: 'laranja' },
-  { value: 'Acima de R$ 100.000,00', label: 'Acima de R$ 100.000', color: 'verde' },
-]
 
 export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogProps) {
   const supabase = createClient()
@@ -61,11 +52,6 @@ export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogPr
     })
   }
 
-  const getColorFromRevenue = (revenue: string): string | null => {
-    const option = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
-    return option?.color || null
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -78,6 +64,7 @@ export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogPr
 
     try {
       const color = getColorFromRevenue(formData.revenue)
+      const qualification = getQualificationFromRevenue(formData.revenue)
 
       const { error } = await supabase.from('participants').insert({
         name: formData.name.trim(),
@@ -92,6 +79,7 @@ export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogPr
         partner: formData.partner.trim() || null,
         is_opportunity: formData.is_opportunity,
         color: color,
+        qualification: qualification,
       })
 
       if (error) throw error
@@ -106,6 +94,9 @@ export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogPr
       setLoading(false)
     }
   }
+
+  const selectedColor = getColorFromRevenue(formData.revenue)
+  const selectedQualification = getQualificationFromRevenue(formData.revenue)
 
   return (
     <>
@@ -195,20 +186,30 @@ export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogPr
           <div className="flex items-center gap-2 pt-2">
             <input
               type="checkbox"
-              id="is_opportunity"
+              id="create_is_opportunity"
               checked={formData.is_opportunity}
               onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="is_opportunity" className="text-sm text-gray-700">
+            <label htmlFor="create_is_opportunity" className="text-sm text-gray-700">
               Marcar como Oportunidade
             </label>
           </div>
 
           {formData.revenue && (
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <span className="text-gray-500">Cor automática: </span>
-              <span className="font-medium capitalize">{getColorFromRevenue(formData.revenue)?.replace('_', ' ')}</span>
+            <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Cor:</span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${getColorClass(selectedColor)}`}>
+                  {selectedColor?.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Qualificação:</span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${getQualificationClass(selectedQualification)}`}>
+                  {selectedQualification === 'alto' ? 'Alto' : selectedQualification === 'medio' ? 'Médio' : 'Baixo'}
+                </span>
+              </div>
             </div>
           )}
 

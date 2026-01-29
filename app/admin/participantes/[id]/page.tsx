@@ -40,7 +40,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass } from '@/lib/utils'
 
 type TabType = 'dados' | 'vendas' | 'disc' | 'acoes'
 
@@ -65,6 +65,7 @@ export default function ParticipantDetail() {
   const [formData, setFormData] = useState({
     funnel: '',
     seller_closer_id: '',
+    seller_closer_other: '',
     mentee_inviter: '',
     companion: '',
     is_opportunity: false,
@@ -75,6 +76,7 @@ export default function ParticipantDetail() {
     badge_name: '',
     net_profit: '',
     partner: '',
+    revenue: '',
   })
 
   const [saleData, setSaleData] = useState({
@@ -106,6 +108,7 @@ export default function ParticipantDetail() {
       setFormData({
         funnel: participantRes.data.funnel || '',
         seller_closer_id: participantRes.data.seller_closer_id || '',
+        seller_closer_other: (participantRes.data as any).seller_closer_other || '',
         mentee_inviter: participantRes.data.mentee_inviter || '',
         companion: participantRes.data.companion || '',
         is_opportunity: participantRes.data.is_opportunity,
@@ -116,6 +119,7 @@ export default function ParticipantDetail() {
         badge_name: participantRes.data.badge_name || '',
         net_profit: participantRes.data.net_profit || '',
         partner: participantRes.data.partner || '',
+        revenue: participantRes.data.revenue || '',
       })
     }
 
@@ -128,21 +132,26 @@ export default function ParticipantDetail() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      // Auto-calculate color and qualification from revenue
+      const autoColor = getColorFromRevenue(formData.revenue) || formData.color || null
+      const autoQualification = getQualificationFromRevenue(formData.revenue) || formData.qualification || null
+
       const { error } = await supabase
         .from('participants')
         .update({
           funnel: formData.funnel || null,
-          seller_closer_id: formData.seller_closer_id || null,
+          seller_closer_id: formData.seller_closer_id === 'outros' ? null : (formData.seller_closer_id || null),
           mentee_inviter: formData.mentee_inviter || null,
           companion: formData.companion || null,
           is_opportunity: formData.is_opportunity,
           times_called: formData.times_called,
-          color: formData.color || null,
-          qualification: formData.qualification || null,
+          color: autoColor,
+          qualification: autoQualification,
           cpf: formData.cpf || null,
           badge_name: formData.badge_name || null,
           net_profit: formData.net_profit || null,
           partner: formData.partner || null,
+          revenue: formData.revenue || null,
         })
         .eq('id', params.id)
 
@@ -379,8 +388,8 @@ export default function ParticipantDetail() {
                 {participant.is_opportunity && <Badge variant="success">Oportunidade</Badge>}
                 {hasDiscProfile && <Badge variant="info">DISC: {participant.disc_profile}</Badge>}
                 {participant.qualification && (
-                  <Badge variant={participant.qualification === 'super' ? 'success' : participant.qualification === 'medio' ? 'warning' : 'danger'}>
-                    {participant.qualification === 'super' ? 'Super' : participant.qualification === 'medio' ? 'Médio' : 'Baixo'}
+                  <Badge variant={participant.qualification === 'alto' ? 'success' : participant.qualification === 'medio' ? 'warning' : 'danger'}>
+                    {participant.qualification === 'alto' ? 'Alto' : participant.qualification === 'medio' ? 'Médio' : 'Baixo'}
                   </Badge>
                 )}
               </div>
@@ -530,20 +539,59 @@ export default function ParticipantDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
+                    <Select
+                      label="Faturamento"
+                      value={formData.revenue}
+                      onChange={(e) => {
+                        const rev = e.target.value
+                        const autoColor = getColorFromRevenue(rev) || ''
+                        const autoQual = getQualificationFromRevenue(rev) || ''
+                        setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
+                      }}
+                      options={[
+                        { value: '', label: 'Selecione...' },
+                        ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
+                      ]}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cor (automático)</label>
+                        <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getColorClass(formData.color) || 'bg-gray-100 text-gray-500'}`}>
+                          {formData.color ? FATURAMENTO_OPTIONS.find(o => o.color === formData.color)?.color?.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()) || formData.color : 'Selecione faturamento'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Qualificação (automático)</label>
+                        <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getQualificationClass(formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
+                          {formData.qualification === 'alto' ? 'Alto Qualificado' : formData.qualification === 'medio' ? 'Médio Qualificado' : formData.qualification === 'baixo' ? 'Baixo Qualificado' : 'Selecione faturamento'}
+                        </div>
+                      </div>
+                    </div>
+                    <Select
                       label="Funil de Origem"
                       value={formData.funnel}
                       onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                      options={FUNIL_OPTIONS}
                     />
                     <Select
                       label="Vendedor/Convidador"
                       value={formData.seller_closer_id}
-                      onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value, seller_closer_other: e.target.value === 'outros' ? formData.seller_closer_other : '' })}
                       options={[
                         { value: '', label: 'Selecione...' },
                         ...closers.map(c => ({ value: c.id, label: c.name })),
+                        { value: 'outros', label: 'Outros' },
                       ]}
                     />
+                    {formData.seller_closer_id === 'outros' && (
+                      <Input
+                        label="Nome do Vendedor"
+                        value={formData.seller_closer_other}
+                        onChange={(e) => setFormData({ ...formData, seller_closer_other: e.target.value })}
+                        placeholder="Digite o nome do vendedor"
+                        required
+                      />
+                    )}
                     <Input
                       label="Mentorado que Convidou"
                       value={formData.mentee_inviter}
@@ -559,31 +607,6 @@ export default function ParticipantDetail() {
                       value={formData.times_called.toString()}
                       onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
                       options={[0,1,2,3,4].map(n => ({ value: n.toString(), label: n.toString() }))}
-                    />
-                    <Select
-                      label="Cor"
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      options={[
-                        { value: '', label: 'Selecione...' },
-                        { value: 'rosa', label: 'Rosa (Até R$ 5.000)' },
-                        { value: 'preto', label: 'Preto (R$ 5.000 a R$ 10.000)' },
-                        { value: 'azul_claro', label: 'Azul Claro (R$ 10.000 a R$ 30.000)' },
-                        { value: 'dourado', label: 'Dourado (R$ 30.000 a R$ 50.000)' },
-                        { value: 'laranja', label: 'Laranja (R$ 50.000 a R$ 100.000)' },
-                        { value: 'verde', label: 'Verde (Acima de R$ 100.000)' },
-                      ]}
-                    />
-                    <Select
-                      label="Qualificação"
-                      value={formData.qualification}
-                      onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
-                      options={[
-                        { value: '', label: 'Selecione...' },
-                        { value: 'super', label: 'Super Qualificado' },
-                        { value: 'medio', label: 'Médio Qualificado' },
-                        { value: 'baixo', label: 'Baixo Qualificado' },
-                      ]}
                     />
                     <div className="flex items-center pt-6">
                       <Checkbox

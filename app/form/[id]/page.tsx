@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button, Card, CardContent, Loading } from '@/components/ui'
 import { CheckCircle, Sparkles, ChevronRight, ChevronLeft, Flame } from 'lucide-react'
 
@@ -266,8 +265,8 @@ interface ArchetypeResult {
 
 export default function FormPage() {
   const params = useParams()
-  const supabase = createClient()
   const [participant, setParticipant] = useState<any>(null)
+  const [formId, setFormId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -285,54 +284,42 @@ export default function FormPage() {
   const fetchData = async () => {
     setLoading(true)
 
-    const { data: formData } = await supabase
-      .from('disc_forms')
-      .select('*, participant:participants(*)')
-      .eq('id', params.id)
-      .single()
+    try {
+      const response = await fetch(`/api/forms/${params.id}`)
 
-    if (formData?.participant) {
-      setParticipant(formData.participant)
-      if (formData.completed_at || formData.participant.form_completed_at) {
+      if (!response.ok) {
+        setLoading(false)
+        return
+      }
+
+      const data = await response.json()
+
+      if (!data.found) {
+        setLoading(false)
+        return
+      }
+
+      setParticipant(data.participant)
+      if (data.form?.id) {
+        setFormId(data.form.id)
+      }
+
+      if (data.isCompleted) {
         setSubmitted(true)
-        if (formData.participant.primary_archetype) {
+        if (data.participant.primary_archetype) {
           setArchetypeResult({
-            primary: formData.participant.primary_archetype,
-            secondary: formData.participant.secondary_archetype,
-            primaryIcon: getArchetypeIcon(formData.participant.primary_archetype),
-            secondaryIcon: getArchetypeIcon(formData.participant.secondary_archetype),
+            primary: data.participant.primary_archetype,
+            secondary: data.participant.secondary_archetype,
+            primaryIcon: getArchetypeIcon(data.participant.primary_archetype),
+            secondaryIcon: getArchetypeIcon(data.participant.secondary_archetype),
             primaryDescription: '',
             secondaryDescription: '',
-            combinedDescription: formData.participant.archetype_description || ''
+            combinedDescription: data.participant.archetype_description || ''
           })
         }
       }
-      setLoading(false)
-      return
-    }
-
-    const { data: participantData } = await supabase
-      .from('participants')
-      .select('*')
-      .eq('id', params.id)
-      .single()
-
-    if (participantData) {
-      setParticipant(participantData)
-      if (participantData.form_completed_at) {
-        setSubmitted(true)
-        if (participantData.primary_archetype) {
-          setArchetypeResult({
-            primary: participantData.primary_archetype,
-            secondary: participantData.secondary_archetype,
-            primaryIcon: getArchetypeIcon(participantData.primary_archetype),
-            secondaryIcon: getArchetypeIcon(participantData.secondary_archetype),
-            primaryDescription: '',
-            secondaryDescription: '',
-            combinedDescription: participantData.archetype_description || ''
-          })
-        }
-      }
+    } catch (error) {
+      console.error('Error loading form:', error)
     }
 
     setLoading(false)
@@ -426,6 +413,7 @@ export default function FormPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participantId: participant.id,
+          formId: formId || params.id,
           answers,
           challengeAnswer: openAnswers.challenge,
           desiredChangeAnswer: openAnswers.desired_change,
