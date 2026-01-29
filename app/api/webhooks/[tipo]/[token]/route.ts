@@ -1,0 +1,339 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { validateSignature } from '@/lib/webhooks/signature'
+import { getColorFromRevenue, getQualificationFromRevenue } from '@/lib/utils'
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+
+// Clean instagram handle
+function cleanInstagram(value: string | undefined): string | null {
+  if (!value) return null
+  return value.replace(/^@/, '').trim() || null
+}
+
+// Handler: Participantes
+async function processarParticipante(body: any, supabase: any) {
+  const fields = body.fields || body
+  const name = fields?.nome_completo || fields?.nome || body?.nome || body?.name
+  const email = fields?.digite_seu_melhor_email || fields?.email || body?.email
+  const phone = fields?.digite_seu_whatsapp || fields?.telefone || body?.telefone
+  const instagram = cleanInstagram(fields?.qual_seu_do_instagram || fields?.instagram)
+  const cpf = fields?.digite_o_seu_cpf_ou_cnpj || fields?.cpf || body?.cpf
+  const badge_name = fields?.nome_para_cracha || fields?.badge_name
+  const partner = fields?.voce_tem_socio || fields?.partner
+  const niche = fields?.qual_sua_area_de_atuacao_profissional || fields?.niche || body?.niche
+  const revenue = fields?.quanto_voce_fatura_por_mes || fields?.revenue || body?.faturamento
+  const net_profit = fields?.qual_seu_lucro_liquido_mensal || fields?.net_profit
+  const photo_url = fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos || fields?.photo_url
+  const external_id = body?.participant_id || body?.external_id
+
+  if (!name) {
+    return { status: 400, error: 'Nome é obrigatório' }
+  }
+
+  // Check for existing participant
+  let existingParticipant = null
+  if (external_id) {
+    const { data } = await supabase.from('participants').select('id').eq('external_id', external_id).single()
+    existingParticipant = data
+  }
+  if (!existingParticipant && email) {
+    const { data } = await supabase.from('participants').select('id').eq('email', email).single()
+    existingParticipant = data
+  }
+  if (!existingParticipant && cpf) {
+    const { data } = await supabase.from('participants').select('id').eq('cpf', cpf).single()
+    existingParticipant = data
+  }
+  if (!existingParticipant && name) {
+    const { data } = await supabase.from('participants').select('id').eq('name', name).single()
+    existingParticipant = data
+  }
+
+  const color = getColorFromRevenue(revenue) || null
+  const qualification = getQualificationFromRevenue(revenue) || null
+
+  const participantData = {
+    name,
+    email: email || null,
+    phone: phone || null,
+    photo_url: photo_url || null,
+    revenue: revenue || null,
+    niche: niche || null,
+    instagram,
+    external_id: external_id || null,
+    cpf: cpf || null,
+    badge_name: badge_name || null,
+    partner: partner || null,
+    net_profit: net_profit || null,
+    color,
+    qualification,
+    webhook_data: body,
+  }
+
+  if (existingParticipant) {
+    const { error } = await supabase
+      .from('participants')
+      .update(participantData)
+      .eq('id', existingParticipant.id)
+    if (error) throw error
+    return {
+      status: 200,
+      message: 'Participante atualizado',
+      data: { id: existingParticipant.id, nome: name },
+      entidade_tipo: 'participante',
+      entidade_id: existingParticipant.id,
+    }
+  } else {
+    const { data: newP, error } = await supabase
+      .from('participants')
+      .insert(participantData)
+      .select('id')
+      .single()
+    if (error) throw error
+    return {
+      status: 201,
+      message: 'Participante criado',
+      data: { id: newP.id, nome: name },
+      entidade_tipo: 'participante',
+      entidade_id: newP.id,
+    }
+  }
+}
+
+// Handler: Credenciamentos
+async function processarCredenciamento(body: any, supabase: any) {
+  const email = body.email
+  const cpf = body.cpf
+  const participante_id = body.participante_id
+  const status_credenciamento = body.status_credenciamento || 'checked_in'
+
+  // Find participant
+  let participant = null
+  if (participante_id) {
+    const { data } = await supabase.from('participants').select('id').eq('id', participante_id).single()
+    participant = data
+  }
+  if (!participant && email) {
+    const { data } = await supabase.from('participants').select('id').eq('email', email).single()
+    participant = data
+  }
+  if (!participant && cpf) {
+    const { data } = await supabase.from('participants').select('id').eq('cpf', cpf).single()
+    participant = data
+  }
+
+  if (!participant) {
+    return { status: 404, error: 'Participante não encontrado' }
+  }
+
+  // Map status to check-in fields
+  const updateData: Record<string, any> = {}
+  const dia = body.dia || 1
+
+  if (status_credenciamento === 'checked_in') {
+    if (dia === 1) updateData.checked_in_day1 = true
+    else if (dia === 2) updateData.checked_in_day2 = true
+    else if (dia === 3) updateData.checked_in_day3 = true
+  } else if (status_credenciamento === 'cancelado') {
+    if (dia === 1) updateData.checked_in_day1 = false
+    else if (dia === 2) updateData.checked_in_day2 = false
+    else if (dia === 3) updateData.checked_in_day3 = false
+  }
+
+  if (Object.keys(updateData).length > 0) {
+    const { error } = await supabase
+      .from('participants')
+      .update(updateData)
+      .eq('id', participant.id)
+    if (error) throw error
+  }
+
+  return {
+    status: 200,
+    message: `Credenciamento ${status_credenciamento}`,
+    data: { participante_id: participant.id, status: status_credenciamento, dia },
+    entidade_tipo: 'participante',
+    entidade_id: participant.id,
+  }
+}
+
+// Handler: Vendas
+async function processarVenda(body: any, supabase: any) {
+  const email = body.participante_email || body.email
+  const produto = body.produto || body.product
+  const valor_total = body.valor_total || body.total_value
+  const valor_entrada = body.valor_entrada || body.entry_value || 0
+
+  if (!email || !produto || valor_total === undefined) {
+    return { status: 400, error: 'participante_email, produto e valor_total são obrigatórios' }
+  }
+
+  // Find participant
+  const { data: participant } = await supabase
+    .from('participants')
+    .select('id, closer_id')
+    .eq('email', email)
+    .single()
+
+  if (!participant) {
+    return { status: 404, error: 'Participante não encontrado pelo email informado' }
+  }
+
+  const { data: sale, error } = await supabase
+    .from('sales')
+    .insert({
+      participant_id: participant.id,
+      closer_id: participant.closer_id || '00000000-0000-0000-0000-000000000000',
+      product: produto,
+      total_value: parseFloat(valor_total),
+      entry_value: parseFloat(valor_entrada),
+      negotiation_type: body.negotiation_type || body.metodo_pagamento || 'webhook',
+    })
+    .select('id')
+    .single()
+
+  if (error) throw error
+
+  return {
+    status: 201,
+    message: 'Venda registrada',
+    data: { id: sale.id, participante_id: participant.id },
+    entidade_tipo: 'venda',
+    entidade_id: sale.id,
+  }
+}
+
+type HandlerResult = {
+  status: number
+  error?: string
+  message?: string
+  data?: Record<string, any>
+  entidade_tipo?: string
+  entidade_id?: string
+}
+
+type WebhookHandler = (body: any, supabase: any) => Promise<HandlerResult>
+
+const handlers: Record<string, WebhookHandler> = {
+  participantes: processarParticipante,
+  credenciamentos: processarCredenciamento,
+  vendas: processarVenda,
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: { tipo: string; token: string } }
+) {
+  const supabase = getSupabase()
+  const inicio = Date.now()
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+
+  try {
+    // Validate webhook by token
+    const { data: webhook } = await supabase
+      .from('webhooks')
+      .select('*')
+      .eq('tipo', 'inbound')
+      .eq('categoria', params.tipo)
+      .eq('token', params.token)
+      .eq('ativo', true)
+      .single()
+
+    if (!webhook) {
+      return NextResponse.json(
+        { success: false, error: 'Webhook não encontrado ou inativo', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+
+    // Validate signature if configured
+    if (webhook.secret_key) {
+      const signature = request.headers.get('x-webhook-signature')
+      if (!validateSignature(body, webhook.secret_key, signature)) {
+        return NextResponse.json(
+          { success: false, error: 'Assinatura inválida', code: 'INVALID_SIGNATURE' },
+          { status: 401 }
+        )
+      }
+    }
+
+    const handler = handlers[params.tipo]
+    if (!handler) {
+      return NextResponse.json(
+        { success: false, error: 'Tipo de webhook não suportado', code: 'INVALID_TYPE' },
+        { status: 400 }
+      )
+    }
+
+    const resultado = await handler(body, supabase)
+    const duracao = Date.now() - inicio
+
+    if (resultado.error) {
+      // Log error
+      await supabase.from('webhook_logs').insert({
+        webhook_id: webhook.id,
+        direcao: 'inbound',
+        evento: `${params.tipo}.error`,
+        request_body: body,
+        duracao_ms: duracao,
+        status: 'error',
+        erro_mensagem: resultado.error,
+        ip_origem: ip,
+      })
+
+      return NextResponse.json(
+        { success: false, error: resultado.error },
+        { status: resultado.status }
+      )
+    }
+
+    // Log success
+    await supabase.from('webhook_logs').insert({
+      webhook_id: webhook.id,
+      direcao: 'inbound',
+      evento: `${params.tipo}.received`,
+      request_body: body,
+      response_status: resultado.status,
+      duracao_ms: duracao,
+      status: 'success',
+      entidade_tipo: resultado.entidade_tipo,
+      entidade_id: resultado.entidade_id,
+      ip_origem: ip,
+    })
+
+    // Update stats
+    await supabase.rpc('incrementar_webhook_sucesso', { p_webhook_id: webhook.id })
+
+    return NextResponse.json(
+      { success: true, message: resultado.message, data: resultado.data },
+      { status: resultado.status }
+    )
+  } catch (error: any) {
+    const duracao = Date.now() - inicio
+
+    // Log error
+    try {
+      await supabase.from('webhook_logs').insert({
+        direcao: 'inbound',
+        evento: `${params.tipo}.error`,
+        duracao_ms: duracao,
+        status: 'error',
+        erro_mensagem: error.message,
+        ip_origem: ip,
+      })
+    } catch {}
+
+    return NextResponse.json(
+      { success: false, error: error.message || 'Erro interno', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    )
+  }
+}
