@@ -18,6 +18,7 @@ export default function AdminParticipantes() {
   const [funnelFilter, setFunnelFilter] = useState('')
   const [sellerFilter, setSellerFilter] = useState('')
   const [unassignedFilter, setUnassignedFilter] = useState(false)
+  const [assignedCloserFilter, setAssignedCloserFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
@@ -86,20 +87,22 @@ export default function AdminParticipantes() {
       p.instagram?.toLowerCase().includes(searchLower)
     const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
     const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
+    const matchesAssignedCloser = !assignedCloserFilter || (assignedCloserFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === assignedCloserFilter)
     const matchesOpportunity = opportunityFilter === '' ||
       (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
     const matchesSale = saleFilter === '' ||
       (saleFilter === 'true' ? p.hasSale : !p.hasSale)
     const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
 
-    return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale && matchesColor
+    return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor
   })
 
-  const hasActiveFilters = funnelFilter || sellerFilter || opportunityFilter || saleFilter || colorFilter
+  const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter
 
   const clearFilters = () => {
     setFunnelFilter('')
     setSellerFilter('')
+    setAssignedCloserFilter('')
     setOpportunityFilter('')
     setSaleFilter('')
     setColorFilter('')
@@ -288,6 +291,16 @@ export default function AdminParticipantes() {
                 ]}
               />
               <Select
+                label="Vendedor Atribuído"
+                value={assignedCloserFilter}
+                onChange={(e) => setAssignedCloserFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'unassigned', label: 'Nenhum' },
+                  ...closers.map(c => ({ value: c.id, label: c.name })),
+                ]}
+              />
+              <Select
                 label="É Oportunidade"
                 value={opportunityFilter}
                 onChange={(e) => setOpportunityFilter(e.target.value)}
@@ -375,12 +388,22 @@ export default function AdminParticipantes() {
                 size="lg"
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold text-gray-900 truncate">
                     {participant.name}
                   </h3>
                   {participant.is_opportunity && (
                     <Badge variant="success">Oportunidade</Badge>
+                  )}
+                  {participant.color && (
+                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color)}`}>
+                      {participant.color === 'rosa' && 'Rosa'}
+                      {participant.color === 'preto' && 'Preto'}
+                      {participant.color === 'azul_claro' && 'Azul Claro'}
+                      {participant.color === 'verde' && 'Verde'}
+                      {participant.color === 'dourado' && 'Dourado'}
+                      {participant.color === 'laranja' && 'Laranja'}
+                    </span>
                   )}
                 </div>
                 {participant.revenue && (
