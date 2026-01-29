@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       .eq('id', participantId)
       .single()
 
-    // Prepare Claude API prompt for sales insights
+    // Prepare default sales insights
     let salesAnalysis = {
       personality_summary: '',
       sales_approach: discProfileInfo.approachTips,
@@ -51,11 +51,11 @@ export async function POST(request: Request) {
       quick_tips: discProfileInfo.approachTips.slice(0, 3)
     }
 
-    // If Anthropic API key is available, use Claude for enhanced analysis
-    const anthropicKey = process.env.ANTHROPIC_API_KEY
-    if (anthropicKey) {
+    // If OpenAI API key is available, use GPT for enhanced analysis
+    const openaiKey = process.env.OPENAI_API_KEY
+    if (openaiKey) {
       try {
-        const prompt = `Você é um especialista em perfis comportamentais e vendas consultivas. Analise os seguintes dados e gere insights de venda ESPECÍFICOS e ACIONÁVEIS.
+        const prompt = `Analise os seguintes dados e gere insights de venda ESPECÍFICOS e ACIONÁVEIS.
 
 ## Dados do Participante
 - Nome: ${participant?.name || 'Não informado'}
@@ -103,19 +103,25 @@ IMPORTANTE:
 - Responda APENAS o JSON, sem texto adicional`
 
         const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 15000)
+        const timeout = setTimeout(() => controller.abort(), 25000)
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': anthropicKey,
-            'anthropic-version': '2023-06-01',
+            'Authorization': `Bearer ${openaiKey}`,
           },
           body: JSON.stringify({
-            model: 'claude-3-haiku-20240307',
+            model: 'gpt-4o-mini',
             max_tokens: 2000,
-            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            messages: [
+              {
+                role: 'system',
+                content: 'Você é um especialista em perfis comportamentais e vendas consultivas. Responda APENAS com JSON válido, sem texto adicional, sem markdown.'
+              },
+              { role: 'user', content: prompt }
+            ],
           }),
           signal: controller.signal,
         })
@@ -124,7 +130,7 @@ IMPORTANTE:
 
         if (response.ok) {
           const data = await response.json()
-          const content = data.content[0].text
+          const content = data.choices[0]?.message?.content || ''
 
           try {
             // Extract JSON from markdown code block if present
@@ -133,20 +139,51 @@ IMPORTANTE:
 
             if (jsonMatch) {
               const jsonStr = jsonMatch[1] || jsonMatch[0]
-              const claudeAnalysis = JSON.parse(jsonStr)
-              salesAnalysis = { ...salesAnalysis, ...claudeAnalysis }
+              const aiAnalysis = JSON.parse(jsonStr)
+              salesAnalysis = { ...salesAnalysis, ...aiAnalysis }
             }
           } catch (parseError) {
-            console.error('Error parsing Claude response:', parseError)
+            console.error('Error parsing OpenAI response:', parseError)
           }
+        } else {
+          const errBody = await response.text()
+          console.error('OpenAI API error response:', response.status, errBody)
         }
-      } catch (claudeError) {
-        console.error('Claude API error:', claudeError)
+      } catch (apiError) {
+        console.error('OpenAI API error:', apiError)
       }
     }
 
-    // Update participant with all analysis data (fault-tolerant)
-    // Try full update first, fallback to minimal if columns don't exist
+    // Update participant with all analysis data
+    // Strategy: Always save webhook_data first (guaranteed to work), then try individual columns
+    const allAnalysisData = {
+      archetypes: { primary: archetypeResult.primary, secondary: archetypeResult.secondary, description: combinedDescription },
+      disc: { profile: discResult.profile, scores: discResult.scores },
+      disc_analysis: {
+        profile_name: discProfileInfo.profile,
+        profile_description: discProfileInfo.description,
+        primary_trait: primaryTraitInfo,
+        secondary_trait: secondaryTraitInfo
+      },
+      salesAnalysis,
+      challengeAnswer,
+      desiredChangeAnswer,
+    }
+
+    // Step 1: Always save to webhook_data + form_completed_at (these columns always exist)
+    const { error: webhookError } = await supabase
+      .from('participants')
+      .update({
+        form_completed_at: new Date().toISOString(),
+        webhook_data: allAnalysisData,
+      })
+      .eq('id', participantId)
+
+    if (webhookError) {
+      console.error('webhook_data update failed:', webhookError.message)
+    }
+
+    // Step 2: Try to save to individual columns (works if migration_002 was applied)
     const fullUpdate = {
       primary_archetype: archetypeResult.primary,
       secondary_archetype: archetypeResult.secondary,
@@ -171,38 +208,15 @@ IMPORTANTE:
       quick_tips: salesAnalysis.quick_tips,
       challenge_answer: challengeAnswer,
       desired_change_answer: desiredChangeAnswer,
-      form_completed_at: new Date().toISOString()
     }
 
-    const minimalUpdate = {
-      form_completed_at: new Date().toISOString(),
-      webhook_data: {
-        archetypes: { primary: archetypeResult.primary, secondary: archetypeResult.secondary, description: combinedDescription },
-        disc: { profile: discResult.profile, scores: discResult.scores },
-        salesAnalysis,
-        challengeAnswer,
-        desiredChangeAnswer,
-      }
-    }
-
-    // Try full update
-    let { error: updateError } = await supabase
+    const { error: fullError } = await supabase
       .from('participants')
       .update(fullUpdate)
       .eq('id', participantId)
 
-    // If full update fails (missing columns), try minimal
-    if (updateError) {
-      console.error('Full update failed, trying minimal:', updateError.message)
-      const { error: minError } = await supabase
-        .from('participants')
-        .update(minimalUpdate)
-        .eq('id', participantId)
-
-      if (minError) {
-        console.error('Minimal update also failed:', minError.message)
-        // Don't block - still return result to user
-      }
+    if (fullError) {
+      console.error('Individual columns update failed (migration_002 may not be applied):', fullError.message)
     }
 
     // Also update disc_forms record with completion status and answers

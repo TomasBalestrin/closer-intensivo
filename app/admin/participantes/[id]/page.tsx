@@ -107,22 +107,50 @@ export default function ParticipantDetail() {
     ])
 
     if (participantRes.data) {
-      setParticipant(participantRes.data)
-      const normalizedRev = normalizeRevenue(participantRes.data.revenue) || ''
+      // Hydrate analysis data from webhook_data if individual columns are missing
+      let p = participantRes.data
+      if (!p.disc_profile && p.webhook_data) {
+        const wd = p.webhook_data as any
+        if (wd.disc?.profile) {
+          p = {
+            ...p,
+            disc_profile: wd.disc.profile,
+            disc_score_d: wd.disc.scores?.D,
+            disc_score_i: wd.disc.scores?.I,
+            disc_score_s: wd.disc.scores?.S,
+            disc_score_c: wd.disc.scores?.C,
+            primary_archetype: wd.archetypes?.primary,
+            secondary_archetype: wd.archetypes?.secondary,
+            archetype_description: wd.archetypes?.description,
+            disc_analysis: wd.disc_analysis,
+            personality_summary: wd.salesAnalysis?.personality_summary,
+            sales_approach: wd.salesAnalysis?.sales_approach,
+            decision_triggers: wd.salesAnalysis?.decision_triggers,
+            predicted_objections: wd.salesAnalysis?.predicted_objections,
+            closing_strategies: wd.salesAnalysis?.closing_strategies,
+            things_to_avoid: wd.salesAnalysis?.things_to_avoid,
+            quick_tips: wd.salesAnalysis?.quick_tips,
+            challenge_answer: wd.challengeAnswer,
+            desired_change_answer: wd.desiredChangeAnswer,
+          }
+        }
+      }
+      setParticipant(p)
+      const normalizedRev = normalizeRevenue(p.revenue) || ''
       setFormData({
-        funnel: participantRes.data.funnel || '',
-        seller_closer_id: participantRes.data.seller_closer_id || '',
-        seller_closer_other: (participantRes.data as any).seller_closer_other || '',
-        mentee_inviter: participantRes.data.mentee_inviter || '',
-        companion: participantRes.data.companion || '',
-        is_opportunity: participantRes.data.is_opportunity,
-        times_called: participantRes.data.times_called,
-        color: getColorFromRevenue(normalizedRev) || participantRes.data.color || '',
-        qualification: getQualificationFromRevenue(normalizedRev) || participantRes.data.qualification || '',
-        cpf: participantRes.data.cpf || '',
-        badge_name: participantRes.data.badge_name || '',
-        net_profit: participantRes.data.net_profit || '',
-        partner: participantRes.data.partner || '',
+        funnel: p.funnel || '',
+        seller_closer_id: p.seller_closer_id || '',
+        seller_closer_other: (p as any).seller_closer_other || '',
+        mentee_inviter: p.mentee_inviter || '',
+        companion: p.companion || '',
+        is_opportunity: p.is_opportunity,
+        times_called: p.times_called,
+        color: getColorFromRevenue(normalizedRev) || p.color || '',
+        qualification: getQualificationFromRevenue(normalizedRev) || p.qualification || '',
+        cpf: p.cpf || '',
+        badge_name: p.badge_name || '',
+        net_profit: p.net_profit || '',
+        partner: p.partner || '',
         revenue: normalizedRev,
       })
     }
