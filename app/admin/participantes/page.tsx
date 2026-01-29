@@ -11,13 +11,12 @@ import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
-  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; closer?: User | null; hasSale?: boolean })[]>([])
+  const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; hasSale?: boolean })[]>([])
   const [closers, setClosers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [funnelFilter, setFunnelFilter] = useState('')
   const [sellerFilter, setSellerFilter] = useState('')
-  const [closerFilter, setCloserFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
@@ -28,6 +27,8 @@ export default function AdminParticipantes() {
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [assignCloserId, setAssignCloserId] = useState('')
+
+  // Import centralized options from utils
 
   // Create participant form
   const [newParticipant, setNewParticipant] = useState({
@@ -54,7 +55,7 @@ export default function AdminParticipantes() {
     const [participantsRes, closersRes, salesRes] = await Promise.all([
       supabase
         .from('participants')
-        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*), closer:users!participants_closer_id_fkey(*)')
+        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*)')
         .order('created_at', { ascending: false }),
       supabase
         .from('users')
@@ -83,30 +84,21 @@ export default function AdminParticipantes() {
       p.niche?.toLowerCase().includes(searchLower) ||
       p.instagram?.toLowerCase().includes(searchLower)
     const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-    
-    // Filtro de Vendedor/Convidador (seller_closer_id)
-    const matchesSeller = !sellerFilter || 
-      (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
-    
-    // Filtro de Closer Atribuído (closer_id)
-    const matchesCloser = !closerFilter || 
-      (closerFilter === 'unassigned' ? !p.closer_id : p.closer_id === closerFilter)
-    
+    const matchesSeller = !sellerFilter || p.seller_closer_id === sellerFilter
     const matchesOpportunity = opportunityFilter === '' ||
       (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
     const matchesSale = saleFilter === '' ||
       (saleFilter === 'true' ? p.hasSale : !p.hasSale)
     const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
 
-    return matchesSearch && matchesFunnel && matchesSeller && matchesCloser && matchesOpportunity && matchesSale && matchesColor
+    return matchesSearch && matchesFunnel && matchesSeller && matchesOpportunity && matchesSale && matchesColor
   })
 
-  const hasActiveFilters = funnelFilter || sellerFilter || closerFilter || opportunityFilter || saleFilter || colorFilter
+  const hasActiveFilters = funnelFilter || sellerFilter || opportunityFilter || saleFilter || colorFilter
 
   const clearFilters = () => {
     setFunnelFilter('')
     setSellerFilter('')
-    setCloserFilter('')
     setOpportunityFilter('')
     setSaleFilter('')
     setColorFilter('')
@@ -130,7 +122,6 @@ export default function AdminParticipantes() {
       { key: 'checked_in_day2', label: 'Check-in Dia 2', format: (v) => formatBoolean(v) },
       { key: 'checked_in_day3', label: 'Check-in Dia 3', format: (v) => formatBoolean(v) },
       { key: 'seller_closer.name', label: 'Vendedor/Convidador' },
-      { key: 'closer.name', label: 'Closer Atribuído' },
       { key: 'primary_archetype', label: 'Arquétipo Primário' },
       { key: 'disc_profile', label: 'Perfil DISC' },
     ], 'participantes')
@@ -178,7 +169,7 @@ export default function AdminParticipantes() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ closer_id: assignCloserId })
+        .update({ seller_closer_id: assignCloserId })
         .in('id', selectedParticipants)
 
       if (error) throw error
@@ -220,21 +211,22 @@ export default function AdminParticipantes() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Participantes</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-500">{filteredParticipants.length} participantes</span>
-          <Button variant="secondary" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo
-          </Button>
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">Participantes</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+            <Button variant="secondary" onClick={handleExportCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo
+            </Button>
+          </div>
         </div>
-      </div>
 
       {/* Search and Filters */}
       <div className="space-y-4">
@@ -259,7 +251,7 @@ export default function AdminParticipantes() {
 
         {showFilters && (
           <div className="p-4 bg-gray-50 rounded-lg space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               <Select
                 label="Funil"
                 value={funnelFilter}
@@ -289,17 +281,6 @@ export default function AdminParticipantes() {
                 onChange={(e) => setSellerFilter(e.target.value)}
                 options={[
                   { value: '', label: 'Todos' },
-                  { value: 'unassigned', label: '⚠️ Sem vendedor' },
-                  ...closers.map(c => ({ value: c.id, label: c.name })),
-                ]}
-              />
-              <Select
-                label="Closer Atribuído"
-                value={closerFilter}
-                onChange={(e) => setCloserFilter(e.target.value)}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'unassigned', label: '⚠️ Não atribuído' },
                   ...closers.map(c => ({ value: c.id, label: c.name })),
                 ]}
               />
@@ -414,7 +395,7 @@ export default function AdminParticipantes() {
                   </span>
                 )}
                 {participant.instagram && (
-                  
+                  <a
                     href={getInstagramUrl(participant.instagram) || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -424,17 +405,6 @@ export default function AdminParticipantes() {
                     <ExternalLink className="h-3 w-3" />
                     {participant.instagram}
                   </a>
-                )}
-                {/* Mostrar Closer Atribuído */}
-                {participant.closer && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Closer: <span className="font-medium">{participant.closer.name}</span>
-                  </p>
-                )}
-                {!participant.closer_id && participant.is_opportunity && (
-                  <p className="text-xs text-orange-600 mt-2 font-medium">
-                    ⚠️ Sem closer atribuído
-                  </p>
                 )}
               </div>
             </div>
@@ -578,6 +548,7 @@ export default function AdminParticipantes() {
           </div>
         </div>
       </Modal>
-    </div>
+      </div>
+    </>
   )
 }
