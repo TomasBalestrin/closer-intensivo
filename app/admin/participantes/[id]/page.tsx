@@ -80,7 +80,7 @@ export default function ParticipantDetail() {
   })
 
   const [saleData, setSaleData] = useState({
-    product: '',
+    product_name: '',
     total_value: '',
     entry_value: '',
     negotiation_type: '',
@@ -215,7 +215,7 @@ export default function ParticipantDetail() {
       const { error } = await supabase.from('sales').insert({
         participant_id: params.id as string,
         closer_id: participant?.closer_id || user.id,
-        product: saleData.product,
+        product_name: saleData.product_name,
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
         negotiation_type: saleData.negotiation_type,
@@ -224,7 +224,7 @@ export default function ParticipantDetail() {
       if (error) throw error
       showToast('Venda registrada com sucesso', 'success')
       setSaleModal(false)
-      setSaleData({ product: '', total_value: '', entry_value: '', negotiation_type: '' })
+      setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '' })
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao registrar venda', 'error')
@@ -236,7 +236,7 @@ export default function ParticipantDetail() {
   const handleEditSale = (sale: Sale) => {
     setEditingSale(sale)
     setSaleData({
-      product: sale.product || '',
+      product_name: sale.product_name || '',
       total_value: sale.total_value?.toString() || '',
       entry_value: sale.entry_value?.toString() || '',
       negotiation_type: sale.negotiation_type || '',
@@ -253,7 +253,7 @@ export default function ParticipantDetail() {
       const { error } = await supabase
         .from('sales')
         .update({
-          product: saleData.product,
+          product_name: saleData.product_name,
           total_value: parseFloat(saleData.total_value),
           entry_value: parseFloat(saleData.entry_value),
           negotiation_type: saleData.negotiation_type,
@@ -264,7 +264,7 @@ export default function ParticipantDetail() {
       showToast('Venda atualizada com sucesso', 'success')
       setSaleModal(false)
       setEditingSale(null)
-      setSaleData({ product: '', total_value: '', entry_value: '', negotiation_type: '' })
+      setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '' })
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao atualizar venda', 'error')
@@ -297,7 +297,7 @@ export default function ParticipantDetail() {
   const handleCloseSaleModal = () => {
     setSaleModal(false)
     setEditingSale(null)
-    setSaleData({ product: '', total_value: '', entry_value: '', negotiation_type: '' })
+    setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '' })
   }
 
   const copyFormLink = (formId: string) => {
@@ -720,7 +720,7 @@ export default function ParticipantDetail() {
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
                           <div>
                             <span className="text-sm text-gray-500">Produto</span>
-                            <p className="font-medium">{sale.product}</p>
+                            <p className="font-medium">{sale.product_name}</p>
                           </div>
                           <div>
                             <span className="text-sm text-gray-500">Valor Total</span>
@@ -1159,9 +1159,9 @@ export default function ParticipantDetail() {
 
       <Modal isOpen={saleModal} onClose={handleCloseSaleModal} title={editingSale ? 'Editar Venda' : 'Registrar Venda'}>
         <form onSubmit={editingSale ? handleUpdateSale : handleRegisterSale} className="space-y-4">
-          <Input label="Produto Vendido" value={saleData.product} onChange={(e) => setSaleData({ ...saleData, product: e.target.value })} required />
-          <Input label="Valor Total" type="number" step="0.01" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
-          <Input label="Valor Entrada" type="number" step="0.01" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
+          <Input label="Produto Vendido" value={saleData.product_name} onChange={(e) => setSaleData({ ...saleData, product_name: e.target.value })} required />
+          <Input label="Valor Total (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
+          <Input label="Valor Entrada (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
           <Input label="Negociação" value={saleData.negotiation_type} onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })} required />
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={handleCloseSaleModal}>Cancelar</Button>
@@ -1173,7 +1173,7 @@ export default function ParticipantDetail() {
       {/* Delete Sale Confirmation Modal */}
       <Modal isOpen={!!deletingSale} onClose={() => setDeletingSale(null)} title="Confirmar Exclusão">
         <p className="text-gray-600">
-          Tem certeza que deseja excluir a venda do produto <strong>{deletingSale?.product}</strong>?
+          Tem certeza que deseja excluir a venda do produto <strong>{deletingSale?.product_name}</strong>?
           <br />
           <span className="text-sm text-gray-500">Valor: {deletingSale ? formatCurrency(deletingSale.total_value) : ''}</span>
         </p>

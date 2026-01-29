@@ -54,7 +54,7 @@ export function Avatar({ src, alt, size = 'md', className }: AvatarProps) {
         src={secureUrl || src}
         alt={alt}
         fill
-        className="object-cover"
+        className="object-cover object-top"
         onError={() => setImageError(true)}
         unoptimized
       />

@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS sales (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     participant_id UUID NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
     closer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    product TEXT NOT NULL,
+    product_name TEXT NOT NULL,
     total_value DECIMAL(12, 2) NOT NULL,
     entry_value DECIMAL(12, 2) NOT NULL,
     negotiation_type TEXT NOT NULL,
