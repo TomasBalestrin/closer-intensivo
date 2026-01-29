@@ -67,8 +67,12 @@ export function normalizeRevenue(revenue: string | null): string {
   if (revenue.toLowerCase().startsWith('até') || revenue.toLowerCase().startsWith('ate')) {
     return FATURAMENTO_OPTIONS[0].value
   }
-  // Handle "Acima" / above maximum
+  // Handle "Acima de R$ X" - find the range where the number fits as a minimum
   if (revenue.toLowerCase().includes('acima')) {
+    const num = parseFloat((numbers[0] || '0').replace(/\./g, '').replace(',', '.'))
+    // Find the first range whose max is greater than the extracted number
+    const range = FATURAMENTO_OPTIONS.find(opt => num < opt.max && opt.max !== Infinity)
+    if (range) return range.value
     return FATURAMENTO_OPTIONS[FATURAMENTO_OPTIONS.length - 1].value
   }
   // Find matching range by max value

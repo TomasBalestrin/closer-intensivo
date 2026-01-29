@@ -186,6 +186,7 @@ export default function CloserParticipantDetail() {
         participant_id: params.id as string,
         closer_id: user.id,
         product_name: saleData.product_name,
+        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
         negotiation_type: saleData.negotiation_type,
