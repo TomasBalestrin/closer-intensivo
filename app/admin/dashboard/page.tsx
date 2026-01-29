@@ -3,9 +3,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
-import { Avatar, Loading } from '@/components/ui'
+import { Loading } from '@/components/ui'
 import { Participant, Sale, User } from '@/lib/types'
-import { Trophy, Users, Target, Calendar, TrendingUp, Percent, DollarSign, CreditCard } from 'lucide-react'
+import { TopClosers } from '@/components/shared/top-closers'
+import { Users, Target, Calendar, TrendingUp, Percent, DollarSign, CreditCard } from 'lucide-react'
 
 type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
 
@@ -111,7 +112,7 @@ export default function AdminDashboard() {
 
   const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
 
-  // Top closers - memoized (GLOBAL - igual para todos, não afetado pelo filtro de dia)
+  // Top closers - uses ALL sales (not filtered by day) so ranking is global and consistent across all dashboards
   const topClosers = useMemo(() => {
     return closers.map(closer => {
       const closerSales = sales.filter(s => s.closer_id === closer.id)
@@ -303,38 +304,8 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      {/* Top Closers */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="h-5 w-5 text-amber-500" />
-          <h2 className="text-lg font-semibold text-gray-800">TOP 3 Closers</h2>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          {topClosers.length === 0 ? (
-            <div className="text-center py-12">
-              <Trophy className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">Nenhum closer com vendas ainda</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {topClosers.map((closer, i) => (
-                <div key={closer.id} className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-300 ${i === 0 ? 'bg-amber-50 border-2 border-amber-200' : i === 1 ? 'bg-gray-50 border border-gray-200' : 'bg-orange-50 border border-orange-200'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-500'}`}>{i + 1}</div>
-                  <Avatar src={closer.photo_url} alt={closer.name} size="lg" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{closer.name}</h3>
-                    <div className="flex flex-col text-sm text-gray-600 mt-1">
-                      <span>{closer.salesCount} vendas</span>
-                      <span className="font-medium text-green-600">{formatCurrency(closer.totalValue)}</span>
-                    </div>
-                  </div>
-                  {i === 0 && <Trophy className="h-8 w-8 text-amber-500" />}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Top Closers - shared component, same for all users */}
+      <TopClosers closers={topClosers} />
     </div>
   )
 }

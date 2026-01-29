@@ -110,11 +110,8 @@ export default async function CloserDashboard() {
         </div>
       </section>
 
-      {/* Top 3 Closers - Realtime */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Top 3 Closers</h2>
-        <TopClosersRealtime />
-      </section>
+      {/* Top 3 Closers - Realtime shared component */}
+      <TopClosersRealtime />
     </div>
   )
 }
