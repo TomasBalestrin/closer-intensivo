@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Loading, Modal } from '@/components/ui'
 import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square } from 'lucide-react'
 import { Participant, User } from '@/lib/types'
-import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue } from '@/lib/utils'
 
 export default function AdminParticipantes() {
   const router = useRouter()
@@ -27,20 +27,7 @@ export default function AdminParticipantes() {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [assignCloserId, setAssignCloserId] = useState('')
 
-  // Mapeamento de faturamento para cor
-  const FATURAMENTO_OPTIONS = [
-    { value: 'Até R$ 5.000,00', label: 'Até R$ 5.000', color: 'rosa' },
-    { value: 'R$ 5.000 até R$ 10.000', label: 'R$ 5.000 a R$ 10.000', color: 'preto' },
-    { value: 'R$ 10.000 até R$ 30.000', label: 'R$ 10.000 a R$ 30.000', color: 'azul_claro' },
-    { value: 'R$ 30.000 até R$ 50.000', label: 'R$ 30.000 a R$ 50.000', color: 'dourado' },
-    { value: 'R$ 50.000 até R$ 100.000', label: 'R$ 50.000 a R$ 100.000', color: 'laranja' },
-    { value: 'Acima de R$ 100.000', label: 'Acima de R$ 100.000', color: 'verde' },
-  ]
-
-  const getColorFromRevenue = (revenue: string): string | null => {
-    const option = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
-    return option?.color || null
-  }
+  // Import centralized options from utils
 
   // Create participant form
   const [newParticipant, setNewParticipant] = useState({

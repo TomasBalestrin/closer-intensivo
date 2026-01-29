@@ -74,7 +74,7 @@ export default function AdminDashboard() {
 
   // Qualification stats - memoized
   const qualificationStats = useMemo(() => {
-    const superQualified = opportunities.filter(p => p.qualification === 'super')
+    const altoQualified = opportunities.filter(p => p.qualification === 'alto')
     const medioQualified = opportunities.filter(p => p.qualification === 'medio')
     const baixoQualified = opportunities.filter(p => p.qualification === 'baixo')
 
@@ -83,11 +83,11 @@ export default function AdminDashboard() {
       return filteredSales.filter(s => ids.has(s.participant_id))
     }
 
-    const superSales = getSalesByQualification('super')
+    const altoSales = getSalesByQualification('alto')
     const medioSales = getSalesByQualification('medio')
     const baixoSales = getSalesByQualification('baixo')
 
-    return { superQualified, medioQualified, baixoQualified, superSales, medioSales, baixoSales }
+    return { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales }
   }, [opportunities, filteredSales])
 
   const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
   }, [closers, filteredSales])
 
   const { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue } = stats
-  const { superQualified, medioQualified, baixoQualified, superSales, medioSales, baixoSales } = qualificationStats
+  const { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales } = qualificationStats
 
   if (loading) {
     return (
@@ -204,28 +204,28 @@ export default function AdminDashboard() {
       <section>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Por Qualificação</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Super Qualificadas */}
+          {/* Alto Qualificadas */}
           <div className="bg-white rounded-xl border-l-4 border-l-emerald-500 border border-gray-200 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-emerald-700">Super Qualificadas</h3>
-              <span className="text-2xl font-bold text-emerald-600">{superQualified.length}</span>
+              <h3 className="font-semibold text-emerald-700">Alto Qualificadas</h3>
+              <span className="text-2xl font-bold text-emerald-600">{altoQualified.length}</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Vendas</p>
-                <p className="text-lg font-bold text-gray-900">{superSales.length}</p>
+                <p className="text-lg font-bold text-gray-900">{altoSales.length}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(superSales, superQualified.length))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(altoSales, altoQualified.length))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>
-                <p className="text-base font-bold text-gray-900">{formatCurrency(superSales.reduce((s, x) => s + Number(x.total_value || 0), 0))}</p>
+                <p className="text-base font-bold text-gray-900">{formatCurrency(altoSales.reduce((s, x) => s + Number(x.total_value || 0), 0))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Entrada</p>
-                <p className="text-base font-bold text-gray-900">{formatCurrency(superSales.reduce((s, x) => s + Number(x.entry_value || 0), 0))}</p>
+                <p className="text-base font-bold text-gray-900">{formatCurrency(altoSales.reduce((s, x) => s + Number(x.entry_value || 0), 0))}</p>
               </div>
             </div>
           </div>

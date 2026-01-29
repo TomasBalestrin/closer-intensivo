@@ -78,7 +78,7 @@ export default function CloserDetail() {
     p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
   ).length
 
-  const superQualified = opportunities.filter(p => p.qualification === 'super').length
+  const altoQualified = opportunities.filter(p => p.qualification === 'alto').length
   const medioQualified = opportunities.filter(p => p.qualification === 'medio').length
   const baixoQualified = opportunities.filter(p => p.qualification === 'baixo').length
 
@@ -165,8 +165,8 @@ export default function CloserDetail() {
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Qualificação das Oportunidades</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-green-800 font-medium">Super Qualificadas</p>
-            <p className="text-2xl font-bold text-green-900">{superQualified}</p>
+            <p className="text-green-800 font-medium">Alto Qualificadas</p>
+            <p className="text-2xl font-bold text-green-900">{altoQualified}</p>
           </div>
           <div className="bg-blue-50 rounded-lg p-4">
             <p className="text-blue-800 font-medium">Médio Qualificadas</p>

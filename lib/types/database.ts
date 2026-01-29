@@ -7,8 +7,8 @@ export type Json =
   | Json[]
 
 export type UserRole = 'admin' | 'closer'
-export type ParticipantColor = 'rosa' | 'preto' | 'azul_claro' | 'dourado' | 'laranja'
-export type Qualification = 'super' | 'medio' | 'baixo'
+export type ParticipantColor = 'rosa' | 'preto' | 'azul_claro' | 'verde' | 'dourado' | 'laranja'
+export type Qualification = 'baixo' | 'medio' | 'alto'
 export type DiscProfile = 'D' | 'I' | 'S' | 'C'
 
 export interface Database {
