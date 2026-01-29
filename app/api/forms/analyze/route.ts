@@ -170,13 +170,10 @@ IMPORTANTE:
       desiredChangeAnswer,
     }
 
-    // Step 1: Always save to webhook_data + form_completed_at (these columns always exist)
+    // Step 1: Save ONLY webhook_data (this column exists in base schema - guaranteed to work)
     const { error: webhookError } = await supabase
       .from('participants')
-      .update({
-        form_completed_at: new Date().toISOString(),
-        webhook_data: allAnalysisData,
-      })
+      .update({ webhook_data: allAnalysisData })
       .eq('id', participantId)
 
     if (webhookError) {
@@ -208,6 +205,7 @@ IMPORTANTE:
       quick_tips: salesAnalysis.quick_tips,
       challenge_answer: challengeAnswer,
       desired_change_answer: desiredChangeAnswer,
+      form_completed_at: new Date().toISOString(),
     }
 
     const { error: fullError } = await supabase
