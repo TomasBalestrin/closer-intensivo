@@ -249,7 +249,7 @@ export interface Database {
           id: string
           participant_id: string
           closer_id: string
-          product: string
+          product_name: string
           total_value: number
           entry_value: number
           negotiation_type: string
@@ -259,7 +259,7 @@ export interface Database {
           id?: string
           participant_id: string
           closer_id: string
-          product: string
+          product_name: string
           total_value: number
           entry_value: number
           negotiation_type: string
@@ -269,7 +269,7 @@ export interface Database {
           id?: string
           participant_id?: string
           closer_id?: string
-          product?: string
+          product_name?: string
           total_value?: number
           entry_value?: number
           negotiation_type?: string

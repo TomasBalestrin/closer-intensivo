@@ -69,7 +69,7 @@ export default function CloserParticipantDetail() {
   })
 
   const [saleData, setSaleData] = useState({
-    product: '',
+    product_name: '',
     total_value: '',
     entry_value: '',
     negotiation_type: '',
@@ -185,7 +185,7 @@ export default function CloserParticipantDetail() {
       const { error } = await supabase.from('sales').insert({
         participant_id: params.id as string,
         closer_id: user.id,
-        product: saleData.product,
+        product_name: saleData.product_name,
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
         negotiation_type: saleData.negotiation_type,
@@ -196,7 +196,7 @@ export default function CloserParticipantDetail() {
       showToast('Venda registrada com sucesso', 'success')
       setSaleModal(false)
       setSaleData({
-        product: '',
+        product_name: '',
         total_value: '',
         entry_value: '',
         negotiation_type: '',
@@ -873,7 +873,7 @@ export default function CloserParticipantDetail() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <span className="text-sm text-gray-500">Produto</span>
-                        <p className="font-medium">{sale.product}</p>
+                        <p className="font-medium">{sale.product_name}</p>
                       </div>
                       <div>
                         <span className="text-sm text-gray-500">Valor Total</span>
@@ -929,22 +929,24 @@ export default function CloserParticipantDetail() {
         <form onSubmit={handleRegisterSale} className="space-y-4">
           <Input
             label="Produto Vendido"
-            value={saleData.product}
-            onChange={(e) => setSaleData({ ...saleData, product: e.target.value })}
+            value={saleData.product_name}
+            onChange={(e) => setSaleData({ ...saleData, product_name: e.target.value })}
             required
           />
           <Input
-            label="Valor Total do Contrato"
+            label="Valor Total do Contrato (R$)"
             type="number"
             step="0.01"
+            placeholder="0,00"
             value={saleData.total_value}
             onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })}
             required
           />
           <Input
-            label="Valor de Entrada"
+            label="Valor de Entrada (R$)"
             type="number"
             step="0.01"
+            placeholder="0,00"
             value={saleData.entry_value}
             onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })}
             required

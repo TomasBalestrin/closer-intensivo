@@ -190,7 +190,7 @@ async function processarVenda(body: any, supabase: any) {
     .insert({
       participant_id: participant.id,
       closer_id: participant.closer_id || '00000000-0000-0000-0000-000000000000',
-      product: produto,
+      product_name: produto,
       total_value: parseFloat(valor_total),
       entry_value: parseFloat(valor_entrada),
       negotiation_type: body.negotiation_type || body.metodo_pagamento || 'webhook',
