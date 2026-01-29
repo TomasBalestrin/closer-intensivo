@@ -132,6 +132,8 @@ export function CreateParticipantDialog({ onSuccess }: CreateParticipantDialogPr
             />
             <Input
               label="Telefone"
+              type="tel"
+              inputMode="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               placeholder="(11) 99999-9999"

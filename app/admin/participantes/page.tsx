@@ -445,6 +445,8 @@ export default function AdminParticipantes() {
             />
             <Input
               label="Telefone"
+              type="tel"
+              inputMode="tel"
               value={newParticipant.phone}
               onChange={(e) => setNewParticipant({ ...newParticipant, phone: e.target.value })}
               placeholder="(00) 00000-0000"

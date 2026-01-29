@@ -4,6 +4,12 @@
 
 @layer base {
   :root {
+    /* Safe Area Insets (for notch/dynamic island) */
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+
     /* Primary Colors */
     --primary: 222 47% 31%;
     --primary-foreground: 210 40% 98%;
@@ -81,6 +87,12 @@
   body {
     @apply bg-gray-50 text-gray-900;
     font-feature-settings: "rlig" 1, "calt" 1;
+    padding-top: var(--sat);
+    padding-right: var(--sar);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
 }
 
