@@ -28,9 +28,10 @@ export async function GET(
       .single()
 
     if (formData?.participant) {
-      // Only check this specific form's completed_at, NOT the participant's global form_completed_at
-      // A participant may have completed a previous form but this one is still pending
-      const isCompleted = !!formData.completed_at
+      // Form is only truly completed if it has completed_at AND actual answers stored
+      // This matches the admin panel logic that shows "Aguardando resposta" vs "Respondido"
+      const hasAnswers = formData.answers && typeof formData.answers === 'object' && Object.keys(formData.answers).length > 0
+      const isCompleted = !!(formData.completed_at && hasAnswers)
       return NextResponse.json({
         found: true,
         participant: formData.participant,
@@ -51,11 +52,13 @@ export async function GET(
       .single()
 
     if (participantData) {
+      // For participant fallback, also check if they have actual DISC data
+      const hasDiscData = !!(participantData.disc_profile || participantData.primary_archetype)
       return NextResponse.json({
         found: true,
         participant: participantData,
         form: null,
-        isCompleted: !!participantData.form_completed_at,
+        isCompleted: !!(participantData.form_completed_at && hasDiscData),
       })
     }
 
