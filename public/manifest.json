@@ -1,7 +1,7 @@
 {
   "name": "Bethel Events",
   "short_name": "Bethel",
-  "description": "Sistema de Acompanhamento de Vendas e Participação em Eventos",
+  "description": "Bethel Events",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

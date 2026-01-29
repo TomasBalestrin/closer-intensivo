@@ -185,14 +185,25 @@ export default function ParticipantDetail() {
     }
   }
 
+  const generateShortCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    let code = ''
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return code
+  }
+
   const handleGenerateForm = async () => {
     setFormLoading(true)
     try {
       const formId = crypto.randomUUID()
+      const shortCode = generateShortCode()
       const { error } = await supabase.from('disc_forms').insert({
         id: formId,
         participant_id: params.id as string,
         answers: {},
+        short_code: shortCode,
       })
 
       if (error) throw error
@@ -303,8 +314,11 @@ export default function ParticipantDetail() {
     setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '' })
   }
 
-  const copyFormLink = (formId: string) => {
-    const url = `${window.location.origin}/form/${formId}`
+  const getFormCode = (form: any) => form.short_code || form.id
+
+  const copyFormLink = (form: any) => {
+    const code = getFormCode(form)
+    const url = `${window.location.origin}/form/${code}`
     navigator.clipboard.writeText(url)
     showToast('Link copiado!', 'success')
   }
@@ -1050,10 +1064,10 @@ export default function ParticipantDetail() {
                                 {isCompleted ? 'Respondido' : 'Aguardando resposta'}
                               </Badge>
                               <div className="flex gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => copyFormLink(form.id)} title="Copiar link">
+                                <Button variant="ghost" size="sm" onClick={() => copyFormLink(form)} title="Copiar link">
                                   <Copy className="h-4 w-4" />
                                 </Button>
-                                <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
+                                <a href={`/form/${getFormCode(form)}`} target="_blank" rel="noopener noreferrer">
                                   <Button variant="ghost" size="sm" title="Abrir formulário">
                                     <ExternalLink className="h-4 w-4" />
                                   </Button>
@@ -1065,11 +1079,11 @@ export default function ParticipantDetail() {
                               <input
                                 type="text"
                                 readOnly
-                                value={typeof window !== 'undefined' ? `${window.location.origin}/form/${form.id}` : `/form/${form.id}`}
+                                value={typeof window !== 'undefined' ? `${window.location.origin}/form/${getFormCode(form)}` : `/form/${getFormCode(form)}`}
                                 className="flex-1 text-xs p-2 bg-white border rounded text-gray-600 font-mono"
                                 onClick={(e) => (e.target as HTMLInputElement).select()}
                               />
-                              <Button size="sm" onClick={() => copyFormLink(form.id)}>
+                              <Button size="sm" onClick={() => copyFormLink(form)}>
                                 Copiar
                               </Button>
                             </div>
