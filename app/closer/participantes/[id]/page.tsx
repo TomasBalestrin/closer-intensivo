@@ -38,7 +38,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS } from '@/lib/utils'
 
 type TabType = 'dados' | 'disc' | 'vendas'
 
@@ -859,10 +859,11 @@ export default function CloserParticipantDetail() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <Select
                   label="Funil de Origem"
                   value={formData.funnel}
                   onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                  options={FUNIL_OPTIONS}
                 />
                 <Select
                   label="Vendedor/Convidador"
