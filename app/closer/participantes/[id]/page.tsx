@@ -1033,6 +1033,32 @@ export default function CloserParticipantDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Respostas do Webhook */}
+          {(participant.challenge_answer || participant.desired_change_answer) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-purple-600" />
+                  Respostas do Participante
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {participant.challenge_answer && (
+                  <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-100">
+                    <p className="text-xs uppercase tracking-wider text-purple-500 font-semibold mb-2">Maior dificuldade</p>
+                    <p className="text-gray-700">{participant.challenge_answer}</p>
+                  </div>
+                )}
+                {participant.desired_change_answer && (
+                  <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                    <p className="text-xs uppercase tracking-wider text-indigo-500 font-semibold mb-2">O que espera do evento</p>
+                    <p className="text-gray-700">{participant.desired_change_answer}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

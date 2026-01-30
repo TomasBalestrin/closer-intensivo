@@ -13,6 +13,11 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
+// Remove accented characters (é→e, ã→a, ç→c, etc.)
+function removeAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 // Flatten any nested JSON into a flat key-value map
 // e.g. { fields: { nome: "João" } } => { "fields.nome": "João", "nome": "João" }
 function flattenPayload(obj: any, prefix = ''): Record<string, any> {
@@ -21,7 +26,7 @@ function flattenPayload(obj: any, prefix = ''): Record<string, any> {
 
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key
-    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+    const normalizedKey = removeAccents(key.toLowerCase()).replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
 
     if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)) {
       // Recurse into nested objects
@@ -127,15 +132,25 @@ function isTruthy(value: any): boolean {
 
 // Find the first matching value from flat payload using alias list
 function findValue(flat: Record<string, any>, aliases: string[]): any {
+  // 1. Direct match on alias or fields.alias
   for (const alias of aliases) {
-    // Direct match
     if (flat[alias] !== undefined && flat[alias] !== null && flat[alias] !== '') {
       return flat[alias]
     }
-    // Try with fields. prefix (common pattern)
     const withFields = `fields.${alias}`
     if (flat[withFields] !== undefined && flat[withFields] !== null && flat[withFields] !== '') {
       return flat[withFields]
+    }
+  }
+  // 2. Fallback: check if any flat key contains an alias or vice-versa
+  const flatKeys = Object.keys(flat)
+  for (const alias of aliases) {
+    for (const key of flatKeys) {
+      if (flat[key] === undefined || flat[key] === null || flat[key] === '') continue
+      const normKey = removeAccents(key.toLowerCase()).replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+      if (normKey.includes(alias) || alias.includes(normKey)) {
+        return flat[key]
+      }
     }
   }
   return null
