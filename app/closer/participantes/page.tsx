@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge } from '@/components/ui'
@@ -11,11 +11,27 @@ import { useDebounce } from '@/lib/hooks'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 
+const CACHE_KEY = 'closer-participantes-cache'
+const SCROLL_KEY = 'closer-participantes-scroll'
+
+function getCachedParticipants(): any[] | null {
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) return JSON.parse(cached)
+  } catch {}
+  return null
+}
+
 export default function CloserParticipantes() {
   const router = useRouter()
   const supabase = createClient()
-  const [participants, setParticipants] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const restoringScroll = useRef(false)
+
+  // Initialize from cache if available (avoids skeleton flash on back navigation)
+  const cached = typeof window !== 'undefined' ? getCachedParticipants() : null
+  const [participants, setParticipants] = useState<any[]>(cached || [])
+  const [loading, setLoading] = useState(!cached)
+
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
   const [funnelFilter, setFunnelFilter] = useState('')
@@ -25,8 +41,8 @@ export default function CloserParticipantes() {
   const [colorFilter, setColorFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -49,31 +65,44 @@ export default function CloserParticipantes() {
 
     setParticipants(participantsWithSales)
     setLoading(false)
+
+    // Cache data for back navigation
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(participantsWithSales))
+    } catch {}
   }, [])
 
   useEffect(() => {
-    fetchData()
+    const hasCache = !!getCachedParticipants()
+    if (hasCache) {
+      // We have cached data showing instantly - fetch fresh data in background
+      fetchData(true)
+    } else {
+      fetchData(false)
+    }
   }, [fetchData])
 
-  // Restore scroll position when coming back from detail page
+  // Restore scroll position after cached data renders
   useEffect(() => {
-    if (!loading) {
-      const savedScroll = sessionStorage.getItem('closer-participantes-scroll')
+    if (!loading && !restoringScroll.current) {
+      const savedScroll = sessionStorage.getItem(SCROLL_KEY)
       if (savedScroll) {
+        restoringScroll.current = true
         const scrollY = parseInt(savedScroll, 10)
-        sessionStorage.removeItem('closer-participantes-scroll')
-        // Use setTimeout to ensure DOM is fully painted after React render
-        const timer = setTimeout(() => {
-          window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior })
-        }, 100)
-        return () => clearTimeout(timer)
+        sessionStorage.removeItem(SCROLL_KEY)
+        // Small delay to ensure DOM has painted
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollY)
+          // Allow further scroll restores if component re-renders
+          setTimeout(() => { restoringScroll.current = false }, 200)
+        })
       }
     }
   }, [loading])
 
   const handleNavigate = (participantId: string) => {
-    const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop
-    sessionStorage.setItem('closer-participantes-scroll', String(scrollY))
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0
+    sessionStorage.setItem(SCROLL_KEY, String(scrollY))
     router.push(`/closer/participantes/${participantId}`)
   }
 
@@ -95,7 +124,7 @@ export default function CloserParticipantes() {
   })
 
   return (
-    <PullToRefresh onRefresh={fetchData}>
+    <PullToRefresh onRefresh={() => fetchData(false)}>
       <div className="space-y-6 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Meus Participantes</h1>
