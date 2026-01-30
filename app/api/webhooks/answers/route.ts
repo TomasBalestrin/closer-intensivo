@@ -163,10 +163,40 @@ export async function POST(request: Request) {
       )
     }
 
-    // Build update data - only include non-null fields
+    // Fetch current answers to avoid overwriting existing data
+    const { data: currentData } = await supabase
+      .from('participants')
+      .select('challenge_answer, desired_change_answer')
+      .eq('id', existingParticipant.id)
+      .single()
+
+    // Build update data - only add answers that don't already exist
     const updateData: Record<string, any> = {}
-    if (challenge_answer) updateData.challenge_answer = challenge_answer
-    if (desired_change_answer) updateData.desired_change_answer = desired_change_answer
+    if (challenge_answer && !currentData?.challenge_answer) {
+      updateData.challenge_answer = challenge_answer
+    }
+    if (desired_change_answer && !currentData?.desired_change_answer) {
+      updateData.desired_change_answer = desired_change_answer
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      // Mark webhook as processed even if nothing to update
+      if (logId) {
+        await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'skipped',
+        participantId: existingParticipant.id,
+        participantName: existingParticipant.name,
+        message: 'Participante já possui respostas preenchidas. Nenhum dado sobrescrito.',
+        existing: {
+          challenge_answer: !!currentData?.challenge_answer,
+          desired_change_answer: !!currentData?.desired_change_answer,
+        },
+      })
+    }
 
     const { error: updateError } = await supabase
       .from('participants')
