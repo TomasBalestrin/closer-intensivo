@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -38,6 +38,7 @@ import {
   RefreshCw,
   Zap,
   User as UserIcon,
+  Users,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS } from '@/lib/utils'
@@ -61,6 +62,8 @@ export default function CloserParticipantDetail() {
   const [saleModal, setSaleModal] = useState(false)
   const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
+  const [allParticipants, setAllParticipants] = useState<Array<{ id: string; name: string }>>([])
+
 
   const [formData, setFormData] = useState({
     funnel: '',
@@ -158,6 +161,14 @@ export default function CloserParticipantDetail() {
     setClosers(closersRes.data || [])
     setForms(formsRes.data || [])
     setSales(salesRes.data || [])
+
+    // Fetch all participants for companion name lookup
+    const { data: allParts } = await supabase
+      .from('participants')
+      .select('id, name')
+      .eq('closer_id', user.id)
+    setAllParticipants(allParts || [])
+
     setLoading(false)
   }
 
@@ -283,6 +294,28 @@ export default function CloserParticipantDetail() {
     }
     return icons[archetype] || '✨'
   }
+
+  // Try to find a matching participant for the companion field
+  const companionMatch = useMemo(() => {
+    if (!participant?.companion || allParticipants.length === 0) return null
+    const raw = participant.companion.trim()
+    // Extract name: strip parenthetical like "(irmao)", "(esposa)" etc.
+    const nameOnly = raw.replace(/\s*\(.*?\)\s*$/, '').trim().toLowerCase()
+    if (!nameOnly) return null
+    // Look for exact match first, then partial
+    const exact = allParticipants.find(
+      p => p.id !== participant.id && p.name.toLowerCase() === nameOnly
+    )
+    if (exact) return exact
+    // Partial: companion name is contained in participant name or vice-versa
+    const partial = allParticipants.find(
+      p => p.id !== participant.id && (
+        p.name.toLowerCase().includes(nameOnly) ||
+        nameOnly.includes(p.name.toLowerCase())
+      )
+    )
+    return partial || null
+  }, [participant?.companion, participant?.id, allParticipants])
 
   // Check if participant has DISC profile data
   const hasDiscProfile = participant?.disc_profile
@@ -941,11 +974,23 @@ export default function CloserParticipantDetail() {
                   value={formData.mentee_inviter}
                   onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
                 />
-                <Input
-                  label="Acompanhante"
-                  value={formData.companion}
-                  onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                />
+                <div>
+                  <Input
+                    label="Acompanhante"
+                    value={formData.companion}
+                    onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
+                  />
+                  {companionMatch && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/closer/participantes/${companionMatch.id}`)}
+                      className="mt-1 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      <Users className="h-3 w-3" />
+                      Ver card de {companionMatch.name}
+                    </button>
+                  )}
+                </div>
                 <Select
                   label="Quantas Vezes Foi Chamado"
                   value={formData.times_called.toString()}

@@ -60,16 +60,20 @@ export default function CloserParticipantes() {
     if (!loading) {
       const savedScroll = sessionStorage.getItem('closer-participantes-scroll')
       if (savedScroll) {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, parseInt(savedScroll, 10))
-        })
+        const scrollY = parseInt(savedScroll, 10)
         sessionStorage.removeItem('closer-participantes-scroll')
+        // Use setTimeout to ensure DOM is fully painted after React render
+        const timer = setTimeout(() => {
+          window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior })
+        }, 100)
+        return () => clearTimeout(timer)
       }
     }
   }, [loading])
 
   const handleNavigate = (participantId: string) => {
-    sessionStorage.setItem('closer-participantes-scroll', String(window.scrollY))
+    const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop
+    sessionStorage.setItem('closer-participantes-scroll', String(scrollY))
     router.push(`/closer/participantes/${participantId}`)
   }
 
@@ -92,7 +96,7 @@ export default function CloserParticipantes() {
 
   return (
     <PullToRefresh onRefresh={fetchData}>
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Meus Participantes</h1>
           <span className="text-gray-500">{filteredParticipants.length} participantes</span>
