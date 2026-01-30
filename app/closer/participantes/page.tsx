@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge } from '@/components/ui'
-import { Search, Filter, ExternalLink } from 'lucide-react'
+import { Search, Filter, ExternalLink, Phone } from 'lucide-react'
 import { Participant } from '@/lib/types'
 import { getColorClass, getColorFromRevenue, getInstagramUrl } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
@@ -21,6 +21,7 @@ export default function CloserParticipantes() {
   const [funnelFilter, setFunnelFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
+  const [checkinFilter, setCheckinFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -62,8 +63,11 @@ export default function CloserParticipantes() {
       (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
     const matchesSale = saleFilter === '' ||
       (saleFilter === 'true' ? p.hasSale : !p.hasSale)
+    const hasCheckin = p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
+    const matchesCheckin = checkinFilter === '' ||
+      (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
 
-    return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale
+    return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin
   })
 
   return (
@@ -96,7 +100,7 @@ export default function CloserParticipantes() {
           </div>
 
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-white rounded-lg shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white rounded-lg shadow-sm">
               <Select
                 label="Funil"
                 value={funnelFilter}
@@ -124,6 +128,16 @@ export default function CloserParticipantes() {
                   { value: '', label: 'Todos' },
                   { value: 'true', label: 'Sim' },
                   { value: 'false', label: 'Não' },
+                ]}
+              />
+              <Select
+                label="Fez Check-in"
+                value={checkinFilter}
+                onChange={(e) => setCheckinFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Presentes' },
+                  { value: 'false', label: 'Ausentes' },
                 ]}
               />
             </div>
@@ -192,9 +206,15 @@ export default function CloserParticipantes() {
                       participant.checked_in_day3 && 'D3',
                     ].filter(Boolean).join(', ') || 'Nenhum'}
                   </span>
-                  {participant.hasSale && (
-                    <Badge variant="success">Vendido</Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1" title="Vezes chamado">
+                      <Phone className="h-3 w-3" />
+                      {participant.times_called || 0}x
+                    </span>
+                    {participant.hasSale && (
+                      <Badge variant="success">Vendido</Badge>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}

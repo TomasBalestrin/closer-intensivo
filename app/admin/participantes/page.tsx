@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
-import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square } from 'lucide-react'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone } from 'lucide-react'
 import { Participant, User } from '@/lib/types'
 import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
@@ -433,9 +433,15 @@ export default function AdminParticipantes() {
                           participant.checked_in_day3 && 'D3',
                         ].filter(Boolean).join(', ') || 'Nenhum'}
                       </span>
-                      {participant.hasSale && (
-                        <Badge variant="success">Vendido</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1" title="Vezes chamado">
+                          <Phone className="h-3 w-3" />
+                          {participant.times_called || 0}x
+                        </span>
+                        {participant.hasSale && (
+                          <Badge variant="success">Vendido</Badge>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 ))}
