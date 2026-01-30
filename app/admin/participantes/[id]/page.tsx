@@ -553,12 +553,12 @@ export default function ParticipantDetail() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="flex gap-4">
+        <nav className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium transition-colors ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 border-b-2 font-medium transition-colors whitespace-nowrap flex-shrink-0 min-h-[44px] ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -656,13 +656,13 @@ export default function ParticipantDetail() {
                           key={day}
                           onClick={() => handleToggleCheckin(day)}
                           disabled={isSaving}
-                          className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all text-left ${
+                          className={`flex items-center gap-2 p-3 sm:p-2 rounded-lg border-2 transition-all text-left min-h-[48px] ${
                             isChecked
-                              ? 'bg-green-50 border-green-300 hover:bg-green-100'
-                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                              ? 'bg-green-50 border-green-300 hover:bg-green-100 active:bg-green-200'
+                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200'
                           } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
                         >
-                          <div className={`flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0 ${
+                          <div className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-full flex-shrink-0 ${
                             isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
                           }`}>
                             {isSaving ? (
