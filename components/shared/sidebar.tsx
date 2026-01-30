@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Trophy,
   Webhook,
+  BarChart3,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Participantes', href: '/admin/participantes', icon: Users },
         { name: 'Closers', href: '/admin/closers', icon: Trophy },
+        { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
         { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
