@@ -18,9 +18,12 @@ export async function POST(request: Request) {
     const payload = await request.json()
 
     // Log the webhook
-    await supabase
+    const { data: logData } = await supabase
       .from('webhooks_log')
       .insert({ payload, processed: false })
+      .select('id')
+      .single()
+    const logId = logData?.id
 
     // Support both nested (fields) and flat payload structures
     const fields = payload.fields || payload
@@ -134,10 +137,12 @@ export async function POST(request: Request) {
     }
 
     // Mark webhook as processed
-    await supabase
-      .from('webhooks_log')
-      .update({ processed: true })
-      .eq('payload', payload)
+    if (logId) {
+      await supabase
+        .from('webhooks_log')
+        .update({ processed: true })
+        .eq('id', logId)
+    }
 
     return NextResponse.json({
       success: true,
