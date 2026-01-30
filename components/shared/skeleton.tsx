@@ -57,3 +57,35 @@ export function ChartSkeleton() {
     </div>
   )
 }
+
+export function ParticipantCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm animate-pulse">
+      <div className="flex items-start gap-4">
+        <div className="h-12 w-12 bg-gray-200 rounded-full shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="h-4 bg-gray-200 rounded w-2/5" />
+            <div className="h-5 bg-gray-200 rounded-full w-20" />
+          </div>
+          <div className="h-3 bg-gray-200 rounded w-3/5" />
+          <div className="h-5 bg-gray-200 rounded-full w-24 mt-1" />
+        </div>
+      </div>
+      <div className="mt-4 pt-4 border-t flex items-center justify-between">
+        <div className="h-3 bg-gray-200 rounded w-28" />
+        <div className="h-5 bg-gray-200 rounded-full w-16" />
+      </div>
+    </div>
+  )
+}
+
+export function ParticipantGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[...Array(count)].map((_, i) => (
+        <ParticipantCardSkeleton key={i} />
+      ))}
+    </div>
+  )
+}

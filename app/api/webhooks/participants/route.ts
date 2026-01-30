@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getColorFromRevenue, getQualificationFromRevenue } from '@/lib/utils'
 
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -110,6 +111,10 @@ export async function POST(request: Request) {
     const challenge_answer = fields?.qual_sua_maior_dificuldade_no_seu_negocio_hoje || null
     const desired_change_answer = fields?.o_que_pretende_aprender_no_intensivo_da_alta_performance || null
 
+    // Calculate color and qualification from revenue
+    const color = getColorFromRevenue(revenue) || null
+    const qualification = getQualificationFromRevenue(revenue) || null
+
     // Build FULL participantData with ALL fields from the webhook
     const fullParticipantData: Record<string, any> = {
       name,
@@ -126,6 +131,8 @@ export async function POST(request: Request) {
       net_profit: net_profit || null,
       challenge_answer,
       desired_change_answer,
+      color,
+      qualification,
       is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
       webhook_data: payload,
     }
