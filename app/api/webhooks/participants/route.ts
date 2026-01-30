@@ -25,13 +25,16 @@ export async function POST(request: Request) {
     const payload = await request.json()
 
     // Log the webhook
-    const { error: logError } = await supabase
+    const { data: logData, error: logError } = await supabase
       .from('webhooks_log')
       .insert({
         payload,
         processed: false,
       })
+      .select('id')
+      .single()
 
+    const logId = logData?.id
     if (logError) {
       console.error('Error logging webhook:', logError)
     }
@@ -205,10 +208,12 @@ export async function POST(request: Request) {
       }
 
       // Mark webhook as processed
-      await supabase
-        .from('webhooks_log')
-        .update({ processed: true })
-        .eq('payload', payload)
+      if (logId) {
+        await supabase
+          .from('webhooks_log')
+          .update({ processed: true })
+          .eq('id', logId)
+      }
 
       return NextResponse.json({
         success: true,
@@ -228,10 +233,12 @@ export async function POST(request: Request) {
       }
 
       // Mark webhook as processed
-      await supabase
-        .from('webhooks_log')
-        .update({ processed: true })
-        .eq('payload', payload)
+      if (logId) {
+        await supabase
+          .from('webhooks_log')
+          .update({ processed: true })
+          .eq('id', logId)
+      }
 
       return NextResponse.json({
         success: true,
