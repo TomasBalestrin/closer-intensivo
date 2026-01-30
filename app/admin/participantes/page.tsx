@@ -26,6 +26,7 @@ export default function AdminParticipantes() {
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
+  const [checkinFilter, setCheckinFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // Modal states
@@ -97,11 +98,17 @@ export default function AdminParticipantes() {
     const matchesSale = saleFilter === '' ||
       (saleFilter === 'true' ? p.hasSale : !p.hasSale)
     const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
+    const matchesCheckin = !checkinFilter ||
+      (checkinFilter === 'day1' ? p.checked_in_day1 :
+       checkinFilter === 'day2' ? p.checked_in_day2 :
+       checkinFilter === 'day3' ? p.checked_in_day3 :
+       checkinFilter === 'any' ? (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) :
+       checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
 
-    return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor
+    return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor && matchesCheckin
   })
 
-  const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter
+  const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter || checkinFilter
 
   const clearFilters = () => {
     setFunnelFilter('')
@@ -110,6 +117,7 @@ export default function AdminParticipantes() {
     setOpportunityFilter('')
     setSaleFilter('')
     setColorFilter('')
+    setCheckinFilter('')
     setUnassignedFilter(false)
   }
 
@@ -315,6 +323,19 @@ export default function AdminParticipantes() {
                       { value: '', label: 'Todos' },
                       { value: 'true', label: 'Sim' },
                       { value: 'false', label: 'Não' },
+                    ]}
+                  />
+                  <Select
+                    label="Credenciamento"
+                    value={checkinFilter}
+                    onChange={(e) => setCheckinFilter(e.target.value)}
+                    options={[
+                      { value: '', label: 'Todos' },
+                      { value: 'day1', label: 'Credenciou Dia 1' },
+                      { value: 'day2', label: 'Credenciou Dia 2' },
+                      { value: 'day3', label: 'Credenciou Dia 3' },
+                      { value: 'any', label: 'Credenciou qualquer dia' },
+                      { value: 'none', label: 'Não credenciou' },
                     ]}
                   />
                 </div>
