@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const logId = logData?.id
 
     // Accept flexible field names for participant identification
-    const email = payload.email || payload.fields?.digite_seu_melhor_email || payload.fields?.email
+    const email = payload.login_value || payload.email || payload.fields?.digite_seu_melhor_email || payload.fields?.email
     const cpf = payload.cpf || payload.fields?.digite_o_seu_cpf_ou_cnpj || payload.fields?.cpf
     const name = payload.name || payload.nome || payload.fields?.nome_completo || payload.fields?.nome
     const externalId = payload.participant_id || payload.external_id
