@@ -91,11 +91,14 @@ export default function AdminRelatorios() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     const [pRes, cRes, sRes] = await Promise.all([
-      supabase.from('participants').select('id, name, email, niche, revenue, funnel, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id, challenge_answer, desired_change_answer, times_called, disc_profile, primary_archetype'),
+      supabase.from('participants').select('*'),
       supabase.from('users').select('*').eq('role', 'closer'),
       supabase.from('sales').select('participant_id'),
     ])
-    setParticipants(pRes.data || [])
+    if (pRes.error) console.error('Participants error:', pRes.error)
+    if (cRes.error) console.error('Closers error:', cRes.error)
+    if (sRes.error) console.error('Sales error:', sRes.error)
+    setParticipants((pRes.data || []) as any)
     setClosers(cRes.data || [])
     const map: Record<string, boolean> = {}
     sRes.data?.forEach(s => { map[s.participant_id] = true })
