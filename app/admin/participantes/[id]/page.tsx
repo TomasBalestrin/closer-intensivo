@@ -81,6 +81,7 @@ export default function ParticipantDetail() {
     net_profit: '',
     partner: '',
     revenue: '',
+    notes: '',
   })
 
   const [saleData, setSaleData] = useState({
@@ -160,6 +161,7 @@ export default function ParticipantDetail() {
         net_profit: p.net_profit || '',
         partner: p.partner || '',
         revenue: normalizedRev,
+        notes: p.notes || '',
       })
     }
 
@@ -199,6 +201,7 @@ export default function ParticipantDetail() {
           net_profit: formData.net_profit || null,
           partner: formData.partner || null,
           revenue: formData.revenue || null,
+          notes: formData.notes || null,
         })
         .eq('id', params.id)
 
@@ -770,6 +773,16 @@ export default function ParticipantDetail() {
                       value={formData.partner}
                       onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
                     />
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="Adicione observações sobre o participante..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                      />
+                    </div>
                   </div>
                   <div className="mt-6">
                     <Button onClick={handleSave} loading={saving}>
