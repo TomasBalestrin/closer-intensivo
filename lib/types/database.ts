@@ -96,6 +96,7 @@ export interface Database {
           badge_name: string | null
           net_profit: string | null
           partner: string | null
+          notes: string | null
           created_at: string
           updated_at: string
         }
@@ -146,6 +147,7 @@ export interface Database {
           badge_name?: string | null
           net_profit?: string | null
           partner?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -196,6 +198,7 @@ export interface Database {
           badge_name?: string | null
           net_profit?: string | null
           partner?: string | null
+          notes?: string | null
           created_at?: string
           updated_at?: string
         }

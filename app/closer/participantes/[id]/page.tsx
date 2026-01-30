@@ -73,6 +73,7 @@ export default function CloserParticipantDetail() {
     is_opportunity: false,
     times_called: 0,
     color: '',
+    notes: '',
   })
 
   const [saleData, setSaleData] = useState({
@@ -155,6 +156,7 @@ export default function CloserParticipantDetail() {
         is_opportunity: p.is_opportunity,
         times_called: p.times_called,
         color: p.color || '',
+        notes: p.notes || '',
       })
     }
 
@@ -185,6 +187,7 @@ export default function CloserParticipantDetail() {
           is_opportunity: formData.is_opportunity,
           times_called: formData.times_called,
           color: formData.color || null,
+          notes: formData.notes || null,
         })
         .eq('id', params.id)
 
@@ -1023,6 +1026,16 @@ export default function CloserParticipantDetail() {
                     label="É Oportunidade"
                     checked={formData.is_opportunity}
                     onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Adicione observações sobre o participante..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
                   />
                 </div>
               </div>
