@@ -22,6 +22,7 @@ export default function CloserParticipantes() {
   const [opportunityFilter, setOpportunityFilter] = useState('')
   const [saleFilter, setSaleFilter] = useState('')
   const [checkinFilter, setCheckinFilter] = useState('')
+  const [colorFilter, setColorFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -54,6 +55,24 @@ export default function CloserParticipantes() {
     fetchData()
   }, [fetchData])
 
+  // Restore scroll position when coming back from detail page
+  useEffect(() => {
+    if (!loading) {
+      const savedScroll = sessionStorage.getItem('closer-participantes-scroll')
+      if (savedScroll) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(savedScroll, 10))
+        })
+        sessionStorage.removeItem('closer-participantes-scroll')
+      }
+    }
+  }, [loading])
+
+  const handleNavigate = (participantId: string) => {
+    sessionStorage.setItem('closer-participantes-scroll', String(window.scrollY))
+    router.push(`/closer/participantes/${participantId}`)
+  }
+
   const funnels = [...new Set(participants.map(p => p.funnel).filter(Boolean))]
 
   const filteredParticipants = participants.filter((p: any) => {
@@ -66,8 +85,9 @@ export default function CloserParticipantes() {
     const hasCheckin = p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
     const matchesCheckin = checkinFilter === '' ||
       (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
+    const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
 
-    return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin
+    return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin && matchesColor
   })
 
   return (
@@ -140,6 +160,20 @@ export default function CloserParticipantes() {
                   { value: 'false', label: 'Ausentes' },
                 ]}
               />
+              <Select
+                label="Cor (Faturamento)"
+                value={colorFilter}
+                onChange={(e) => setColorFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todas as cores' },
+                  { value: 'rosa', label: 'Rosa (até R$ 5k)' },
+                  { value: 'preto', label: 'Preto (R$ 5k - 10k)' },
+                  { value: 'azul_claro', label: 'Azul Claro (R$ 10k - 20k)' },
+                  { value: 'verde', label: 'Verde (R$ 20k - 50k)' },
+                  { value: 'dourado', label: 'Dourado (R$ 50k - 100k)' },
+                  { value: 'laranja', label: 'Laranja (R$ 100k+)' },
+                ]}
+              />
             </div>
           )}
         </div>
@@ -153,7 +187,7 @@ export default function CloserParticipantes() {
               <Card
                 key={participant.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => router.push(`/closer/participantes/${participant.id}`)}
+                onClick={() => handleNavigate(participant.id)}
               >
                 <div className="flex items-start gap-4">
                   <Avatar
