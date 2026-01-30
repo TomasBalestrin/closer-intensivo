@@ -18,23 +18,48 @@ function removeAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function normalizeKey(key: string): string {
+  return removeAccents(key.toLowerCase()).replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+}
+
 // Flatten any nested JSON into a flat key-value map
-// e.g. { fields: { nome: "João" } } => { "fields.nome": "João", "nome": "João" }
+// Handles nested objects AND arrays of {label, value} / {field, answer} pairs
 function flattenPayload(obj: any, prefix = ''): Record<string, any> {
   const result: Record<string, any> = {}
   if (!obj || typeof obj !== 'object') return result
 
+  // Handle arrays: look for label/value or field/answer patterns
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (item && typeof item === 'object') {
+        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
+        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
+        if (label && value !== undefined && value !== null) {
+          const normLabel = normalizeKey(String(label))
+          if (normLabel) {
+            result[normLabel] = value
+            result[String(label)] = value
+          }
+        } else {
+          Object.assign(result, flattenPayload(item, prefix))
+        }
+      }
+    }
+    return result
+  }
+
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key
-    const normalizedKey = removeAccents(key.toLowerCase()).replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+    const normKey = normalizeKey(key)
 
-    if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)) {
-      // Recurse into nested objects
+    if (value !== null && value !== undefined && typeof value === 'object') {
+      // Recurse into nested objects and arrays
       Object.assign(result, flattenPayload(value, fullKey))
     } else {
       result[fullKey] = value
-      // Also store with normalized key for alias matching
-      result[normalizedKey] = value
+      if (normKey) {
+        result[normKey] = value
+      }
     }
   }
   return result
@@ -142,12 +167,14 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
       return flat[withFields]
     }
   }
-  // 2. Fallback: check if any flat key contains an alias or vice-versa
+  // 2. Fallback: substring matching (only aliases with 3+ chars to avoid false positives)
   const flatKeys = Object.keys(flat)
   for (const alias of aliases) {
+    if (alias.length < 3) continue
     for (const key of flatKeys) {
       if (flat[key] === undefined || flat[key] === null || flat[key] === '') continue
-      const normKey = removeAccents(key.toLowerCase()).replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+      const normKey = normalizeKey(key)
+      if (!normKey || normKey.length < 3) continue
       if (normKey.includes(alias) || alias.includes(normKey)) {
         return flat[key]
       }
