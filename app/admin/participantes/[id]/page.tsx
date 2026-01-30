@@ -40,6 +40,8 @@ import {
   Trash2,
   Sparkles,
   Users,
+  Check,
+  Loader2,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue } from '@/lib/utils'
@@ -64,6 +66,7 @@ export default function ParticipantDetail() {
   const [saleModal, setSaleModal] = useState(false)
   const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
+  const [checkinSaving, setCheckinSaving] = useState<number | null>(null)
   const [allParticipants, setAllParticipants] = useState<Array<{ id: string; name: string }>>([])
 
   const [formData, setFormData] = useState({
@@ -212,6 +215,33 @@ export default function ParticipantDetail() {
       showToast(error.message || 'Erro ao salvar', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleToggleCheckin = async (day: number) => {
+    if (!participant) return
+    setCheckinSaving(day)
+    try {
+      const field = `checked_in_day${day}` as keyof Participant
+      const currentValue = participant[field] as boolean
+      const { error } = await supabase
+        .from('participants')
+        .update({ [field]: !currentValue })
+        .eq('id', params.id)
+
+      if (error) throw error
+
+      setParticipant({ ...participant, [field]: !currentValue })
+      showToast(
+        !currentValue
+          ? `Check-in Dia ${day} marcado com sucesso`
+          : `Check-in Dia ${day} desmarcado`,
+        'success'
+      )
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao atualizar check-in', 'error')
+    } finally {
+      setCheckinSaving(null)
     }
   }
 
@@ -617,24 +647,41 @@ export default function ParticipantDetail() {
                         <p className="text-gray-400">-</p>
                       )}
                     </div>
-                    <div>
-                      <span className="text-gray-500">Check-in Dia 1:</span>
-                      <p className={participant.checked_in_day1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {participant.checked_in_day1 ? 'Sim' : 'Não'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Check-in Dia 2:</span>
-                      <p className={participant.checked_in_day2 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {participant.checked_in_day2 ? 'Sim' : 'Não'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Check-in Dia 3:</span>
-                      <p className={participant.checked_in_day3 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                        {participant.checked_in_day3 ? 'Sim' : 'Não'}
-                      </p>
-                    </div>
+                    {[1, 2, 3].map((day) => {
+                      const field = `checked_in_day${day}` as keyof Participant
+                      const isChecked = participant[field] as boolean
+                      const isSaving = checkinSaving === day
+                      return (
+                        <button
+                          key={day}
+                          onClick={() => handleToggleCheckin(day)}
+                          disabled={isSaving}
+                          className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all text-left ${
+                            isChecked
+                              ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                          } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+                        >
+                          <div className={`flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0 ${
+                            isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                          }`}>
+                            {isSaving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : isChecked ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              <span className="text-xs font-bold">D{day}</span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs">Check-in Dia {day}</p>
+                            <p className={`font-medium text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
+                              {isChecked ? 'Credenciado' : 'Não'}
+                            </p>
+                          </div>
+                        </button>
+                      )
+                    })}
                     <div>
                       <span className="text-gray-500">CPF:</span>
                       <p className="font-medium">{participant.cpf || '-'}</p>
