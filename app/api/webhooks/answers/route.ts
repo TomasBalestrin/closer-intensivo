@@ -94,10 +94,10 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
   return null
 }
 
-// Aliases for the two answer fields
+// Aliases for the two answer fields (platform field names first for fast matching)
 const CHALLENGE_ALIASES = [
-  'challenge_answer', 'challenge',
   'qual_sua_maior_dificuldade_no_seu_negocio_hoje',
+  'challenge_answer', 'challenge',
   'maior_dificuldade', 'dificuldade', 'desafio',
   'principal_dificuldade', 'dificuldade_atual',
   'qual_e_sua_maior_dificuldade', 'dificuldade_negocio',
@@ -106,8 +106,8 @@ const CHALLENGE_ALIASES = [
 ]
 
 const DESIRED_CHANGE_ALIASES = [
-  'desired_change_answer', 'desired_change',
   'o_que_pretende_aprender_no_intensivo_da_alta_performance',
+  'desired_change_answer', 'desired_change',
   'o_que_busca', 'objetivo', 'meta', 'expectativa',
   'o_que_espera', 'o_que_quer_aprender', 'o_que_deseja',
   'o_que_pretende', 'aprendizado', 'resultado_esperado',
@@ -117,8 +117,9 @@ const DESIRED_CHANGE_ALIASES = [
 ]
 
 // Aliases for participant identification
+// login_value is the root-level email field sent by the platform
 const ID_ALIASES = ['participant_id', 'external_id', 'id_externo', 'form_id', 'submission_id', 'lead_id']
-const EMAIL_ALIASES = ['email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante']
+const EMAIL_ALIASES = ['login_value', 'email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante']
 const CPF_ALIASES = ['cpf', 'cnpj', 'cpf_cnpj', 'documento', 'digite_o_seu_cpf_ou_cnpj']
 const NAME_ALIASES = ['nome_completo', 'nome', 'name', 'full_name', 'fullname', 'nome_participante']
 
@@ -300,47 +301,32 @@ export async function POST(request: Request) {
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    message: 'Webhook de respostas ativo. Aceita qualquer estrutura JSON.',
-    description: 'Detecta automaticamente os campos de dificuldade e objetivo do participante em qualquer formato de JSON. Suporta dados aninhados, planos e arrays de respostas.',
-    campos: {
-      identificacao: 'email, cpf, nome, participant_id (qualquer um para localizar o participante)',
-      dificuldade: 'Qualquer campo com: dificuldade, desafio, challenge, maior_dificuldade, etc.',
-      objetivo: 'Qualquer campo com: objetivo, o_que_busca, desired_change, expectativa, meta, etc.',
+    message: 'Webhook de respostas ativo. Recebe dados da plataforma de eventos e salva as duas respostas do participante.',
+    description: 'Extrai as respostas de dificuldade e objetivo do participante a partir do payload da plataforma. Identifica o participante por participant_id, login_value, email, cpf ou nome.',
+    campos_extraidos: {
+      dificuldade: 'fields.qual_sua_maior_dificuldade_no_seu_negocio_hoje',
+      objetivo: 'fields.o_que_pretende_aprender_no_intensivo_da_alta_performance',
     },
-    formatos_suportados: [
-      'JSON plano: { "email": "...", "dificuldade": "..." }',
-      'JSON aninhado: { "fields": { "email": "...", "dificuldade": "..." } }',
-      'Array de respostas: { "answers": [{ "label": "Email", "value": "..." }, { "label": "Dificuldade", "value": "..." }] }',
-    ],
-    exemplos: [
-      {
-        descricao: 'Formato aninhado',
-        payload: {
-          fields: {
-            email: 'joao@email.com',
-            qual_sua_maior_dificuldade_no_seu_negocio_hoje: 'Escalar vendas',
-            o_que_pretende_aprender_no_intensivo_da_alta_performance: 'Gestão de equipe',
-          },
-        },
+    identificacao: {
+      prioridade_1: 'participant_id (root) → busca por external_id no banco',
+      prioridade_2: 'login_value (root) ou fields.digite_seu_melhor_email → busca por email',
+      prioridade_3: 'fields.digite_o_seu_cpf_ou_cnpj → busca por cpf',
+      prioridade_4: 'fields.nome_completo → busca por nome',
+    },
+    exemplo_payload_plataforma: {
+      form: { id: '...', name: 'Participante - Standard' },
+      event: { id: '...', name: 'Intensivo Da Alta Performance' },
+      fields: {
+        nome_completo: 'João Silva',
+        digite_seu_melhor_email: 'joao@email.com',
+        digite_o_seu_cpf_ou_cnpj: '123.456.789-00',
+        qual_sua_maior_dificuldade_no_seu_negocio_hoje: 'Escalar vendas sem perder qualidade',
+        o_que_pretende_aprender_no_intensivo_da_alta_performance: 'Gestão de equipe e processos',
       },
-      {
-        descricao: 'Formato plano simples',
-        payload: {
-          nome: 'João Silva',
-          dificuldade: 'Escalar vendas sem perder qualidade',
-          objetivo: 'Aprender técnicas de fechamento',
-        },
-      },
-      {
-        descricao: 'Array de respostas (Typeform/Google Forms style)',
-        payload: {
-          answers: [
-            { label: 'Email', value: 'maria@email.com' },
-            { label: 'Qual sua maior dificuldade?', value: 'Gestão financeira' },
-            { label: 'O que espera do evento?', value: 'Controle de fluxo de caixa' },
-          ],
-        },
-      },
-    ],
+      login_value: 'joao@email.com',
+      participant_id: '3b036105-18c1-44ec-8858-0830493e4774',
+      status: 'registered',
+    },
+    nota: 'Apenas as duas perguntas (dificuldade e objetivo) são salvas. Os demais campos são usados apenas para identificar o participante.',
   })
 }

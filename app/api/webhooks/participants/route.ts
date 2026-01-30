@@ -74,7 +74,7 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'nome_do_participante', 'nome_participante', 'primeiro_nome',
   ]],
   ['email', [
-    'email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante',
+    'login_value', 'email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante',
     'participant_email', 'endereco_email',
   ]],
   ['phone', [
