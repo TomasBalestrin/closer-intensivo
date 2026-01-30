@@ -404,7 +404,7 @@ export default function AdminParticipantes() {
                   {participant.niche && (
                     <span
                       className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${getColorClass(
-                        participant.color
+                        participant.color || getColorFromRevenue(participant.revenue)
                       )}`}
                     >
                       {participant.niche}

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Loading } from '@/components/ui'
 import { Search, Filter, ExternalLink } from 'lucide-react'
 import { Participant } from '@/lib/types'
-import { getColorClass, getInstagramUrl } from '@/lib/utils'
+import { getColorClass, getColorFromRevenue, getInstagramUrl } from '@/lib/utils'
 
 export default function CloserParticipantes() {
   const router = useRouter()
@@ -164,7 +164,7 @@ export default function CloserParticipantes() {
                 {participant.niche && (
                   <span
                     className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${getColorClass(
-                      participant.color
+                      participant.color || getColorFromRevenue(participant.revenue)
                     )}`}
                   >
                     {participant.niche}
