@@ -15,6 +15,7 @@ import {
   Check,
   Users,
   CalendarCheck,
+  MessageSquare,
   ExternalLink,
   ChevronDown,
   ChevronUp,
@@ -88,6 +89,26 @@ const WEBHOOKS: WebhookInfo[] = [
     examplePayload: {
       email: 'joao@email.com',
       day: 1,
+    },
+  },
+  {
+    id: 'answers',
+    title: 'Respostas',
+    description: 'Importar respostas de dificuldade e objetivo dos participantes. Aceita qualquer estrutura JSON e detecta os campos automaticamente.',
+    path: '/api/webhooks/answers',
+    icon: <MessageSquare className="h-6 w-6" />,
+    color: 'bg-purple-500',
+    fields: [
+      { name: 'email / cpf / nome / participant_id', type: 'string', required: true, description: 'Identificação do participante (pelo menos um)' },
+      { name: 'dificuldade', type: 'string', required: false, description: 'Maior dificuldade no negócio (aliases: challenge, desafio, maior_dificuldade, etc.)' },
+      { name: 'objetivo', type: 'string', required: false, description: 'O que busca no intensivo (aliases: desired_change, o_que_busca, meta, expectativa, etc.)' },
+    ],
+    examplePayload: {
+      fields: {
+        email: 'joao@email.com',
+        dificuldade: 'Escalar vendas sem perder qualidade',
+        objetivo: 'Aprender técnicas de fechamento e gestão de equipe',
+      },
     },
   },
 ]
