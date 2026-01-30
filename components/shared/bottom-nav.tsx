@@ -8,7 +8,7 @@ import {
   UserCircle,
   Settings,
   Trophy,
-  Webhook,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ const adminNavItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Participantes', href: '/admin/participantes', icon: Users },
   { name: 'Closers', href: '/admin/closers', icon: Trophy },
-  { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
+  { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
   { name: 'Painel', href: '/admin/painel-admin', icon: Settings },
 ]
 

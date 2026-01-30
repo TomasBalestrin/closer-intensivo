@@ -457,12 +457,12 @@ export default function CloserParticipantDetail() {
 
         {/* Tabs */}
         <div className="border-b">
-          <div className="flex">
+          <div className="flex overflow-x-auto scrollbar-thin">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-3 border-b-2 transition-colors whitespace-nowrap flex-shrink-0 min-h-[44px] ${
                   activeTab === tab.id
                     ? 'border-purple-600 text-purple-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -964,14 +964,14 @@ export default function CloserParticipantDetail() {
                       key={day}
                       onClick={() => handleToggleCheckin(day)}
                       disabled={isSaving}
-                      className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                      className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all min-h-[56px] ${
                         isChecked
-                          ? 'bg-green-50 border-green-300 hover:bg-green-100'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                          ? 'bg-green-50 border-green-300 hover:bg-green-100 active:bg-green-200'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200'
                       } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                        <div className={`flex items-center justify-center w-11 h-11 sm:w-10 sm:h-10 rounded-full flex-shrink-0 ${
                           isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
                         }`}>
                           {isSaving ? (
