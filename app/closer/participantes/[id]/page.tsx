@@ -39,6 +39,8 @@ import {
   Zap,
   User as UserIcon,
   Users,
+  Check,
+  Loader2,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS } from '@/lib/utils'
@@ -62,6 +64,7 @@ export default function CloserParticipantDetail() {
   const [saleModal, setSaleModal] = useState(false)
   const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
+  const [checkinSaving, setCheckinSaving] = useState<number | null>(null)
   const [allParticipants, setAllParticipants] = useState<Array<{ id: string; name: string }>>([])
 
 
@@ -199,6 +202,33 @@ export default function CloserParticipantDetail() {
       showToast(error.message || 'Erro ao salvar', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleToggleCheckin = async (day: number) => {
+    if (!participant) return
+    setCheckinSaving(day)
+    try {
+      const field = `checked_in_day${day}` as keyof Participant
+      const currentValue = participant[field] as boolean
+      const { error } = await supabase
+        .from('participants')
+        .update({ [field]: !currentValue })
+        .eq('id', params.id)
+
+      if (error) throw error
+
+      setParticipant({ ...participant, [field]: !currentValue })
+      showToast(
+        !currentValue
+          ? `Check-in Dia ${day} marcado com sucesso`
+          : `Check-in Dia ${day} desmarcado`,
+        'success'
+      )
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao atualizar check-in', 'error')
+    } finally {
+      setCheckinSaving(null)
     }
   }
 
@@ -917,35 +947,51 @@ export default function CloserParticipantDetail() {
       {/* Dados Tab */}
       {activeTab === 'dados' && (
         <div className="space-y-6">
-          {/* Participant Info */}
+          {/* Check-in / Credenciamento */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações do Participante</CardTitle>
+              <CardTitle>Credenciamento</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Credenciou Dia 1:</span>
-                  <p className={participant.checked_in_day1 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                    {participant.checked_in_day1 ? 'Sim' : 'Não'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Credenciou Dia 2:</span>
-                  <p className={participant.checked_in_day2 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                    {participant.checked_in_day2 ? 'Sim' : 'Não'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Credenciou Dia 3:</span>
-                  <p className={participant.checked_in_day3 ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                    {participant.checked_in_day3 ? 'Sim' : 'Não'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Vezes Chamado:</span>
-                  <p className="font-medium">{participant.times_called || 0}</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[1, 2, 3].map((day) => {
+                  const field = `checked_in_day${day}` as keyof Participant
+                  const isChecked = participant[field] as boolean
+                  const isSaving = checkinSaving === day
+
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => handleToggleCheckin(day)}
+                      disabled={isSaving}
+                      className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                        isChecked
+                          ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                      } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                          isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                        }`}>
+                          {isSaving ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : isChecked ? (
+                            <Check className="h-5 w-5" />
+                          ) : (
+                            <span className="text-sm font-bold">D{day}</span>
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold text-gray-800">Dia {day}</p>
+                          <p className={`text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
+                            {isChecked ? 'Credenciado' : 'Não credenciado'}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
