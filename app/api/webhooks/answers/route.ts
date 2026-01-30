@@ -12,6 +12,66 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
+// Flatten any nested JSON into a flat key-value map
+function flattenPayload(obj: any, prefix = ''): Record<string, any> {
+  const result: Record<string, any> = {}
+  if (!obj || typeof obj !== 'object') return result
+
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+
+    if (value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value)) {
+      Object.assign(result, flattenPayload(value, fullKey))
+    } else {
+      result[fullKey] = value
+      result[normalizedKey] = value
+    }
+  }
+  return result
+}
+
+// Find first matching value from flat payload
+function findValue(flat: Record<string, any>, aliases: string[]): any {
+  for (const alias of aliases) {
+    if (flat[alias] !== undefined && flat[alias] !== null && flat[alias] !== '') {
+      return flat[alias]
+    }
+    const withFields = `fields.${alias}`
+    if (flat[withFields] !== undefined && flat[withFields] !== null && flat[withFields] !== '') {
+      return flat[withFields]
+    }
+  }
+  return null
+}
+
+// Aliases for the two answer fields
+const CHALLENGE_ALIASES = [
+  'challenge_answer', 'challenge',
+  'qual_sua_maior_dificuldade_no_seu_negocio_hoje',
+  'maior_dificuldade', 'dificuldade', 'desafio',
+  'principal_dificuldade', 'dificuldade_atual',
+  'qual_e_sua_maior_dificuldade', 'dificuldade_negocio',
+  'qual_maior_dificuldade', 'obstáculo', 'obstaculo',
+  'problema_principal', 'desafio_atual',
+]
+
+const DESIRED_CHANGE_ALIASES = [
+  'desired_change_answer', 'desired_change',
+  'o_que_pretende_aprender_no_intensivo_da_alta_performance',
+  'o_que_busca', 'objetivo', 'meta', 'expectativa',
+  'o_que_espera', 'o_que_quer_aprender', 'o_que_deseja',
+  'o_que_pretende', 'aprendizado', 'resultado_esperado',
+  'o_que_quer_alcançar', 'o_que_quer_alcancar',
+  'objetivo_intensivo', 'expectativa_intensivo',
+]
+
+// Aliases for participant identification
+const ID_ALIASES = ['participant_id', 'external_id', 'id_externo', 'form_id', 'submission_id', 'lead_id', 'id']
+const EMAIL_ALIASES = ['email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante']
+const CPF_ALIASES = ['cpf', 'cnpj', 'cpf_cnpj', 'documento', 'digite_o_seu_cpf_ou_cnpj']
+const NAME_ALIASES = ['nome_completo', 'nome', 'name', 'full_name', 'fullname', 'nome_participante']
+
 export async function POST(request: Request) {
   const supabase = getSupabase()
   try {
@@ -25,40 +85,29 @@ export async function POST(request: Request) {
       .single()
     const logId = logData?.id
 
-    // Support both nested (fields) and flat payload structures
-    const fields = payload.fields || payload
-    const participant_id = payload.participant_id || fields.participant_id
+    // Flatten payload for flexible field matching
+    const flat = flattenPayload(payload)
 
-    // Extract identification fields (priority: external_id > email > cpf > name)
-    const email = fields?.digite_seu_melhor_email || fields?.email || null
-    const cpf = fields?.digite_o_seu_cpf_ou_cnpj || fields?.cpf || null
-    const name = fields?.nome_completo || fields?.nome || fields?.name || null
+    // Extract identification fields
+    const externalId = findValue(flat, ID_ALIASES)
+    const email = findValue(flat, EMAIL_ALIASES)
+    const cpf = findValue(flat, CPF_ALIASES)
+    const name = findValue(flat, NAME_ALIASES)
 
-    // Extract answer fields - flexible field naming
-    const challenge_answer =
-      fields?.qual_sua_maior_dificuldade_no_seu_negocio_hoje ||
-      fields?.maior_dificuldade ||
-      fields?.dificuldade ||
-      fields?.challenge ||
-      fields?.challenge_answer ||
-      null
-
-    const desired_change_answer =
-      fields?.o_que_pretende_aprender_no_intensivo_da_alta_performance ||
-      fields?.o_que_busca ||
-      fields?.objetivo ||
-      fields?.desired_change ||
-      fields?.desired_change_answer ||
-      null
+    // Extract the two answer fields from any JSON structure
+    const challenge_answer = findValue(flat, CHALLENGE_ALIASES)
+    const desired_change_answer = findValue(flat, DESIRED_CHANGE_ALIASES)
 
     if (!challenge_answer && !desired_change_answer) {
       return NextResponse.json(
         {
-          error: 'Pelo menos um campo de resposta é obrigatório',
-          expected_fields: [
-            'qual_sua_maior_dificuldade_no_seu_negocio_hoje (ou: maior_dificuldade, dificuldade, challenge)',
-            'o_que_pretende_aprender_no_intensivo_da_alta_performance (ou: o_que_busca, objetivo, desired_change)',
-          ],
+          error: 'Nenhuma resposta encontrada no payload.',
+          hint: 'O webhook aceita qualquer estrutura JSON. Basta incluir campos com nomes relacionados a dificuldade/desafio e/ou objetivo/o que busca.',
+          camposAceitos: {
+            dificuldade: CHALLENGE_ALIASES.slice(0, 6),
+            objetivo: DESIRED_CHANGE_ALIASES.slice(0, 6),
+          },
+          receivedKeys: Object.keys(flat).slice(0, 30),
         },
         { status: 400 }
       )
@@ -67,11 +116,11 @@ export async function POST(request: Request) {
     // Find participant - priority: external_id > email > cpf > name
     let existingParticipant = null
 
-    if (participant_id) {
+    if (externalId) {
       const { data } = await supabase
         .from('participants')
-        .select('id')
-        .eq('external_id', participant_id)
+        .select('id, name')
+        .eq('external_id', externalId)
         .single()
       existingParticipant = data
     }
@@ -79,7 +128,7 @@ export async function POST(request: Request) {
     if (!existingParticipant && email) {
       const { data } = await supabase
         .from('participants')
-        .select('id')
+        .select('id, name')
         .eq('email', email)
         .single()
       existingParticipant = data
@@ -88,7 +137,7 @@ export async function POST(request: Request) {
     if (!existingParticipant && cpf) {
       const { data } = await supabase
         .from('participants')
-        .select('id')
+        .select('id, name')
         .eq('cpf', cpf)
         .single()
       existingParticipant = data
@@ -97,7 +146,7 @@ export async function POST(request: Request) {
     if (!existingParticipant && name) {
       const { data } = await supabase
         .from('participants')
-        .select('id')
+        .select('id, name')
         .eq('name', name)
         .single()
       existingParticipant = data
@@ -107,12 +156,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Participante não encontrado',
-          searched: {
-            external_id: participant_id || null,
-            email,
-            cpf,
-            name,
-          },
+          hint: 'Inclua no JSON um campo de identificação (email, cpf, nome, id externo) para localizar o participante.',
+          searched: { external_id: externalId, email, cpf, name },
         },
         { status: 404 }
       )
@@ -138,15 +183,13 @@ export async function POST(request: Request) {
 
     // Mark webhook as processed
     if (logId) {
-      await supabase
-        .from('webhooks_log')
-        .update({ processed: true })
-        .eq('id', logId)
+      await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
     }
 
     return NextResponse.json({
       success: true,
       participantId: existingParticipant.id,
+      participantName: existingParticipant.name,
       updated: Object.keys(updateData),
     })
   } catch (error: any) {
@@ -162,31 +205,40 @@ export async function POST(request: Request) {
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    message: 'Webhook de respostas ativo. Envie POST com dados do participante e respostas.',
-    expectedPayload: {
-      participant_id: 'string (ID externo - opcional, para identificação)',
-      fields: {
-        _identification: 'Use um dos campos abaixo para identificar o participante:',
-        digite_seu_melhor_email: 'string (email do participante)',
-        digite_o_seu_cpf_ou_cnpj: 'string (CPF/CNPJ)',
-        nome_completo: 'string (nome - fallback)',
-        _answers: 'Campos de resposta (pelo menos um obrigatório):',
-        qual_sua_maior_dificuldade_no_seu_negocio_hoje: 'string (dificuldade principal)',
-        o_que_pretende_aprender_no_intensivo_da_alta_performance: 'string (o que busca)',
-      },
-      _aliases: {
-        dificuldade: 'Alias para qual_sua_maior_dificuldade_no_seu_negocio_hoje',
-        maior_dificuldade: 'Alias para qual_sua_maior_dificuldade_no_seu_negocio_hoje',
-        o_que_busca: 'Alias para o_que_pretende_aprender_no_intensivo_da_alta_performance',
-        objetivo: 'Alias para o_que_pretende_aprender_no_intensivo_da_alta_performance',
-      },
+    message: 'Webhook de respostas ativo. Aceita qualquer estrutura JSON.',
+    description: 'Detecta automaticamente os campos de dificuldade e objetivo do participante em qualquer formato de JSON. Suporta dados aninhados ou planos.',
+    campos: {
+      identificacao: 'email, cpf, nome, participant_id (qualquer um para localizar o participante)',
+      dificuldade: 'Qualquer campo com: dificuldade, desafio, challenge, maior_dificuldade, etc.',
+      objetivo: 'Qualquer campo com: objetivo, o_que_busca, desired_change, expectativa, meta, etc.',
     },
-    example: {
-      fields: {
-        digite_seu_melhor_email: 'participante@email.com',
-        qual_sua_maior_dificuldade_no_seu_negocio_hoje: 'Escalar as vendas sem perder qualidade',
-        o_que_pretende_aprender_no_intensivo_da_alta_performance: 'Técnicas de fechamento e gestão de equipe',
+    exemplos: [
+      {
+        descricao: 'Formato aninhado',
+        payload: {
+          fields: {
+            email: 'joao@email.com',
+            qual_sua_maior_dificuldade_no_seu_negocio_hoje: 'Escalar vendas',
+            o_que_pretende_aprender_no_intensivo_da_alta_performance: 'Gestão de equipe',
+          },
+        },
       },
-    },
+      {
+        descricao: 'Formato plano simples',
+        payload: {
+          nome: 'João Silva',
+          dificuldade: 'Escalar vendas sem perder qualidade',
+          objetivo: 'Aprender técnicas de fechamento',
+        },
+      },
+      {
+        descricao: 'Outro formato',
+        payload: {
+          email: 'maria@email.com',
+          desafio: 'Gestão financeira',
+          o_que_busca: 'Controle de fluxo de caixa',
+        },
+      },
+    ],
   })
 }

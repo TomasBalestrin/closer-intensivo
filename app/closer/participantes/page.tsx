@@ -162,12 +162,22 @@ export default function CloserParticipantes() {
                     size="lg"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900 truncate">
                         {participant.name}
                       </h3>
                       {participant.is_opportunity && (
                         <Badge variant="success">Oportunidade</Badge>
+                      )}
+                      {(participant.color || getColorFromRevenue(participant.revenue)) && (
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color || getColorFromRevenue(participant.revenue))}`}>
+                          {(participant.color || getColorFromRevenue(participant.revenue)) === 'rosa' && 'Rosa'}
+                          {(participant.color || getColorFromRevenue(participant.revenue)) === 'preto' && 'Preto'}
+                          {(participant.color || getColorFromRevenue(participant.revenue)) === 'azul_claro' && 'Azul Claro'}
+                          {(participant.color || getColorFromRevenue(participant.revenue)) === 'verde' && 'Verde'}
+                          {(participant.color || getColorFromRevenue(participant.revenue)) === 'dourado' && 'Dourado'}
+                          {(participant.color || getColorFromRevenue(participant.revenue)) === 'laranja' && 'Laranja'}
+                        </span>
                       )}
                     </div>
                     {participant.revenue && (

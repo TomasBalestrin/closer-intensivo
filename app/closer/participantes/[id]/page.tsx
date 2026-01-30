@@ -967,6 +967,7 @@ export default function CloserParticipantDetail() {
                     { value: 'rosa', label: 'Rosa' },
                     { value: 'preto', label: 'Preto' },
                     { value: 'azul_claro', label: 'Azul Claro' },
+                    { value: 'verde', label: 'Verde' },
                     { value: 'dourado', label: 'Dourado' },
                     { value: 'laranja', label: 'Laranja' },
                   ]}
