@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const externalId = payload.participant_id || payload.external_id
 
     // Which day to check in (1, 2, or 3)
-    const day = parseInt(payload.day || payload.dia || payload.fields?.dia || '1')
+    const day = parseInt(payload.day || payload.dia || payload.fields?.dia || payload.fields?.day || '1')
 
     if (!email && !cpf && !name && !externalId) {
       return NextResponse.json(
