@@ -31,19 +31,12 @@ export async function POST(request: Request) {
     const name = payload.name || payload.nome || payload.fields?.nome_completo || payload.fields?.nome
     const externalId = payload.participant_id || payload.external_id
 
-    // Which day to check in (1, 2, or 3)
-    const day = parseInt(payload.day || payload.dia || payload.fields?.dia || payload.fields?.day || '1')
+    // Check if payload has checkin1/2/3 format (timestamps or booleans per day)
+    const hasMultiDayFormat = payload.checkin1 !== undefined || payload.checkin2 !== undefined || payload.checkin3 !== undefined
 
     if (!email && !cpf && !name && !externalId) {
       return NextResponse.json(
         { error: 'Identificação do participante obrigatória (email, cpf, name ou participant_id)' },
-        { status: 400 }
-      )
-    }
-
-    if (![1, 2, 3].includes(day)) {
-      return NextResponse.json(
-        { error: 'Dia inválido. Use day: 1, 2 ou 3' },
         { status: 400 }
       )
     }
@@ -94,11 +87,36 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update check-in for the specified day
-    const updateField = `checked_in_day${day}`
+    // Build update data based on payload format
+    const updateData: Record<string, boolean> = {}
+
+    if (hasMultiDayFormat) {
+      // Format: { checkin1: "2026-01-30T...", checkin2: "2026-01-31T...", checkin3: null }
+      // A non-null value means checked in
+      if (payload.checkin1 !== undefined) {
+        updateData.checked_in_day1 = payload.checkin1 !== null && payload.checkin1 !== false && payload.checkin1 !== '' && payload.checkin1 !== 0
+      }
+      if (payload.checkin2 !== undefined) {
+        updateData.checked_in_day2 = payload.checkin2 !== null && payload.checkin2 !== false && payload.checkin2 !== '' && payload.checkin2 !== 0
+      }
+      if (payload.checkin3 !== undefined) {
+        updateData.checked_in_day3 = payload.checkin3 !== null && payload.checkin3 !== false && payload.checkin3 !== '' && payload.checkin3 !== 0
+      }
+    } else {
+      // Legacy format: { day: 1 } or { dia: 2 }
+      const day = parseInt(payload.day || payload.dia || payload.fields?.dia || payload.fields?.day || '1')
+      if (![1, 2, 3].includes(day)) {
+        return NextResponse.json(
+          { error: 'Dia inválido. Use day: 1, 2 ou 3' },
+          { status: 400 }
+        )
+      }
+      updateData[`checked_in_day${day}`] = true
+    }
+
     const { error: updateError } = await supabase
       .from('participants')
-      .update({ [updateField]: true })
+      .update(updateData)
       .eq('id', participant.id)
 
     if (updateError) {
@@ -122,7 +140,7 @@ export async function POST(request: Request) {
       action: 'checkin',
       participantId: participant.id,
       participantName: participant.name,
-      day,
+      days: updateData,
     })
   } catch (error: any) {
     console.error('Checkin webhook error:', error)
