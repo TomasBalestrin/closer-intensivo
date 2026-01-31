@@ -113,16 +113,24 @@ async function processarParticipante(body: any, supabase: any) {
 
 // Handler: Credenciamentos
 async function processarCredenciamento(body: any, supabase: any) {
-  const email = body.email
-  const cpf = body.cpf
-  const participante_id = body.participante_id
-  const status_credenciamento = body.status_credenciamento || 'checked_in'
+  const fields = body.fields || body
+  const email = body.email || body.login_value || fields?.email || fields?.digite_seu_melhor_email
+  const cpf = body.cpf || fields?.cpf || fields?.digite_o_seu_cpf_ou_cnpj
+  const name = body.name || body.nome || fields?.nome_completo || fields?.nome
+  const participante_id = body.participante_id || body.participant_id || body.external_id
+  const status_credenciamento = body.status_credenciamento || body.status || 'checked_in'
 
-  // Find participant
+  // Find participant by priority: id > external_id > email > cpf > name
   let participant = null
   if (participante_id) {
+    // Try as internal UUID first
     const { data } = await supabase.from('participants').select('id').eq('id', participante_id).single()
     participant = data
+    // Then try as external_id
+    if (!participant) {
+      const { data: extData } = await supabase.from('participants').select('id').eq('external_id', participante_id).single()
+      participant = extData
+    }
   }
   if (!participant && email) {
     const { data } = await supabase.from('participants').select('id').eq('email', email).single()
@@ -132,14 +140,18 @@ async function processarCredenciamento(body: any, supabase: any) {
     const { data } = await supabase.from('participants').select('id').eq('cpf', cpf).single()
     participant = data
   }
+  if (!participant && name) {
+    const { data } = await supabase.from('participants').select('id').eq('name', name).single()
+    participant = data
+  }
 
   if (!participant) {
-    return { status: 404, error: 'Participante não encontrado' }
+    return { status: 404, error: 'Participante não encontrado', identifiers: { email, cpf, name, participante_id } }
   }
 
   // Map status to check-in fields
   const updateData: Record<string, any> = {}
-  const dia = body.dia || 1
+  const dia = parseInt(body.dia || body.day || body.fields?.dia || body.fields?.day || '1')
 
   if (status_credenciamento === 'checked_in') {
     if (dia === 1) updateData.checked_in_day1 = true
