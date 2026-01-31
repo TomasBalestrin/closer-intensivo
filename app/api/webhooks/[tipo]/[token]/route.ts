@@ -62,6 +62,18 @@ async function processarParticipante(body: any, supabase: any) {
   const color = getColorFromRevenue(revenue) || null
   const qualification = getQualificationFromRevenue(revenue) || null
 
+  // Extract checkin1/2/3 fields (timestamps mean checked in, null means not)
+  const checkinData: Record<string, boolean> = {}
+  if (body.checkin1 !== undefined) {
+    checkinData.checked_in_day1 = body.checkin1 !== null && body.checkin1 !== false && body.checkin1 !== '' && body.checkin1 !== 0
+  }
+  if (body.checkin2 !== undefined) {
+    checkinData.checked_in_day2 = body.checkin2 !== null && body.checkin2 !== false && body.checkin2 !== '' && body.checkin2 !== 0
+  }
+  if (body.checkin3 !== undefined) {
+    checkinData.checked_in_day3 = body.checkin3 !== null && body.checkin3 !== false && body.checkin3 !== '' && body.checkin3 !== 0
+  }
+
   const participantData = {
     name,
     email: email || null,
@@ -79,6 +91,7 @@ async function processarParticipante(body: any, supabase: any) {
     qualification,
     is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
     webhook_data: body,
+    ...checkinData,
   }
 
   if (existingParticipant) {
@@ -149,18 +162,35 @@ async function processarCredenciamento(body: any, supabase: any) {
     return { status: 404, error: 'Participante não encontrado', identifiers: { email, cpf, name, participante_id } }
   }
 
-  // Map status to check-in fields
-  const updateData: Record<string, any> = {}
-  const dia = parseInt(body.dia || body.day || body.fields?.dia || body.fields?.day || '1')
+  // Check if payload has checkin1/2/3 format (timestamps or booleans per day)
+  const hasMultiDayFormat = body.checkin1 !== undefined || body.checkin2 !== undefined || body.checkin3 !== undefined
 
-  if (status_credenciamento === 'checked_in') {
-    if (dia === 1) updateData.checked_in_day1 = true
-    else if (dia === 2) updateData.checked_in_day2 = true
-    else if (dia === 3) updateData.checked_in_day3 = true
-  } else if (status_credenciamento === 'cancelado') {
-    if (dia === 1) updateData.checked_in_day1 = false
-    else if (dia === 2) updateData.checked_in_day2 = false
-    else if (dia === 3) updateData.checked_in_day3 = false
+  const updateData: Record<string, any> = {}
+
+  if (hasMultiDayFormat) {
+    // Format: { checkin1: "2026-01-30T...", checkin2: "2026-01-31T...", checkin3: null }
+    if (body.checkin1 !== undefined) {
+      updateData.checked_in_day1 = body.checkin1 !== null && body.checkin1 !== false && body.checkin1 !== '' && body.checkin1 !== 0
+    }
+    if (body.checkin2 !== undefined) {
+      updateData.checked_in_day2 = body.checkin2 !== null && body.checkin2 !== false && body.checkin2 !== '' && body.checkin2 !== 0
+    }
+    if (body.checkin3 !== undefined) {
+      updateData.checked_in_day3 = body.checkin3 !== null && body.checkin3 !== false && body.checkin3 !== '' && body.checkin3 !== 0
+    }
+  } else {
+    // Legacy format: { day: 1, status_credenciamento: 'checked_in' }
+    const dia = parseInt(body.dia || body.day || body.fields?.dia || body.fields?.day || '1')
+
+    if (status_credenciamento === 'checked_in') {
+      if (dia === 1) updateData.checked_in_day1 = true
+      else if (dia === 2) updateData.checked_in_day2 = true
+      else if (dia === 3) updateData.checked_in_day3 = true
+    } else if (status_credenciamento === 'cancelado') {
+      if (dia === 1) updateData.checked_in_day1 = false
+      else if (dia === 2) updateData.checked_in_day2 = false
+      else if (dia === 3) updateData.checked_in_day3 = false
+    }
   }
 
   if (Object.keys(updateData).length > 0) {
@@ -174,7 +204,7 @@ async function processarCredenciamento(body: any, supabase: any) {
   return {
     status: 200,
     message: `Credenciamento ${status_credenciamento}`,
-    data: { participante_id: participant.id, status: status_credenciamento, dia },
+    data: { participante_id: participant.id, status: status_credenciamento, days: updateData },
     entidade_tipo: 'participante',
     entidade_id: participant.id,
   }

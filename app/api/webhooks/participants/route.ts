@@ -215,6 +215,34 @@ export async function POST(request: Request) {
     // Extract external ID
     const externalId = findValue(flat, EXTERNAL_ID_ALIASES)
 
+    // Extract checkin fields (checkin1/2/3 with timestamps or booleans)
+    const CHECKIN_ALIASES: Array<[string, string[]]> = [
+      ['checked_in_day1', ['checkin1', 'checkin_1', 'check_in_1', 'checked_in_day1', 'credenciamento_dia1', 'credenciamento_1']],
+      ['checked_in_day2', ['checkin2', 'checkin_2', 'check_in_2', 'checked_in_day2', 'credenciamento_dia2', 'credenciamento_2']],
+      ['checked_in_day3', ['checkin3', 'checkin_3', 'check_in_3', 'checked_in_day3', 'credenciamento_dia3', 'credenciamento_3']],
+    ]
+
+    const checkinData: Record<string, boolean> = {}
+    for (const [dbColumn, aliases] of CHECKIN_ALIASES) {
+      // Use direct key lookup to avoid substring false positives between checkin1/checkin2/checkin3
+      let rawValue = undefined
+      for (const alias of aliases) {
+        if (flat[alias] !== undefined) {
+          rawValue = flat[alias]
+          break
+        }
+        const withFields = `fields.${alias}`
+        if (flat[withFields] !== undefined) {
+          rawValue = flat[withFields]
+          break
+        }
+      }
+      if (rawValue !== undefined) {
+        // A non-null timestamp or truthy value means checked in
+        checkinData[dbColumn] = rawValue !== null && rawValue !== false && rawValue !== 'false' && rawValue !== '' && rawValue !== 0
+      }
+    }
+
     // Extract opportunity flag
     const rawOpportunity = findValue(flat, OPPORTUNITY_ALIASES)
     const hasOpportunityField = rawOpportunity !== null
@@ -300,6 +328,7 @@ export async function POST(request: Request) {
       color,
       qualification,
       webhook_data: payload,
+      ...checkinData,
     }
 
     if (is_opportunity !== undefined) {
