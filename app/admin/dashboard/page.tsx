@@ -6,6 +6,7 @@ import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Loading } from '@/components/ui'
 import { Participant, Sale, User } from '@/lib/types'
 import { TopClosers } from '@/components/shared/top-closers'
+import { CloserRankingTable } from '@/components/shared/closer-ranking-table'
 import { Users, Target, Calendar, TrendingUp, Percent, DollarSign, CreditCard } from 'lucide-react'
 
 type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
@@ -112,8 +113,8 @@ export default function AdminDashboard() {
 
   const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
 
-  // Top closers - uses ALL sales (not filtered by day) so ranking is global and consistent across all dashboards
-  const topClosers = useMemo(() => {
+  // All closers ranked - uses ALL sales (not filtered by day) so ranking is global and consistent across all dashboards
+  const allClosersRanked = useMemo(() => {
     return closers.map(closer => {
       const closerSales = sales.filter(s => s.closer_id === closer.id)
       return {
@@ -122,7 +123,7 @@ export default function AdminDashboard() {
         totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
         entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
       }
-    }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
+    }).sort((a, b) => b.totalValue - a.totalValue)
   }, [closers, sales])
 
   const { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue } = stats
@@ -305,7 +306,10 @@ export default function AdminDashboard() {
       </section>
 
       {/* Top Closers - shared component, same for all users */}
-      <TopClosers closers={topClosers} />
+      <TopClosers closers={allClosersRanked.slice(0, 3)} />
+
+      {/* Ranking Geral */}
+      <CloserRankingTable closers={allClosersRanked} />
     </div>
   )
 }
