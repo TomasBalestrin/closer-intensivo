@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
@@ -30,6 +30,7 @@ export default function AdminParticipantes() {
   const [showFilters, setShowFilters] = useState(false)
 
   // Modal states
+  const [visibleCount, setVisibleCount] = useState(30)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
@@ -58,7 +59,7 @@ export default function AdminParticipantes() {
     const [participantsRes, closersRes, salesRes] = await Promise.all([
       supabase
         .from('participants')
-        .select('*, seller_closer:users!participants_seller_closer_id_fkey(*)')
+        .select('*, seller_closer:users!participants_seller_closer_id_fkey(id, name, email, photo_url)')
         .order('created_at', { ascending: false }),
       supabase
         .from('users')
@@ -69,13 +70,16 @@ export default function AdminParticipantes() {
         .select('participant_id'),
     ])
 
+    // Use Set for O(1) lookup instead of .some() O(n)
+    const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
     const participantsWithSales = participantsRes.data?.map(p => ({
       ...p,
-      hasSale: salesRes.data?.some(s => s.participant_id === p.id) || false,
+      hasSale: salesSet.has(p.id),
     })) || []
 
     setParticipants(participantsWithSales)
     setClosers(closersRes.data || [])
+    setVisibleCount(30)
     setLoading(false)
   }, [])
 
@@ -83,30 +87,34 @@ export default function AdminParticipantes() {
     fetchData()
   }, [fetchData])
 
-  const filteredParticipants = participants.filter((p: any) => {
+  const filteredParticipants = useMemo(() => {
     const searchLower = debouncedSearch.toLowerCase()
-    const matchesSearch = !debouncedSearch ||
-      p.name?.toLowerCase().includes(searchLower) ||
-      p.email?.toLowerCase().includes(searchLower) ||
-      p.niche?.toLowerCase().includes(searchLower) ||
-      p.instagram?.toLowerCase().includes(searchLower)
-    const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-    const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
-    const matchesAssignedCloser = !assignedCloserFilter || (assignedCloserFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === assignedCloserFilter)
-    const matchesOpportunity = opportunityFilter === '' ||
-      (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
-    const matchesSale = saleFilter === '' ||
-      (saleFilter === 'true' ? p.hasSale : !p.hasSale)
-    const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
-    const matchesCheckin = !checkinFilter ||
-      (checkinFilter === 'day1' ? p.checked_in_day1 :
-       checkinFilter === 'day2' ? p.checked_in_day2 :
-       checkinFilter === 'day3' ? p.checked_in_day3 :
-       checkinFilter === 'any' ? (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) :
-       checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
+    return participants.filter((p: any) => {
+      const matchesSearch = !debouncedSearch ||
+        p.name?.toLowerCase().includes(searchLower) ||
+        p.email?.toLowerCase().includes(searchLower) ||
+        p.niche?.toLowerCase().includes(searchLower) ||
+        p.instagram?.toLowerCase().includes(searchLower)
+      const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
+      const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
+      const matchesAssignedCloser = !assignedCloserFilter || (assignedCloserFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === assignedCloserFilter)
+      const matchesOpportunity = opportunityFilter === '' ||
+        (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
+      const matchesSale = saleFilter === '' ||
+        (saleFilter === 'true' ? p.hasSale : !p.hasSale)
+      const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
+      const matchesCheckin = !checkinFilter ||
+        (checkinFilter === 'day1' ? p.checked_in_day1 :
+         checkinFilter === 'day2' ? p.checked_in_day2 :
+         checkinFilter === 'day3' ? p.checked_in_day3 :
+         checkinFilter === 'any' ? (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) :
+         checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
 
-    return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor && matchesCheckin
-  })
+      return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor && matchesCheckin
+    })
+  }, [participants, debouncedSearch, funnelFilter, sellerFilter, assignedCloserFilter, opportunityFilter, saleFilter, colorFilter, checkinFilter])
+
+  const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
 
   const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter || checkinFilter
 
@@ -377,7 +385,7 @@ export default function AdminParticipantes() {
                   )}
                 </div>
 
-                {filteredParticipants.map((participant) => (
+                {visibleParticipants.map((participant) => (
                   <Card
                     key={participant.id}
                     className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -468,8 +476,19 @@ export default function AdminParticipantes() {
                 ))}
               </div>
 
+              {visibleCount < filteredParticipants.length && (
+                <div className="col-span-full flex justify-center pt-4">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setVisibleCount(prev => prev + 30)}
+                  >
+                    Carregar mais ({filteredParticipants.length - visibleCount} restantes)
+                  </Button>
+                </div>
+              )}
+
               {filteredParticipants.length === 0 && (
-                <div className="text-center py-12">
+                <div className="text-center py-12 col-span-full">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">Nenhum participante encontrado</p>
                 </div>

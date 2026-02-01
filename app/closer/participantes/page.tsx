@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge } from '@/components/ui'
@@ -40,6 +40,7 @@ export default function CloserParticipantes() {
   const [checkinFilter, setCheckinFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(30)
 
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true)
@@ -58,9 +59,10 @@ export default function CloserParticipantes() {
         .select('participant_id'),
     ])
 
+    const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
     const participantsWithSales = participantsRes.data?.map(p => ({
       ...p,
-      hasSale: salesRes.data?.some(s => s.participant_id === p.id) || false,
+      hasSale: salesSet.has(p.id),
     })) || []
 
     setParticipants(participantsWithSales)
@@ -106,22 +108,27 @@ export default function CloserParticipantes() {
     router.push(`/closer/participantes/${participantId}`)
   }
 
-  const funnels = [...new Set(participants.map(p => p.funnel).filter(Boolean))]
+  const funnels = useMemo(() => [...new Set(participants.map(p => p.funnel).filter(Boolean))], [participants])
 
-  const filteredParticipants = participants.filter((p: any) => {
-    const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-    const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-    const matchesOpportunity = opportunityFilter === '' ||
-      (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
-    const matchesSale = saleFilter === '' ||
-      (saleFilter === 'true' ? p.hasSale : !p.hasSale)
-    const hasCheckin = p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
-    const matchesCheckin = checkinFilter === '' ||
-      (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
-    const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
+  const filteredParticipants = useMemo(() => {
+    const searchLower = debouncedSearch.toLowerCase()
+    return participants.filter((p: any) => {
+      const matchesSearch = !debouncedSearch || p.name.toLowerCase().includes(searchLower)
+      const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
+      const matchesOpportunity = opportunityFilter === '' ||
+        (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
+      const matchesSale = saleFilter === '' ||
+        (saleFilter === 'true' ? p.hasSale : !p.hasSale)
+      const hasCheckin = p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
+      const matchesCheckin = checkinFilter === '' ||
+        (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
+      const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
 
-    return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin && matchesColor
-  })
+      return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin && matchesColor
+    })
+  }, [participants, debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter])
+
+  const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
 
   return (
     <PullToRefresh onRefresh={() => fetchData(false)}>
@@ -216,7 +223,7 @@ export default function CloserParticipantes() {
           <ParticipantGridSkeleton count={6} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredParticipants.map((participant: any) => (
+            {visibleParticipants.map((participant: any) => (
               <Card
                 key={participant.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -295,6 +302,17 @@ export default function CloserParticipantes() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+
+        {!loading && visibleCount < filteredParticipants.length && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setVisibleCount(prev => prev + 30)}
+            >
+              Carregar mais ({filteredParticipants.length - visibleCount} restantes)
+            </Button>
           </div>
         )}
 

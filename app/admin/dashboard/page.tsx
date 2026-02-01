@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatPercentage } from '@/lib/utils'
 import { Loading } from '@/components/ui'
@@ -21,11 +21,31 @@ export default function AdminDashboard() {
   const [sales, setSales] = useState<(Sale & { closer: User })[]>([])
   const [closers, setClosers] = useState<User[]>([])
 
-  useEffect(() => {
-    fetchData()
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    try {
+      const [participantsRes, salesRes, closersRes] = await Promise.all([
+        supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id'),
+        supabase.from('sales').select('*, closer:users(id, name, photo_url)'),
+        supabase.from('users').select('id, name, email, photo_url').eq('role', 'closer'),
+      ])
+
+      setParticipants((participantsRes.data || []) as Participant[])
+      setSales((salesRes.data || []) as (Sale & { closer: User })[])
+      setClosers((closersRes.data || []) as User[])
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    }
+    setLoading(false)
   }, [])
 
-  // Realtime subscription para atualizar vendas automaticamente
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Realtime subscription com debounce para evitar múltiplos refetch
   useEffect(() => {
     const channel = supabase
       .channel('sales-changes-admin')
@@ -37,33 +57,17 @@ export default function AdminDashboard() {
           table: 'sales',
         },
         () => {
-          fetchData()
+          if (debounceRef.current) clearTimeout(debounceRef.current)
+          debounceRef.current = setTimeout(() => fetchData(false), 1000)
         }
       )
       .subscribe()
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
       supabase.removeChannel(channel)
     }
-  }, [])
-
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      const [participantsRes, salesRes, closersRes] = await Promise.all([
-        supabase.from('participants').select('*'),
-        supabase.from('sales').select('*, closer:users(*)'),
-        supabase.from('users').select('*').eq('role', 'closer'),
-      ])
-
-      setParticipants((participantsRes.data || []) as Participant[])
-      setSales((salesRes.data || []) as (Sale & { closer: User })[])
-      setClosers((closersRes.data || []) as User[])
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    }
-    setLoading(false)
-  }
+  }, [fetchData])
 
   // Memoize filtered data to prevent recalculations on every render
   const filteredParticipants = useMemo(() => {

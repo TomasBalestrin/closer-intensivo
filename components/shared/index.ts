@@ -4,7 +4,7 @@ export { StatsCard } from './stats-card'
 export { TopClosers } from './top-closers'
 export type { TopCloserData } from './top-closers'
 export { CloserRankingTable } from './closer-ranking-table'
-export { CredenciamentoChart, QualificacaoChart, CloserPerformanceChart } from './dashboard-charts'
+// Charts are lazy-loaded only when needed - not exported from barrel to avoid bundling recharts
 export { Skeleton, CardSkeleton, StatsSkeleton, ParticipantCardSkeleton, ParticipantGridSkeleton } from './skeleton'
 export { PullToRefresh } from './pull-to-refresh'
 export { BottomNav } from './bottom-nav'
