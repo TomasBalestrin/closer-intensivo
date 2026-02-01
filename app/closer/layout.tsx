@@ -26,7 +26,7 @@ export default async function CloserLayout({
   try {
     const { data: userDataRes } = await supabase
       .from('users')
-      .select('*')
+      .select('id, name, email, role, photo_url')
       .eq('id', authUser.id)
       .single()
 

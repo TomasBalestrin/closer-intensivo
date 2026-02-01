@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -48,6 +48,37 @@ export default function MeuPainel() {
     setLoading(false)
   }
 
+  const opportunities = useMemo(() => participants.filter(p => p.is_opportunity), [participants])
+
+  const opportunityStats = useMemo(() => ({
+    day1: opportunities.filter(p => p.checked_in_day1).length,
+    day2: opportunities.filter(p => p.checked_in_day2).length,
+    day3: opportunities.filter(p => p.checked_in_day3).length,
+    checkedIn: opportunities.filter(
+      p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
+    ).length,
+  }), [opportunities])
+
+  const salesStats = useMemo(() => ({
+    totalValue: sales.reduce((sum, s) => sum + Number(s.total_value), 0),
+    entryValue: sales.reduce((sum, s) => sum + Number(s.entry_value), 0),
+    conversionRate: opportunityStats.checkedIn > 0 ? sales.length / opportunityStats.checkedIn : 0,
+  }), [sales, opportunityStats.checkedIn])
+
+  const filteredParticipants = useMemo(() => participants.filter(p => {
+    if (participantFilter === 'day1') return p.checked_in_day1
+    if (participantFilter === 'day2') return p.checked_in_day2
+    if (participantFilter === 'day3') return p.checked_in_day3
+    return true
+  }), [participants, participantFilter])
+
+  const filteredOpportunities = useMemo(() => opportunities.filter(p => {
+    if (opportunityFilter === 'day1') return p.checked_in_day1
+    if (opportunityFilter === 'day2') return p.checked_in_day2
+    if (opportunityFilter === 'day3') return p.checked_in_day3
+    return true
+  }), [opportunities, opportunityFilter])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -63,32 +94,6 @@ export default function MeuPainel() {
       </div>
     )
   }
-
-  const opportunities = participants.filter(p => p.is_opportunity)
-  const opportunitiesDay1 = opportunities.filter(p => p.checked_in_day1).length
-  const opportunitiesDay2 = opportunities.filter(p => p.checked_in_day2).length
-  const opportunitiesDay3 = opportunities.filter(p => p.checked_in_day3).length
-  const opportunitiesCheckedIn = opportunities.filter(
-    p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
-  ).length
-
-  const totalSalesValue = sales.reduce((sum, s) => sum + Number(s.total_value), 0)
-  const totalEntryValue = sales.reduce((sum, s) => sum + Number(s.entry_value), 0)
-  const conversionRate = opportunitiesCheckedIn > 0 ? sales.length / opportunitiesCheckedIn : 0
-
-  const filteredParticipants = participants.filter(p => {
-    if (participantFilter === 'day1') return p.checked_in_day1
-    if (participantFilter === 'day2') return p.checked_in_day2
-    if (participantFilter === 'day3') return p.checked_in_day3
-    return true
-  })
-
-  const filteredOpportunities = opportunities.filter(p => {
-    if (opportunityFilter === 'day1') return p.checked_in_day1
-    if (opportunityFilter === 'day2') return p.checked_in_day2
-    if (opportunityFilter === 'day3') return p.checked_in_day3
-    return true
-  })
 
   return (
     <div className="space-y-6">
@@ -114,7 +119,7 @@ export default function MeuPainel() {
           />
           <StatsCard
             title="Oportunidades Compareceram"
-            value={opportunitiesCheckedIn}
+            value={opportunityStats.checkedIn}
             icon="Target"
           />
           <StatsCard
@@ -124,17 +129,17 @@ export default function MeuPainel() {
           />
           <StatsCard
             title="Taxa de Conversão"
-            value={formatPercentage(conversionRate)}
+            value={formatPercentage(salesStats.conversionRate)}
             icon="TrendingUp"
           />
           <StatsCard
             title="Valor de Vendas"
-            value={formatCurrency(totalSalesValue)}
+            value={formatCurrency(salesStats.totalValue)}
             icon="DollarSign"
           />
           <StatsCard
             title="Valor de Entrada"
-            value={formatCurrency(totalEntryValue)}
+            value={formatCurrency(salesStats.entryValue)}
             icon="DollarSign"
           />
         </div>
@@ -214,15 +219,15 @@ export default function MeuPainel() {
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <p className="text-sm text-gray-500">Dia 1</p>
-            <p className="text-xl font-bold">{opportunitiesDay1}</p>
+            <p className="text-xl font-bold">{opportunityStats.day1}</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <p className="text-sm text-gray-500">Dia 2</p>
-            <p className="text-xl font-bold">{opportunitiesDay2}</p>
+            <p className="text-xl font-bold">{opportunityStats.day2}</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <p className="text-sm text-gray-500">Dia 3</p>
-            <p className="text-xl font-bold">{opportunitiesDay3}</p>
+            <p className="text-xl font-bold">{opportunityStats.day3}</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, Avatar, Loading, Button } from '@/components/ui'
@@ -20,37 +20,59 @@ interface CloserWithStats extends User {
 export default function AdminClosers() {
   const router = useRouter()
   const supabase = createClient()
-  const [closers, setClosers] = useState<CloserWithStats[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchData()
   }, [])
 
+  const [rawClosers, setRawClosers] = useState<User[]>([])
+  const [rawParticipants, setRawParticipants] = useState<Participant[]>([])
+  const [rawSales, setRawSales] = useState<Sale[]>([])
+
   const fetchData = async () => {
     setLoading(true)
 
     const [closersRes, participantsRes, salesRes] = await Promise.all([
-      supabase.from('users').select('*').eq('role', 'closer'),
-      supabase.from('participants').select('*'),
-      supabase.from('sales').select('*'),
+      supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer'),
+      supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3'),
+      supabase.from('sales').select('id, closer_id, total_value, entry_value'),
     ])
 
-    const closersData = closersRes.data as User[] || []
-    const participantsData = participantsRes.data as Participant[] || []
-    const salesData = salesRes.data as Sale[] || []
+    setRawClosers(closersRes.data as User[] || [])
+    setRawParticipants(participantsRes.data as Participant[] || [])
+    setRawSales(salesRes.data as Sale[] || [])
+    setLoading(false)
+  }
 
-    const closersWithStats: CloserWithStats[] = closersData.map(closer => {
-      const assignedParticipants = participantsData.filter(
-        p => p.closer_id === closer.id
-      )
+  const closersWithStats: CloserWithStats[] = useMemo(() => {
+    // Index participants and sales by closer_id for O(n) lookup instead of O(n*m)
+    const participantsByCloser = new Map<string, Participant[]>()
+    rawParticipants.forEach(p => {
+      if (p.closer_id) {
+        const list = participantsByCloser.get(p.closer_id) || []
+        list.push(p)
+        participantsByCloser.set(p.closer_id, list)
+      }
+    })
 
+    const salesByCloser = new Map<string, Sale[]>()
+    rawSales.forEach(s => {
+      if (s.closer_id) {
+        const list = salesByCloser.get(s.closer_id) || []
+        list.push(s)
+        salesByCloser.set(s.closer_id, list)
+      }
+    })
+
+    return rawClosers.map(closer => {
+      const assignedParticipants = participantsByCloser.get(closer.id) || []
       const opportunities = assignedParticipants.filter(p => p.is_opportunity)
       const opportunitiesCheckedIn = opportunities.filter(
         p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       ).length
 
-      const closerSales = salesData.filter(s => s.closer_id === closer.id)
+      const closerSales = salesByCloser.get(closer.id) || []
       const conversionRate = opportunitiesCheckedIn > 0
         ? closerSales.length / opportunitiesCheckedIn
         : 0
@@ -65,13 +87,10 @@ export default function AdminClosers() {
         totalEntryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value), 0),
       }
     })
-
-    setClosers(closersWithStats)
-    setLoading(false)
-  }
+  }, [rawClosers, rawParticipants, rawSales])
 
   const handleExportCSV = () => {
-    exportToCSV(closers, [
+    exportToCSV(closersWithStats, [
       { key: 'name', label: 'Nome' },
       { key: 'email', label: 'Email' },
       { key: 'participantsCount', label: 'Participantes' },
@@ -102,7 +121,7 @@ export default function AdminClosers() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {closers.map((closer) => (
+        {closersWithStats.map((closer) => (
           <Card
             key={closer.id}
             className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -143,7 +162,7 @@ export default function AdminClosers() {
         ))}
       </div>
 
-      {closers.length === 0 && (
+      {closersWithStats.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">Nenhum closer encontrado</p>
         </div>

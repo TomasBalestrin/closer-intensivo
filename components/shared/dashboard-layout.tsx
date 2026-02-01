@@ -1,11 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { Sidebar } from './sidebar'
-import { BottomNav } from './bottom-nav'
 import { ToastProvider } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@/lib/types'
+
+const BottomNav = dynamic(
+  () => import('./bottom-nav').then(mod => ({ default: mod.BottomNav })),
+  { ssr: false }
+)
 
 interface DashboardLayoutProps {
   children: React.ReactNode

@@ -7,21 +7,6 @@ import {
   Target,
   DollarSign,
   TrendingUp,
-  Award,
-  Activity,
-  BarChart,
-  Calendar,
-  CheckCircle,
-  Clock,
-  FileText,
-  Heart,
-  Home,
-  Mail,
-  Phone,
-  Settings,
-  Star,
-  User,
-  Zap,
 } from 'lucide-react'
 
 const iconMap = {
@@ -30,21 +15,6 @@ const iconMap = {
   Target,
   DollarSign,
   TrendingUp,
-  Award,
-  Activity,
-  BarChart,
-  Calendar,
-  CheckCircle,
-  Clock,
-  FileText,
-  Heart,
-  Home,
-  Mail,
-  Phone,
-  Settings,
-  Star,
-  User,
-  Zap,
 }
 
 export type IconName = keyof typeof iconMap

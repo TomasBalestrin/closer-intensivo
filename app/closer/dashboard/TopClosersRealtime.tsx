@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { TopClosers, TopCloserData } from '@/components/shared/top-closers'
 import { CloserRankingTable } from '@/components/shared/closer-ranking-table'
@@ -10,8 +10,9 @@ const supabase = createClient()
 export default function TopClosersRealtime() {
   const [allClosers, setAllClosers] = useState<TopCloserData[]>([])
   const [loading, setLoading] = useState(true)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
-  const fetchRankings = async () => {
+  const fetchRankings = useCallback(async () => {
     try {
       const res = await fetch('/api/rankings')
       if (!res.ok) throw new Error('Failed to fetch rankings')
@@ -21,13 +22,13 @@ export default function TopClosersRealtime() {
       console.error('Error fetching rankings:', error)
     }
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
     fetchRankings()
-  }, [])
+  }, [fetchRankings])
 
-  // Realtime subscription - refetch on any sales change
+  // Realtime subscription com debounce
   useEffect(() => {
     const channel = supabase
       .channel('sales-realtime-closer')
@@ -39,15 +40,17 @@ export default function TopClosersRealtime() {
           table: 'sales',
         },
         () => {
-          fetchRankings()
+          if (debounceRef.current) clearTimeout(debounceRef.current)
+          debounceRef.current = setTimeout(fetchRankings, 1000)
         }
       )
       .subscribe()
 
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
       supabase.removeChannel(channel)
     }
-  }, [])
+  }, [fetchRankings])
 
   if (loading) {
     return (
