@@ -2,53 +2,32 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { TopClosers } from '@/components/shared/top-closers'
-import { User } from '@/lib/types'
-
-type CloserWithStats = User & {
-  salesCount: number
-  totalValue: number
-  entryValue: number
-}
+import { TopClosers, TopCloserData } from '@/components/shared/top-closers'
+import { CloserRankingTable } from '@/components/shared/closer-ranking-table'
 
 const supabase = createClient()
 
 export default function TopClosersRealtime() {
-  const [topClosers, setTopClosers] = useState<CloserWithStats[]>([])
+  const [allClosers, setAllClosers] = useState<TopCloserData[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchTopClosers = async () => {
+  const fetchRankings = async () => {
     try {
-      const [closersRes, salesRes] = await Promise.all([
-        supabase.from('users').select('*').eq('role', 'closer'),
-        supabase.from('sales').select('*'),
-      ])
-
-      const allClosers = closersRes.data || []
-      const allSales = salesRes.data || []
-
-      const closerStats = allClosers.map(closer => {
-        const closerSales = allSales.filter(s => s.closer_id === closer.id)
-        return {
-          ...closer,
-          salesCount: closerSales.length,
-          totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
-          entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
-        }
-      }).sort((a, b) => b.totalValue - a.totalValue).slice(0, 3)
-
-      setTopClosers(closerStats as CloserWithStats[])
+      const res = await fetch('/api/rankings')
+      if (!res.ok) throw new Error('Failed to fetch rankings')
+      const { rankings } = await res.json()
+      setAllClosers(rankings || [])
     } catch (error) {
-      console.error('Error fetching top closers:', error)
+      console.error('Error fetching rankings:', error)
     }
     setLoading(false)
   }
 
   useEffect(() => {
-    fetchTopClosers()
+    fetchRankings()
   }, [])
 
-  // Realtime subscription
+  // Realtime subscription - refetch on any sales change
   useEffect(() => {
     const channel = supabase
       .channel('sales-realtime-closer')
@@ -60,7 +39,7 @@ export default function TopClosersRealtime() {
           table: 'sales',
         },
         () => {
-          fetchTopClosers()
+          fetchRankings()
         }
       )
       .subscribe()
@@ -80,5 +59,12 @@ export default function TopClosersRealtime() {
     )
   }
 
-  return <TopClosers closers={topClosers} />
+  const topClosers = allClosers.slice(0, 3)
+
+  return (
+    <div className="space-y-6">
+      <TopClosers closers={topClosers} />
+      <CloserRankingTable closers={allClosers} />
+    </div>
+  )
 }
