@@ -118,7 +118,7 @@ export default function EventosPage() {
     localStorage.setItem(STORAGE_KEY, event.id)
 
     // Redirect based on user role
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'financeiro') {
       router.push('/admin/dashboard')
     } else {
       router.push('/closer/dashboard')

@@ -34,9 +34,11 @@ export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const isAdmin = user.role === 'admin'
+  const isFinanceiro = user.role === 'financeiro'
 
-  const navigation = isAdmin
-    ? [
+  const getNavigation = () => {
+    if (isAdmin) {
+      return [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Participantes', href: '/admin/participantes', icon: Users },
         { name: 'Closers', href: '/admin/closers', icon: Trophy },
@@ -44,11 +46,22 @@ export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
         { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
-    : [
-        { name: 'Dashboard', href: '/closer/dashboard', icon: LayoutDashboard },
-        { name: 'Participantes', href: '/closer/participantes', icon: Users },
-        { name: 'Meu Painel', href: '/closer/meu-painel', icon: UserCircle },
+    }
+    if (isFinanceiro) {
+      return [
+        { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+        { name: 'Closers', href: '/admin/closers', icon: Trophy },
+        { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
       ]
+    }
+    return [
+      { name: 'Dashboard', href: '/closer/dashboard', icon: LayoutDashboard },
+      { name: 'Participantes', href: '/closer/participantes', icon: Users },
+      { name: 'Meu Painel', href: '/closer/meu-painel', icon: UserCircle },
+    ]
+  }
+
+  const navigation = getNavigation()
 
   const getInitials = (name: string) => {
     return name
@@ -172,10 +185,10 @@ export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
                       {user.name}
                     </p>
                     <Badge
-                      variant={isAdmin ? 'info' : 'success'}
+                      variant={isAdmin ? 'info' : isFinanceiro ? 'warning' : 'success'}
                       className="text-xs mt-0.5"
                     >
-                      {isAdmin ? 'Admin' : 'Closer'}
+                      {isAdmin ? 'Admin' : isFinanceiro ? 'Financeiro' : 'Closer'}
                     </Badge>
                   </div>
                 )}

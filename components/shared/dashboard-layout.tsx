@@ -42,7 +42,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
         <main className="flex-1 lg:pl-0 overflow-x-hidden">
           <div className="p-4 lg:p-8 pt-16 lg:pt-8 pb-20 lg:pb-8">{children}</div>
         </main>
-        <BottomNav role={user.role as 'admin' | 'closer'} />
+        <BottomNav role={user.role as 'admin' | 'closer' | 'financeiro'} />
       </div>
     </ToastProvider>
   )
