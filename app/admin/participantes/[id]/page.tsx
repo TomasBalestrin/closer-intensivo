@@ -91,7 +91,10 @@ export default function ParticipantDetail() {
     product_name: '',
     total_value: '',
     entry_value: '',
+    valor_proxima_semana: '',
     negotiation_type: '',
+    dia_evento: '',
+    observacoes: '',
     closer_id: '',
   })
 
@@ -304,20 +307,31 @@ export default function ParticipantDetail() {
       if (!user) throw new Error('Usuário não autenticado')
 
       const closerIdForSale = saleData.closer_id || participant?.closer_id || user.id
+
+      // Get closer name
+      const { data: closerData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', closerIdForSale)
+        .single()
+
       const { error } = await supabase.from('sales').insert({
         participant_id: params.id as string,
         closer_id: closerIdForSale,
+        closer_nome: closerData?.name || null,
         product_name: saleData.product_name,
-        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
+        dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
+        observacoes: saleData.observacoes || null,
       })
 
       if (error) throw error
       showToast('Venda registrada com sucesso', 'success')
       setSaleModal(false)
-      setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '', closer_id: '' })
+      setSaleData({ product_name: '', total_value: '', entry_value: '', valor_proxima_semana: '', negotiation_type: '', dia_evento: '', observacoes: '', closer_id: '' })
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao registrar venda', 'error')
@@ -332,7 +346,10 @@ export default function ParticipantDetail() {
       product_name: sale.product_name || '',
       total_value: sale.total_value?.toString() || '',
       entry_value: sale.entry_value?.toString() || '',
+      valor_proxima_semana: sale.valor_proxima_semana?.toString() || '',
       negotiation_type: sale.negotiation_type || '',
+      dia_evento: sale.dia_evento?.toString() || '',
+      observacoes: sale.observacoes || '',
       closer_id: sale.closer_id || participant?.closer_id || '',
     })
     setSaleModal(true)
@@ -346,13 +363,22 @@ export default function ParticipantDetail() {
     try {
       const updateData: any = {
         product_name: saleData.product_name,
-        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
+        dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
+        observacoes: saleData.observacoes || null,
       }
       if (saleData.closer_id) {
         updateData.closer_id = saleData.closer_id
+        // Get updated closer name
+        const { data: closerData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', saleData.closer_id)
+          .single()
+        updateData.closer_nome = closerData?.name || null
       }
       const { error } = await supabase
         .from('sales')
@@ -363,7 +389,7 @@ export default function ParticipantDetail() {
       showToast('Venda atualizada com sucesso', 'success')
       setSaleModal(false)
       setEditingSale(null)
-      setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '', closer_id: '' })
+      setSaleData({ product_name: '', total_value: '', entry_value: '', valor_proxima_semana: '', negotiation_type: '', dia_evento: '', observacoes: '', closer_id: '' })
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao atualizar venda', 'error')
@@ -396,7 +422,7 @@ export default function ParticipantDetail() {
   const handleCloseSaleModal = () => {
     setSaleModal(false)
     setEditingSale(null)
-    setSaleData({ product_name: '', total_value: '', entry_value: '', negotiation_type: '', closer_id: '' })
+    setSaleData({ product_name: '', total_value: '', entry_value: '', valor_proxima_semana: '', negotiation_type: '', dia_evento: '', observacoes: '', closer_id: '' })
   }
 
   const handleDeleteParticipant = async () => {
@@ -1609,7 +1635,31 @@ export default function ParticipantDetail() {
           <Input label="Produto Vendido" value={saleData.product_name} onChange={(e) => setSaleData({ ...saleData, product_name: e.target.value })} required />
           <Input label="Valor Total (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
           <Input label="Valor Entrada (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
+          <Input label="Valor Próxima Semana (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.valor_proxima_semana} onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: e.target.value })} />
           <Input label="Negociação" value={saleData.negotiation_type} onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })} required />
+          <Select
+            label="Dia do Evento"
+            value={saleData.dia_evento}
+            onChange={(e) => setSaleData({ ...saleData, dia_evento: e.target.value })}
+            options={[
+              { value: '', label: 'Selecione...' },
+              { value: '1', label: 'Dia 1' },
+              { value: '2', label: 'Dia 2' },
+              { value: '3', label: 'Dia 3' },
+            ]}
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Observações
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              rows={3}
+              placeholder="Anotações sobre a negociação..."
+              value={saleData.observacoes}
+              onChange={(e) => setSaleData({ ...saleData, observacoes: e.target.value })}
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={handleCloseSaleModal}>Cancelar</Button>
             <Button type="submit" loading={formLoading}>{editingSale ? 'Salvar' : 'Registrar'}</Button>

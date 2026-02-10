@@ -83,7 +83,10 @@ export default function CloserParticipantDetail() {
     product_name: '',
     total_value: '',
     entry_value: '',
+    valor_proxima_semana: '',
     negotiation_type: '',
+    dia_evento: '',
+    observacoes: '',
   })
 
   useEffect(() => {
@@ -273,14 +276,24 @@ export default function CloserParticipantDetail() {
 
       if (!user) throw new Error('Usuário não autenticado')
 
+      // Get closer name
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+
       const { error } = await supabase.from('sales').insert({
         participant_id: params.id as string,
         closer_id: user.id,
+        closer_nome: userData?.name || null,
         product_name: saleData.product_name,
-        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
+        dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
+        observacoes: saleData.observacoes || null,
       })
 
       if (error) throw error
@@ -291,7 +304,10 @@ export default function CloserParticipantDetail() {
         product_name: '',
         total_value: '',
         entry_value: '',
+        valor_proxima_semana: '',
         negotiation_type: '',
+        dia_evento: '',
+        observacoes: '',
       })
       fetchData()
     } catch (error: any) {
@@ -1229,11 +1245,42 @@ export default function CloserParticipantDetail() {
             required
           />
           <Input
+            label="Valor Próxima Semana (R$)"
+            type="number"
+            step="0.01"
+            placeholder="0,00"
+            value={saleData.valor_proxima_semana}
+            onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: e.target.value })}
+          />
+          <Input
             label="Forma de Negociação"
             value={saleData.negotiation_type}
             onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })}
             required
           />
+          <Select
+            label="Dia do Evento"
+            value={saleData.dia_evento}
+            onChange={(e) => setSaleData({ ...saleData, dia_evento: e.target.value })}
+            options={[
+              { value: '', label: 'Selecione...' },
+              { value: '1', label: 'Dia 1' },
+              { value: '2', label: 'Dia 2' },
+              { value: '3', label: 'Dia 3' },
+            ]}
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Observações
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              rows={3}
+              placeholder="Anotações sobre a negociação..."
+              value={saleData.observacoes}
+              onChange={(e) => setSaleData({ ...saleData, observacoes: e.target.value })}
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setSaleModal(false)}>
               Cancelar
