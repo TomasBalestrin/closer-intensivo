@@ -16,6 +16,7 @@ import {
   Trophy,
   Webhook,
   BarChart3,
+  Calendar,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -25,9 +26,10 @@ import { User } from '@/lib/types'
 interface SidebarProps {
   user: User
   onLogout: () => void
+  onExitEvent: () => void
 }
 
-export function Sidebar({ user, onLogout }: SidebarProps) {
+export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -179,6 +181,17 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                 )}
               </div>
             )}
+            <button
+              onClick={onExitEvent}
+              className={cn(
+                'w-full mt-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-white/70 hover:bg-white/10 hover:text-amber-400 transition-colors',
+                isCollapsed && 'justify-center px-0'
+              )}
+              title={isCollapsed ? 'Trocar Evento' : undefined}
+            >
+              <Calendar className="h-4 w-4" />
+              {!isCollapsed && <span>Trocar Evento</span>}
+            </button>
             <button
               onClick={onLogout}
               className={cn(
