@@ -6,14 +6,165 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'admin' | 'closer'
+export type UserRole = 'admin' | 'closer' | 'financeiro'
 export type ParticipantColor = 'rosa' | 'preto' | 'azul_claro' | 'verde' | 'dourado' | 'laranja'
 export type Qualification = 'baixo' | 'medio' | 'alto'
 export type DiscProfile = 'D' | 'I' | 'S' | 'C'
+export type EventStatus = 'ativo' | 'arquivado' | 'rascunho'
 
 export interface Database {
   public: {
     Tables: {
+      events: {
+        Row: {
+          id: string
+          nome_evento: string
+          slug: string
+          data_inicio: string
+          data_fim: string
+          numero_dias: number
+          local: string
+          cidade: string | null
+          estado: string | null
+          descricao: string | null
+          capacidade_maxima: number | null
+          logo_url: string | null
+          cor_primaria: string
+          cor_secundaria: string
+          status: EventStatus
+          created_at: string
+          created_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome_evento: string
+          slug: string
+          data_inicio: string
+          data_fim: string
+          local: string
+          cidade?: string | null
+          estado?: string | null
+          descricao?: string | null
+          capacidade_maxima?: number | null
+          logo_url?: string | null
+          cor_primaria?: string
+          cor_secundaria?: string
+          status?: EventStatus
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome_evento?: string
+          slug?: string
+          data_inicio?: string
+          data_fim?: string
+          local?: string
+          cidade?: string | null
+          estado?: string | null
+          descricao?: string | null
+          capacidade_maxima?: number | null
+          logo_url?: string | null
+          cor_primaria?: string
+          cor_secundaria?: string
+          status?: EventStatus
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string
+        }
+      }
+      user_events: {
+        Row: {
+          id: string
+          user_id: string
+          event_id: string
+          role: UserRole
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          event_id: string
+          role?: UserRole
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          event_id?: string
+          role?: UserRole
+          created_at?: string
+        }
+      }
+      funis_origem: {
+        Row: {
+          id: string
+          event_id: string
+          nome: string
+          slug: string
+          ativo: boolean
+          ordem: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          nome: string
+          slug: string
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          nome?: string
+          slug?: string
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+        }
+      }
+      audit_log: {
+        Row: {
+          id: string
+          event_id: string
+          user_id: string
+          acao: string
+          tabela_afetada: string
+          registro_id: string
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          motivo: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          user_id: string
+          acao: string
+          tabela_afetada: string
+          registro_id: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          motivo?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          user_id?: string
+          acao?: string
+          tabela_afetada?: string
+          registro_id?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          motivo?: string | null
+          created_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
@@ -46,6 +197,7 @@ export interface Database {
       participants: {
         Row: {
           id: string
+          event_id: string | null
           external_id: string | null
           name: string
           email: string | null
@@ -57,6 +209,7 @@ export interface Database {
           instagram: string | null
           webhook_data: Json | null
           funnel: string | null
+          funil_origem_id: string | null
           seller_closer_id: string | null
           mentee_inviter: string | null
           companion: string | null
@@ -67,6 +220,10 @@ export interface Database {
           checked_in_day2: boolean
           checked_in_day3: boolean
           qualification: Qualification | null
+          // Campos de "chamado"
+          chamado: boolean
+          chamado_at: string | null
+          chamado_by: string | null
           // Archetype fields (visible to participant)
           primary_archetype: string | null
           secondary_archetype: string | null
@@ -102,6 +259,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          event_id?: string | null
           external_id?: string | null
           name: string
           email?: string | null
@@ -113,6 +271,7 @@ export interface Database {
           instagram?: string | null
           webhook_data?: Json | null
           funnel?: string | null
+          funil_origem_id?: string | null
           seller_closer_id?: string | null
           mentee_inviter?: string | null
           companion?: string | null
@@ -123,6 +282,9 @@ export interface Database {
           checked_in_day2?: boolean
           checked_in_day3?: boolean
           qualification?: Qualification | null
+          chamado?: boolean
+          chamado_at?: string | null
+          chamado_by?: string | null
           primary_archetype?: string | null
           secondary_archetype?: string | null
           archetype_description?: string | null
@@ -153,6 +315,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          event_id?: string | null
           external_id?: string | null
           name?: string
           email?: string | null
@@ -164,6 +327,7 @@ export interface Database {
           instagram?: string | null
           webhook_data?: Json | null
           funnel?: string | null
+          funil_origem_id?: string | null
           seller_closer_id?: string | null
           mentee_inviter?: string | null
           companion?: string | null
@@ -174,6 +338,9 @@ export interface Database {
           checked_in_day2?: boolean
           checked_in_day3?: boolean
           qualification?: Qualification | null
+          chamado?: boolean
+          chamado_at?: string | null
+          chamado_by?: string | null
           primary_archetype?: string | null
           secondary_archetype?: string | null
           archetype_description?: string | null
@@ -206,6 +373,7 @@ export interface Database {
       forms: {
         Row: {
           id: string
+          event_id: string | null
           participant_id: string
           form_url: string
           responses: Json | null
@@ -220,6 +388,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          event_id?: string | null
           participant_id: string
           form_url: string
           responses?: Json | null
@@ -234,6 +403,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          event_id?: string | null
           participant_id?: string
           form_url?: string
           responses?: Json | null
@@ -250,50 +420,77 @@ export interface Database {
       sales: {
         Row: {
           id: string
+          event_id: string | null
           participant_id: string
           closer_id: string
+          closer_nome: string | null
           product_name: string
           total_value: number
           entry_value: number
+          valor_proxima_semana: number
           negotiation_type: string
+          dia_evento: number | null
+          observacoes: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          motivo_remocao: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          event_id?: string | null
           participant_id: string
           closer_id: string
+          closer_nome?: string | null
           product_name: string
           total_value: number
           entry_value: number
+          valor_proxima_semana?: number
           negotiation_type: string
+          dia_evento?: number | null
+          observacoes?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          motivo_remocao?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          event_id?: string | null
           participant_id?: string
           closer_id?: string
+          closer_nome?: string | null
           product_name?: string
           total_value?: number
           entry_value?: number
+          valor_proxima_semana?: number
           negotiation_type?: string
+          dia_evento?: number | null
+          observacoes?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          motivo_remocao?: string | null
           created_at?: string
         }
       }
       webhooks_log: {
         Row: {
           id: string
+          event_id: string | null
           payload: Json
           processed: boolean
           created_at: string
         }
         Insert: {
           id?: string
+          event_id?: string | null
           payload: Json
           processed?: boolean
           created_at?: string
         }
         Update: {
           id?: string
+          event_id?: string | null
           payload?: Json
           processed?: boolean
           created_at?: string
@@ -304,6 +501,21 @@ export interface Database {
 }
 
 // Helper types for easier use
+export type Event = Database['public']['Tables']['events']['Row']
+export type EventInsert = Database['public']['Tables']['events']['Insert']
+export type EventUpdate = Database['public']['Tables']['events']['Update']
+
+export type UserEvent = Database['public']['Tables']['user_events']['Row']
+export type UserEventInsert = Database['public']['Tables']['user_events']['Insert']
+export type UserEventUpdate = Database['public']['Tables']['user_events']['Update']
+
+export type FunilOrigem = Database['public']['Tables']['funis_origem']['Row']
+export type FunilOrigemInsert = Database['public']['Tables']['funis_origem']['Insert']
+export type FunilOrigemUpdate = Database['public']['Tables']['funis_origem']['Update']
+
+export type AuditLog = Database['public']['Tables']['audit_log']['Row']
+export type AuditLogInsert = Database['public']['Tables']['audit_log']['Insert']
+
 export type User = Database['public']['Tables']['users']['Row']
 export type UserInsert = Database['public']['Tables']['users']['Insert']
 export type UserUpdate = Database['public']['Tables']['users']['Update']
@@ -329,6 +541,7 @@ export interface ParticipantWithRelations extends Participant {
   seller_closer?: User | null
   forms?: Form[]
   sales?: Sale[]
+  funil_origem?: FunilOrigem | null
 }
 
 export interface CloserWithStats extends User {
@@ -338,4 +551,29 @@ export interface CloserWithStats extends User {
   conversion_rate: number
   total_sales_value: number
   total_entry_value: number
+}
+
+export interface EventWithStats extends Event {
+  participants_count: number
+  sales_count: number
+  total_sales_value: number
+  closers_count: number
+}
+
+// Card status for visual styling
+export type ParticipantCardStatus = 'padrao' | 'chamado' | 'venda'
+
+export function getParticipantCardStatus(
+  participant: Participant,
+  hasSale: boolean
+): ParticipantCardStatus {
+  if (hasSale) return 'venda'
+  if (participant.chamado) return 'chamado'
+  return 'padrao'
+}
+
+export const CARD_STATUS_STYLES: Record<ParticipantCardStatus, string> = {
+  padrao: 'bg-white border border-gray-200',
+  chamado: 'bg-yellow-50 border-l-4 border-l-yellow-400 border-y border-r border-gray-200',
+  venda: 'bg-green-50 border-l-4 border-l-green-500 border-y border-r border-gray-200',
 }
