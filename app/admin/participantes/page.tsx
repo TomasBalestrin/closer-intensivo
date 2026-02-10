@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
 import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone } from 'lucide-react'
-import { Participant, User } from '@/lib/types'
-import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue } from '@/lib/utils'
+import { Participant, User, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
+import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue, cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
@@ -27,6 +27,9 @@ export default function AdminParticipantes() {
   const [saleFilter, setSaleFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
   const [checkinFilter, setCheckinFilter] = useState('')
+  const [qualificationFilter, setQualificationFilter] = useState('')
+  const [discRespondidoFilter, setDiscRespondidoFilter] = useState('')
+  const [chamadoFilter, setChamadoFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // Modal states
@@ -109,14 +112,19 @@ export default function AdminParticipantes() {
          checkinFilter === 'day3' ? p.checked_in_day3 :
          checkinFilter === 'any' ? (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) :
          checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
+      const matchesQualification = !qualificationFilter || p.qualification === qualificationFilter
+      const matchesDiscRespondido = discRespondidoFilter === '' ||
+        (discRespondidoFilter === 'true' ? p.form_completed_at !== null : p.form_completed_at === null)
+      const matchesChamado = chamadoFilter === '' ||
+        (chamadoFilter === 'true' ? p.chamado : !p.chamado)
 
-      return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor && matchesCheckin
+      return matchesSearch && matchesFunnel && matchesSeller && matchesAssignedCloser && matchesOpportunity && matchesSale && matchesColor && matchesCheckin && matchesQualification && matchesDiscRespondido && matchesChamado
     })
-  }, [participants, debouncedSearch, funnelFilter, sellerFilter, assignedCloserFilter, opportunityFilter, saleFilter, colorFilter, checkinFilter])
+  }, [participants, debouncedSearch, funnelFilter, sellerFilter, assignedCloserFilter, opportunityFilter, saleFilter, colorFilter, checkinFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
 
-  const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter || checkinFilter
+  const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter || checkinFilter || qualificationFilter || discRespondidoFilter || chamadoFilter
 
   const clearFilters = () => {
     setFunnelFilter('')
@@ -126,6 +134,9 @@ export default function AdminParticipantes() {
     setSaleFilter('')
     setColorFilter('')
     setCheckinFilter('')
+    setQualificationFilter('')
+    setDiscRespondidoFilter('')
+    setChamadoFilter('')
     setUnassignedFilter(false)
   }
 
@@ -359,6 +370,37 @@ export default function AdminParticipantes() {
                       { value: 'none', label: 'Não credenciou' },
                     ]}
                   />
+                  <Select
+                    label="Qualificação"
+                    value={qualificationFilter}
+                    onChange={(e) => setQualificationFilter(e.target.value)}
+                    options={[
+                      { value: '', label: 'Todas' },
+                      { value: 'alto', label: 'Alto' },
+                      { value: 'medio', label: 'Médio' },
+                      { value: 'baixo', label: 'Baixo' },
+                    ]}
+                  />
+                  <Select
+                    label="DISC Respondido"
+                    value={discRespondidoFilter}
+                    onChange={(e) => setDiscRespondidoFilter(e.target.value)}
+                    options={[
+                      { value: '', label: 'Todos' },
+                      { value: 'true', label: 'Sim' },
+                      { value: 'false', label: 'Não' },
+                    ]}
+                  />
+                  <Select
+                    label="Status Chamado"
+                    value={chamadoFilter}
+                    onChange={(e) => setChamadoFilter(e.target.value)}
+                    options={[
+                      { value: '', label: 'Todos' },
+                      { value: 'true', label: 'Já foi chamado' },
+                      { value: 'false', label: 'Ainda não chamado' },
+                    ]}
+                  />
                 </div>
                 {hasActiveFilters && (
                   <div className="flex justify-end">
@@ -398,10 +440,15 @@ export default function AdminParticipantes() {
                   )}
                 </div>
 
-                {visibleParticipants.map((participant) => (
+                {visibleParticipants.map((participant) => {
+                  const cardStatus = getParticipantCardStatus(participant as Participant, participant.hasSale ?? false)
+                  return (
                   <Card
                     key={participant.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow"
+                    className={cn(
+                      'cursor-pointer hover:shadow-lg transition-shadow',
+                      CARD_STATUS_STYLES[cardStatus]
+                    )}
                     onClick={() => router.push(`/admin/participantes/${participant.id}`)}
                   >
                     <div className="flex gap-4">
@@ -486,7 +533,7 @@ export default function AdminParticipantes() {
                       </div>
                     </div>
                   </Card>
-                ))}
+                )})}
               </div>
 
               {visibleCount < filteredParticipants.length && (
