@@ -117,7 +117,8 @@ export default function CloserParticipantDetail() {
       supabase
         .from('sales')
         .select('*')
-        .eq('participant_id', params.id),
+        .eq('participant_id', params.id)
+        .is('deleted_at', null),
     ])
 
     if (participantRes.data) {

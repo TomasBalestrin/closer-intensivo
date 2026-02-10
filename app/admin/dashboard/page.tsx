@@ -28,7 +28,7 @@ export default function AdminDashboard() {
     try {
       const [participantsRes, salesRes, closersRes] = await Promise.all([
         supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id'),
-        supabase.from('sales').select('*, closer:users(id, name, photo_url)'),
+        supabase.from('sales').select('*, closer:users(id, name, photo_url)').is('deleted_at', null),
         supabase.from('users').select('id, name, email, photo_url').eq('role', 'closer'),
       ])
 

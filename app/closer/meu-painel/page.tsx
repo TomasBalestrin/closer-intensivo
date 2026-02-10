@@ -39,7 +39,7 @@ export default function MeuPainel() {
     const [closerRes, participantsRes, salesRes] = await Promise.all([
       supabase.from('users').select('*').eq('id', user.id).single(),
       supabase.from('participants').select('*').eq('closer_id', user.id),
-      supabase.from('sales').select('*').eq('closer_id', user.id),
+      supabase.from('sales').select('*').eq('closer_id', user.id).is('deleted_at', null),
     ])
 
     setCloser(closerRes.data)

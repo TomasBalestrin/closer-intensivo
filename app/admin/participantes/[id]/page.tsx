@@ -114,7 +114,7 @@ export default function ParticipantDetail() {
       supabase.from('participants').select('*').eq('id', params.id).single(),
       supabase.from('users').select('*').eq('role', 'closer'),
       supabase.from('disc_forms').select('*').eq('participant_id', params.id),
-      supabase.from('sales').select('*, closer:users(*)').eq('participant_id', params.id),
+      supabase.from('sales').select('*, closer:users(*)').eq('participant_id', params.id).is('deleted_at', null),
     ])
 
     if (participantRes.data) {
@@ -403,17 +403,25 @@ export default function ParticipantDetail() {
 
     setFormLoading(true)
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      // Soft delete - mark as deleted instead of removing
       const { error } = await supabase
         .from('sales')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id,
+          motivo_remocao: 'Removido pelo administrador',
+        })
         .eq('id', deletingSale.id)
 
       if (error) throw error
-      showToast('Venda excluída com sucesso', 'success')
+      showToast('Venda removida com sucesso', 'success')
       setDeletingSale(null)
       fetchData()
     } catch (error: any) {
-      showToast(error.message || 'Erro ao excluir venda', 'error')
+      showToast(error.message || 'Erro ao remover venda', 'error')
     } finally {
       setFormLoading(false)
     }

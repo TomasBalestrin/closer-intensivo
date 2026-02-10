@@ -60,7 +60,8 @@ export default function CloserParticipantes() {
         .order('created_at', { ascending: false }),
       supabase
         .from('sales')
-        .select('participant_id'),
+        .select('participant_id')
+        .is('deleted_at', null),
     ])
 
     const salesSet = new Set(salesRes.data?.map(s => s.participant_id))

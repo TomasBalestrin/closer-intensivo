@@ -70,7 +70,8 @@ export default function AdminParticipantes() {
         .eq('role', 'closer'),
       supabase
         .from('sales')
-        .select('participant_id'),
+        .select('participant_id')
+        .is('deleted_at', null),
     ])
 
     // Use Set for O(1) lookup instead of .some() O(n)
