@@ -137,6 +137,8 @@ export default function AdminParticipantes() {
 
     exportToCSV(dataToExport, [
       { key: 'name', label: 'Nome' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Telefone' },
       { key: 'instagram', label: 'Instagram' },
       { key: 'revenue', label: 'Faturamento' },
       { key: 'niche', label: 'Nicho' },
@@ -147,8 +149,19 @@ export default function AdminParticipantes() {
       { key: 'checked_in_day2', label: 'Check-in Dia 2', format: (v) => formatBoolean(v) },
       { key: 'checked_in_day3', label: 'Check-in Dia 3', format: (v) => formatBoolean(v) },
       { key: 'seller_closer.name', label: 'Vendedor/Convidador' },
+      { key: 'hasSale', label: 'Tem Venda', format: (v) => formatBoolean(v) },
+      // Arquétipos
       { key: 'primary_archetype', label: 'Arquétipo Primário' },
+      { key: 'secondary_archetype', label: 'Arquétipo Secundário' },
+      { key: 'archetype_description', label: 'Descrição Arquétipo' },
+      // DISC
       { key: 'disc_profile', label: 'Perfil DISC' },
+      { key: 'disc_score_d', label: 'DISC - D (Dominância)' },
+      { key: 'disc_score_i', label: 'DISC - I (Influência)' },
+      { key: 'disc_score_s', label: 'DISC - S (Estabilidade)' },
+      { key: 'disc_score_c', label: 'DISC - C (Conformidade)' },
+      // Insights de vendas
+      { key: 'personality_summary', label: 'Resumo Personalidade' },
     ], 'participantes')
   }
 
