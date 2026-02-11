@@ -42,6 +42,9 @@ import {
   Users,
   Check,
   Loader2,
+  Phone,
+  PhoneCall,
+  Mail,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue } from '@/lib/utils'
@@ -102,6 +105,7 @@ export default function ParticipantDetail() {
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null)
   const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [chamadoSaving, setChamadoSaving] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -433,6 +437,33 @@ export default function ParticipantDetail() {
     setSaleData({ product_name: '', total_value: '', entry_value: '', valor_proxima_semana: '', negotiation_type: '', dia_evento: '', observacoes: '', closer_id: '' })
   }
 
+  const handleMarcarChamado = async () => {
+    setChamadoSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      const { error } = await supabase
+        .from('participants')
+        .update({
+          chamado: true,
+          chamado_at: new Date().toISOString(),
+          chamado_by: user.id,
+          times_called: (participant?.times_called || 0) + 1,
+        })
+        .eq('id', params.id)
+
+      if (error) throw error
+
+      showToast('Participante marcado como chamado!', 'success')
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao marcar como chamado', 'error')
+    } finally {
+      setChamadoSaving(false)
+    }
+  }
+
   const handleDeleteParticipant = async () => {
     setDeleting(true)
     try {
@@ -567,7 +598,7 @@ export default function ParticipantDetail() {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {participant.is_opportunity && <Badge variant="success">Oportunidade</Badge>}
                 {hasDiscProfile && <Badge variant="info">DISC: {participant.disc_profile}</Badge>}
                 {participant.qualification && (
@@ -575,6 +606,22 @@ export default function ParticipantDetail() {
                     {participant.qualification === 'alto' ? 'Alto' : participant.qualification === 'medio' ? 'Médio' : 'Baixo'}
                   </Badge>
                 )}
+                <button
+                  onClick={handleMarcarChamado}
+                  disabled={chamadoSaving}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                    participant.chamado
+                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                      : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                  }`}
+                >
+                  {chamadoSaving ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <PhoneCall className="h-3 w-3" />
+                  )}
+                  {participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Marcar Chamado'}
+                </button>
               </div>
             </div>
           </div>

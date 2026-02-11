@@ -33,6 +33,7 @@ import {
   ShoppingCart,
   Copy,
   Phone,
+  PhoneCall,
   Mail,
   Sparkles,
   RefreshCw,
@@ -65,6 +66,7 @@ export default function CloserParticipantDetail() {
   const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [checkinSaving, setCheckinSaving] = useState<number | null>(null)
+  const [chamadoSaving, setChamadoSaving] = useState(false)
   const [allParticipants, setAllParticipants] = useState<Array<{ id: string; name: string }>>([])
 
 
@@ -268,6 +270,33 @@ export default function CloserParticipantDetail() {
     }
   }
 
+  const handleMarcarChamado = async () => {
+    setChamadoSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      const { error } = await supabase
+        .from('participants')
+        .update({
+          chamado: true,
+          chamado_at: new Date().toISOString(),
+          chamado_by: user.id,
+          times_called: (participant?.times_called || 0) + 1,
+        })
+        .eq('id', params.id)
+
+      if (error) throw error
+
+      showToast('Participante marcado como chamado!', 'success')
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao marcar como chamado', 'error')
+    } finally {
+      setChamadoSaving(false)
+    }
+  }
+
   const handleRegisterSale = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormLoading(true)
@@ -457,6 +486,22 @@ export default function CloserParticipantDetail() {
                     WhatsApp
                   </a>
                 )}
+                <button
+                  onClick={handleMarcarChamado}
+                  disabled={chamadoSaving}
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
+                    participant.chamado
+                      ? 'bg-yellow-500/80 hover:bg-yellow-500'
+                      : 'bg-amber-500/80 hover:bg-amber-500'
+                  }`}
+                >
+                  {chamadoSaving ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <PhoneCall className="h-3 w-3" />
+                  )}
+                  {participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Marcar Chamado'}
+                </button>
               </div>
             </div>
             {/* Archetypes Badge */}
