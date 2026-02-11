@@ -5,6 +5,7 @@
 
 -- Adicionar colunas que podem estar faltando
 ALTER TABLE public.events
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ativo',
 ADD COLUMN IF NOT EXISTS capacidade_maxima INTEGER,
 ADD COLUMN IF NOT EXISTS logo_url TEXT,
 ADD COLUMN IF NOT EXISTS cor_primaria TEXT DEFAULT '#E8A838',
@@ -12,6 +13,9 @@ ADD COLUMN IF NOT EXISTS cor_secundaria TEXT DEFAULT '#1A1A2E',
 ADD COLUMN IF NOT EXISTS descricao TEXT,
 ADD COLUMN IF NOT EXISTS cidade TEXT,
 ADD COLUMN IF NOT EXISTS estado TEXT,
+ADD COLUMN IF NOT EXISTS local TEXT,
+ADD COLUMN IF NOT EXISTS data_inicio DATE,
+ADD COLUMN IF NOT EXISTS data_fim DATE,
 ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
@@ -43,6 +47,7 @@ ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES public.events(id) ON DELETE CA
 ADD COLUMN IF NOT EXISTS chamado BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS chamado_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS chamado_by UUID REFERENCES auth.users(id),
+ADD COLUMN IF NOT EXISTS times_called INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS funil_origem_id UUID REFERENCES public.funis_origem(id);
 
 -- Adicionar colunas em sales se não existir
