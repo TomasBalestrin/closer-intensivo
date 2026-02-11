@@ -1,10 +1,12 @@
 -- =============================================
--- FIX: Adicionar colunas faltantes na tabela events
+-- SCRIPT COMPLETO: Corrigir estrutura e criar evento
 -- Execute este script no SQL Editor do Supabase
 -- =============================================
 
--- Adicionar colunas que podem estar faltando
+-- 1. Adicionar TODAS as colunas que podem estar faltando na tabela events
 ALTER TABLE public.events
+ADD COLUMN IF NOT EXISTS nome_evento TEXT,
+ADD COLUMN IF NOT EXISTS slug TEXT,
 ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ativo',
 ADD COLUMN IF NOT EXISTS capacidade_maxima INTEGER,
 ADD COLUMN IF NOT EXISTS logo_url TEXT,
@@ -16,10 +18,13 @@ ADD COLUMN IF NOT EXISTS estado TEXT,
 ADD COLUMN IF NOT EXISTS local TEXT,
 ADD COLUMN IF NOT EXISTS data_inicio DATE,
 ADD COLUMN IF NOT EXISTS data_fim DATE,
-ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),
+ADD COLUMN IF NOT EXISTS created_by UUID,
 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
--- Criar tabela user_events se não existir
+-- 2. Criar índice único para slug (ignorar se já existir)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_slug ON public.events(slug);
+
+-- 3. Criar tabela user_events se não existir
 CREATE TABLE IF NOT EXISTS public.user_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -29,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.user_events (
     UNIQUE(user_id, event_id)
 );
 
--- Criar tabela funis_origem se não existir
+-- 4. Criar tabela funis_origem se não existir
 CREATE TABLE IF NOT EXISTS public.funis_origem (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
@@ -41,16 +46,16 @@ CREATE TABLE IF NOT EXISTS public.funis_origem (
     UNIQUE(event_id, slug)
 );
 
--- Adicionar event_id em participants se não existir
+-- 5. Adicionar colunas em participants
 ALTER TABLE public.participants
 ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
 ADD COLUMN IF NOT EXISTS chamado BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS chamado_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS chamado_by UUID REFERENCES auth.users(id),
+ADD COLUMN IF NOT EXISTS chamado_by UUID,
 ADD COLUMN IF NOT EXISTS times_called INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS funil_origem_id UUID REFERENCES public.funis_origem(id);
+ADD COLUMN IF NOT EXISTS funil_origem_id UUID;
 
--- Adicionar colunas em sales se não existir
+-- 6. Adicionar colunas em sales
 ALTER TABLE public.sales
 ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
 ADD COLUMN IF NOT EXISTS closer_nome TEXT,
@@ -58,18 +63,86 @@ ADD COLUMN IF NOT EXISTS valor_proxima_semana DECIMAL(10,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS dia_evento INTEGER,
 ADD COLUMN IF NOT EXISTS observacoes TEXT,
 ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES auth.users(id),
+ADD COLUMN IF NOT EXISTS deleted_by UUID,
 ADD COLUMN IF NOT EXISTS motivo_remocao TEXT;
 
--- Criar índices
+-- 7. Criar índices
 CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
 CREATE INDEX IF NOT EXISTS idx_user_events_user ON public.user_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_events_event ON public.user_events(event_id);
 CREATE INDEX IF NOT EXISTS idx_participants_event ON public.participants(event_id);
 CREATE INDEX IF NOT EXISTS idx_sales_event ON public.sales(event_id);
 
--- Verificar estrutura
-SELECT column_name, data_type
-FROM information_schema.columns
-WHERE table_name = 'events'
-ORDER BY ordinal_position;
+-- 8. Inserir o evento padrão
+INSERT INTO public.events (
+    nome_evento,
+    slug,
+    data_inicio,
+    data_fim,
+    local,
+    cidade,
+    estado,
+    descricao,
+    status
+)
+VALUES (
+    'Intensivo da Alta Performance - Janeiro/26',
+    'intensivo-alta-performance-jan-26',
+    '2026-01-15',
+    '2026-01-17',
+    'Centro de Convenções Bethel',
+    'São Paulo',
+    'SP',
+    'Primeiro evento do sistema Bethel Events',
+    'ativo'
+)
+ON CONFLICT (slug) DO NOTHING;
+
+-- 9. Migrar dados existentes para o novo evento
+DO $$
+DECLARE
+    default_event_id UUID;
+BEGIN
+    SELECT id INTO default_event_id
+    FROM public.events
+    WHERE slug = 'intensivo-alta-performance-jan-26'
+    LIMIT 1;
+
+    IF default_event_id IS NULL THEN
+        RAISE NOTICE 'Evento não encontrado, mas continuando...';
+    ELSE
+        -- Atualizar participantes sem event_id
+        UPDATE public.participants
+        SET event_id = default_event_id
+        WHERE event_id IS NULL;
+
+        -- Atualizar vendas sem event_id
+        UPDATE public.sales
+        SET event_id = default_event_id
+        WHERE event_id IS NULL;
+
+        -- Dar acesso a todos os usuários ao evento
+        INSERT INTO public.user_events (user_id, event_id, role)
+        SELECT id, default_event_id, COALESCE(role, 'closer')
+        FROM public.users
+        ON CONFLICT (user_id, event_id) DO NOTHING;
+
+        RAISE NOTICE 'Evento configurado com ID: %', default_event_id;
+    END IF;
+END $$;
+
+-- 10. Verificar resultado
+SELECT
+    'Eventos:' as info,
+    COUNT(*) as total
+FROM events
+UNION ALL
+SELECT
+    'Participantes migrados:' as info,
+    COUNT(*) as total
+FROM participants WHERE event_id IS NOT NULL
+UNION ALL
+SELECT
+    'Usuários com acesso:' as info,
+    COUNT(*) as total
+FROM user_events;
