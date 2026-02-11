@@ -7,6 +7,8 @@ import { ToastProvider } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@/lib/types'
 
+const STORAGE_KEY = 'bethel_active_event_id'
+
 const BottomNav = dynamic(
   () => import('./bottom-nav').then(mod => ({ default: mod.BottomNav })),
   { ssr: false }
@@ -22,19 +24,25 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const supabase = createClient()
 
   const handleLogout = async () => {
+    localStorage.removeItem(STORAGE_KEY)
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
   }
 
+  const handleExitEvent = () => {
+    localStorage.removeItem(STORAGE_KEY)
+    router.push('/eventos')
+  }
+
   return (
     <ToastProvider>
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar user={user} onLogout={handleLogout} />
+        <Sidebar user={user} onLogout={handleLogout} onExitEvent={handleExitEvent} />
         <main className="flex-1 lg:pl-0 overflow-x-hidden">
           <div className="p-4 lg:p-8 pt-16 lg:pt-8 pb-20 lg:pb-8">{children}</div>
         </main>
-        <BottomNav role={user.role as 'admin' | 'closer'} />
+        <BottomNav role={user.role as 'admin' | 'closer' | 'financeiro'} />
       </div>
     </ToastProvider>
   )

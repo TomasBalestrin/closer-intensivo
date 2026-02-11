@@ -36,7 +36,7 @@ export default async function AdminLayout({
     redirect('/login')
   }
 
-  if (!userData || userData.role !== 'admin') {
+  if (!userData || (userData.role !== 'admin' && userData.role !== 'financeiro')) {
     redirect('/closer/dashboard')
   }
 

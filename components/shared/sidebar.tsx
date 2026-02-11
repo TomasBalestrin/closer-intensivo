@@ -16,6 +16,7 @@ import {
   Trophy,
   Webhook,
   BarChart3,
+  Calendar,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -25,16 +26,19 @@ import { User } from '@/lib/types'
 interface SidebarProps {
   user: User
   onLogout: () => void
+  onExitEvent: () => void
 }
 
-export function Sidebar({ user, onLogout }: SidebarProps) {
+export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const isAdmin = user.role === 'admin'
+  const isFinanceiro = user.role === 'financeiro'
 
-  const navigation = isAdmin
-    ? [
+  const getNavigation = () => {
+    if (isAdmin) {
+      return [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Participantes', href: '/admin/participantes', icon: Users },
         { name: 'Closers', href: '/admin/closers', icon: Trophy },
@@ -42,11 +46,22 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
-    : [
-        { name: 'Dashboard', href: '/closer/dashboard', icon: LayoutDashboard },
-        { name: 'Participantes', href: '/closer/participantes', icon: Users },
-        { name: 'Meu Painel', href: '/closer/meu-painel', icon: UserCircle },
+    }
+    if (isFinanceiro) {
+      return [
+        { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+        { name: 'Closers', href: '/admin/closers', icon: Trophy },
+        { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
       ]
+    }
+    return [
+      { name: 'Dashboard', href: '/closer/dashboard', icon: LayoutDashboard },
+      { name: 'Participantes', href: '/closer/participantes', icon: Users },
+      { name: 'Meu Painel', href: '/closer/meu-painel', icon: UserCircle },
+    ]
+  }
+
+  const navigation = getNavigation()
 
   const getInitials = (name: string) => {
     return name
@@ -170,15 +185,26 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                       {user.name}
                     </p>
                     <Badge
-                      variant={isAdmin ? 'info' : 'success'}
+                      variant={isAdmin ? 'info' : isFinanceiro ? 'warning' : 'success'}
                       className="text-xs mt-0.5"
                     >
-                      {isAdmin ? 'Admin' : 'Closer'}
+                      {isAdmin ? 'Admin' : isFinanceiro ? 'Financeiro' : 'Closer'}
                     </Badge>
                   </div>
                 )}
               </div>
             )}
+            <button
+              onClick={onExitEvent}
+              className={cn(
+                'w-full mt-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-white/70 hover:bg-white/10 hover:text-amber-400 transition-colors',
+                isCollapsed && 'justify-center px-0'
+              )}
+              title={isCollapsed ? 'Trocar Evento' : undefined}
+            >
+              <Calendar className="h-4 w-4" />
+              {!isCollapsed && <span>Trocar Evento</span>}
+            </button>
             <button
               onClick={onLogout}
               className={cn(

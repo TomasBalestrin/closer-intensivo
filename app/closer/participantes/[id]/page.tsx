@@ -33,6 +33,7 @@ import {
   ShoppingCart,
   Copy,
   Phone,
+  PhoneCall,
   Mail,
   Sparkles,
   RefreshCw,
@@ -65,6 +66,7 @@ export default function CloserParticipantDetail() {
   const [photoModal, setPhotoModal] = useState(false)
   const [formLoading, setFormLoading] = useState(false)
   const [checkinSaving, setCheckinSaving] = useState<number | null>(null)
+  const [chamadoSaving, setChamadoSaving] = useState(false)
   const [allParticipants, setAllParticipants] = useState<Array<{ id: string; name: string }>>([])
 
 
@@ -83,7 +85,10 @@ export default function CloserParticipantDetail() {
     product_name: '',
     total_value: '',
     entry_value: '',
+    valor_proxima_semana: '',
     negotiation_type: '',
+    dia_evento: '',
+    observacoes: '',
   })
 
   useEffect(() => {
@@ -114,7 +119,8 @@ export default function CloserParticipantDetail() {
       supabase
         .from('sales')
         .select('*')
-        .eq('participant_id', params.id),
+        .eq('participant_id', params.id)
+        .is('deleted_at', null),
     ])
 
     if (participantRes.data) {
@@ -264,6 +270,33 @@ export default function CloserParticipantDetail() {
     }
   }
 
+  const handleMarcarChamado = async () => {
+    setChamadoSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      const { error } = await supabase
+        .from('participants')
+        .update({
+          chamado: true,
+          chamado_at: new Date().toISOString(),
+          chamado_by: user.id,
+          times_called: (participant?.times_called || 0) + 1,
+        })
+        .eq('id', params.id)
+
+      if (error) throw error
+
+      showToast('Participante marcado como chamado!', 'success')
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao marcar como chamado', 'error')
+    } finally {
+      setChamadoSaving(false)
+    }
+  }
+
   const handleRegisterSale = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormLoading(true)
@@ -273,14 +306,24 @@ export default function CloserParticipantDetail() {
 
       if (!user) throw new Error('Usuário não autenticado')
 
+      // Get closer name
+      const { data: userData } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+
       const { error } = await supabase.from('sales').insert({
         participant_id: params.id as string,
         closer_id: user.id,
+        closer_nome: userData?.name || null,
         product_name: saleData.product_name,
-        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
+        dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
+        observacoes: saleData.observacoes || null,
       })
 
       if (error) throw error
@@ -291,7 +334,10 @@ export default function CloserParticipantDetail() {
         product_name: '',
         total_value: '',
         entry_value: '',
+        valor_proxima_semana: '',
         negotiation_type: '',
+        dia_evento: '',
+        observacoes: '',
       })
       fetchData()
     } catch (error: any) {
@@ -440,6 +486,22 @@ export default function CloserParticipantDetail() {
                     WhatsApp
                   </a>
                 )}
+                <button
+                  onClick={handleMarcarChamado}
+                  disabled={chamadoSaving}
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-colors ${
+                    participant.chamado
+                      ? 'bg-yellow-500/80 hover:bg-yellow-500'
+                      : 'bg-amber-500/80 hover:bg-amber-500'
+                  }`}
+                >
+                  {chamadoSaving ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <PhoneCall className="h-3 w-3" />
+                  )}
+                  {participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Marcar Chamado'}
+                </button>
               </div>
             </div>
             {/* Archetypes Badge */}
@@ -1229,11 +1291,42 @@ export default function CloserParticipantDetail() {
             required
           />
           <Input
+            label="Valor Próxima Semana (R$)"
+            type="number"
+            step="0.01"
+            placeholder="0,00"
+            value={saleData.valor_proxima_semana}
+            onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: e.target.value })}
+          />
+          <Input
             label="Forma de Negociação"
             value={saleData.negotiation_type}
             onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })}
             required
           />
+          <Select
+            label="Dia do Evento"
+            value={saleData.dia_evento}
+            onChange={(e) => setSaleData({ ...saleData, dia_evento: e.target.value })}
+            options={[
+              { value: '', label: 'Selecione...' },
+              { value: '1', label: 'Dia 1' },
+              { value: '2', label: 'Dia 2' },
+              { value: '3', label: 'Dia 3' },
+            ]}
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Observações
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              rows={3}
+              placeholder="Anotações sobre a negociação..."
+              value={saleData.observacoes}
+              onChange={(e) => setSaleData({ ...saleData, observacoes: e.target.value })}
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="secondary" onClick={() => setSaleModal(false)}>
               Cancelar

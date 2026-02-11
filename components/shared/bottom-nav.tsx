@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 
 interface BottomNavProps {
-  role: 'admin' | 'closer'
+  role: 'admin' | 'closer' | 'financeiro'
 }
 
 const adminNavItems = [
@@ -24,6 +24,12 @@ const adminNavItems = [
   { name: 'Painel', href: '/admin/painel-admin', icon: Settings },
 ]
 
+const financeiroNavItems = [
+  { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'Closers', href: '/admin/closers', icon: Trophy },
+  { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
+]
+
 const closerNavItems = [
   { name: 'Dashboard', href: '/closer/dashboard', icon: LayoutDashboard },
   { name: 'Participantes', href: '/closer/participantes', icon: Users },
@@ -32,7 +38,7 @@ const closerNavItems = [
 
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname()
-  const navigation = role === 'admin' ? adminNavItems : closerNavItems
+  const navigation = role === 'admin' ? adminNavItems : role === 'financeiro' ? financeiroNavItems : closerNavItems
 
   return (
     <nav

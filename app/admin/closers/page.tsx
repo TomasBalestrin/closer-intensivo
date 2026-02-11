@@ -36,7 +36,7 @@ export default function AdminClosers() {
     const [closersRes, participantsRes, salesRes] = await Promise.all([
       supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer'),
       supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3'),
-      supabase.from('sales').select('id, closer_id, total_value, entry_value'),
+      supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null),
     ])
 
     setRawClosers(closersRes.data as User[] || [])

@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge } from '@/components/ui'
 import { Search, Filter, ExternalLink, Phone } from 'lucide-react'
-import { Participant } from '@/lib/types'
+import { Participant, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getColorFromRevenue, getInstagramUrl } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
@@ -39,6 +40,9 @@ export default function CloserParticipantes() {
   const [saleFilter, setSaleFilter] = useState('')
   const [checkinFilter, setCheckinFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
+  const [qualificationFilter, setQualificationFilter] = useState('')
+  const [discRespondidoFilter, setDiscRespondidoFilter] = useState('')
+  const [chamadoFilter, setChamadoFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [visibleCount, setVisibleCount] = useState(30)
 
@@ -56,7 +60,8 @@ export default function CloserParticipantes() {
         .order('created_at', { ascending: false }),
       supabase
         .from('sales')
-        .select('participant_id'),
+        .select('participant_id')
+        .is('deleted_at', null),
     ])
 
     const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
@@ -123,10 +128,15 @@ export default function CloserParticipantes() {
       const matchesCheckin = checkinFilter === '' ||
         (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
       const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
+      const matchesQualification = !qualificationFilter || p.qualification === qualificationFilter
+      const matchesDiscRespondido = discRespondidoFilter === '' ||
+        (discRespondidoFilter === 'true' ? p.form_completed_at !== null : p.form_completed_at === null)
+      const matchesChamado = chamadoFilter === '' ||
+        (chamadoFilter === 'true' ? p.chamado : !p.chamado)
 
-      return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin && matchesColor
+      return matchesSearch && matchesFunnel && matchesOpportunity && matchesSale && matchesCheckin && matchesColor && matchesQualification && matchesDiscRespondido && matchesChamado
     })
-  }, [participants, debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter])
+  }, [participants, debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
 
@@ -214,6 +224,37 @@ export default function CloserParticipantes() {
                   { value: 'laranja', label: 'Laranja (R$ 100k+)' },
                 ]}
               />
+              <Select
+                label="Qualificação"
+                value={qualificationFilter}
+                onChange={(e) => setQualificationFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todas' },
+                  { value: 'alto', label: 'Alto' },
+                  { value: 'medio', label: 'Médio' },
+                  { value: 'baixo', label: 'Baixo' },
+                ]}
+              />
+              <Select
+                label="DISC Respondido"
+                value={discRespondidoFilter}
+                onChange={(e) => setDiscRespondidoFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Sim' },
+                  { value: 'false', label: 'Não' },
+                ]}
+              />
+              <Select
+                label="Status Chamado"
+                value={chamadoFilter}
+                onChange={(e) => setChamadoFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Já foi chamado' },
+                  { value: 'false', label: 'Ainda não chamado' },
+                ]}
+              />
             </div>
           )}
         </div>
@@ -223,10 +264,15 @@ export default function CloserParticipantes() {
           <ParticipantGridSkeleton count={6} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleParticipants.map((participant: any) => (
+            {visibleParticipants.map((participant: any) => {
+              const cardStatus = getParticipantCardStatus(participant, participant.hasSale)
+              return (
               <Card
                 key={participant.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                className={cn(
+                  'cursor-pointer hover:shadow-lg transition-shadow',
+                  CARD_STATUS_STYLES[cardStatus]
+                )}
                 onClick={() => handleNavigate(participant.id)}
               >
                 <div className="flex items-start gap-4">
@@ -301,7 +347,7 @@ export default function CloserParticipantes() {
                   </div>
                 </div>
               </Card>
-            ))}
+            )})}
           </div>
         )}
 

@@ -16,27 +16,10 @@ export default async function Home() {
     redirect('/login')
   }
 
-  // Get user role
-  let role = 'closer'
-  try {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (userData?.role) {
-      role = userData.role
-    }
-  } catch {
-    // Database query failed, use default role
-  }
-
-  if (role === 'admin') {
-    redirect('/admin/dashboard')
-  } else {
-    redirect('/closer/dashboard')
-  }
+  // Redirect to event selection page
+  // The eventos page will handle checking for active event in localStorage
+  // and redirecting to the appropriate dashboard
+  redirect('/eventos')
 
   return null
 }
