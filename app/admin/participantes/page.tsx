@@ -8,12 +8,14 @@ import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Squar
 import { Participant, User, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue, cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
+import { useEvent } from '@/lib/hooks/use-event'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
+  const { activeEvent } = useEvent()
   const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; hasSale?: boolean })[]>([])
   const [closers, setClosers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,19 +61,30 @@ export default function AdminParticipantes() {
   const fetchData = useCallback(async () => {
     setLoading(true)
 
+    // Build queries with event filter
+    let participantsQuery = supabase
+      .from('participants')
+      .select('*, seller_closer:users!participants_seller_closer_id_fkey(id, name, email, photo_url)')
+      .order('created_at', { ascending: false })
+
+    let salesQuery = supabase
+      .from('sales')
+      .select('participant_id')
+      .is('deleted_at', null)
+
+    // Filter by active event if selected
+    if (activeEvent?.id) {
+      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    }
+
     const [participantsRes, closersRes, salesRes] = await Promise.all([
-      supabase
-        .from('participants')
-        .select('*, seller_closer:users!participants_seller_closer_id_fkey(id, name, email, photo_url)')
-        .order('created_at', { ascending: false }),
+      participantsQuery,
       supabase
         .from('users')
         .select('*')
         .eq('role', 'closer'),
-      supabase
-        .from('sales')
-        .select('participant_id')
-        .is('deleted_at', null),
+      salesQuery,
     ])
 
     // Use Set for O(1) lookup instead of .some() O(n)
@@ -85,7 +98,7 @@ export default function AdminParticipantes() {
     setClosers(closersRes.data || [])
     setVisibleCount(30)
     setLoading(false)
-  }, [])
+  }, [activeEvent?.id])
 
   useEffect(() => {
     fetchData()
@@ -196,6 +209,7 @@ export default function AdminParticipantes() {
         badge_name: newParticipant.badge_name || null,
         is_opportunity: newParticipant.is_opportunity,
         color: color,
+        event_id: activeEvent?.id,
       })
 
       if (error) throw error

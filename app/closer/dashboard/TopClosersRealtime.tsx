@@ -4,17 +4,22 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { TopClosers, TopCloserData } from '@/components/shared/top-closers'
 import { CloserRankingTable } from '@/components/shared/closer-ranking-table'
+import { useEvent } from '@/lib/hooks/use-event'
 
 const supabase = createClient()
 
 export default function TopClosersRealtime() {
+  const { activeEvent } = useEvent()
   const [allClosers, setAllClosers] = useState<TopCloserData[]>([])
   const [loading, setLoading] = useState(true)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const fetchRankings = useCallback(async () => {
     try {
-      const res = await fetch('/api/rankings')
+      const url = activeEvent?.id
+        ? `/api/rankings?event_id=${activeEvent.id}`
+        : '/api/rankings'
+      const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch rankings')
       const { rankings } = await res.json()
       setAllClosers(rankings || [])
@@ -22,7 +27,7 @@ export default function TopClosersRealtime() {
       console.error('Error fetching rankings:', error)
     }
     setLoading(false)
-  }, [])
+  }, [activeEvent?.id])
 
   useEffect(() => {
     fetchRankings()

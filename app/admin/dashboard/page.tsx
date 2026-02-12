@@ -7,6 +7,7 @@ import { Loading } from '@/components/ui'
 import { Participant, Sale, User } from '@/lib/types'
 import { TopClosers } from '@/components/shared/top-closers'
 import { CloserRankingTable } from '@/components/shared/closer-ranking-table'
+import { useEvent } from '@/lib/hooks/use-event'
 import { Users, Target, Calendar, TrendingUp, Percent, DollarSign, CreditCard } from 'lucide-react'
 
 type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
@@ -15,6 +16,7 @@ type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
 const supabase = createClient()
 
 export default function AdminDashboard() {
+  const { activeEvent } = useEvent()
   const [dayFilter, setDayFilter] = useState<DayFilter>('todos')
   const [loading, setLoading] = useState(true)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -26,9 +28,19 @@ export default function AdminDashboard() {
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
     try {
+      // Build queries with event filter
+      let participantsQuery = supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id')
+      let salesQuery = supabase.from('sales').select('*, closer:users(id, name, photo_url)').is('deleted_at', null)
+
+      // Filter by active event if selected
+      if (activeEvent?.id) {
+        participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+        salesQuery = salesQuery.eq('event_id', activeEvent.id)
+      }
+
       const [participantsRes, salesRes, closersRes] = await Promise.all([
-        supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id'),
-        supabase.from('sales').select('*, closer:users(id, name, photo_url)').is('deleted_at', null),
+        participantsQuery,
+        salesQuery,
         supabase.from('users').select('id, name, email, photo_url').eq('role', 'closer'),
       ])
 
@@ -39,7 +51,7 @@ export default function AdminDashboard() {
       console.error('Error fetching dashboard data:', error)
     }
     setLoading(false)
-  }, [])
+  }, [activeEvent?.id])
 
   useEffect(() => {
     fetchData()

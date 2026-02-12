@@ -29,18 +29,28 @@ async function verifyAuthenticated(): Promise<{ authenticated: boolean; error?: 
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const auth = await verifyAuthenticated()
     if (!auth.authenticated) {
       return NextResponse.json({ message: auth.error }, { status: 401 })
     }
 
+    // Get event_id from query params
+    const { searchParams } = new URL(request.url)
+    const eventId = searchParams.get('event_id')
+
     const supabaseAdmin = getSupabaseAdmin()
+
+    // Build sales query with optional event filter
+    let salesQuery = supabaseAdmin.from('sales').select('closer_id, total_value, entry_value').is('deleted_at', null)
+    if (eventId) {
+      salesQuery = salesQuery.eq('event_id', eventId)
+    }
 
     const [closersRes, salesRes] = await Promise.all([
       supabaseAdmin.from('users').select('id, name, photo_url').eq('role', 'closer'),
-      supabaseAdmin.from('sales').select('closer_id, total_value, entry_value'),
+      salesQuery,
     ])
 
     const allClosers = closersRes.data || []
