@@ -15,7 +15,7 @@ import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
-  const { activeEvent } = useEvent()
+  const { activeEvent, isLoading: eventLoading } = useEvent()
   const [participants, setParticipants] = useState<(Participant & { seller_closer?: User | null; hasSale?: boolean })[]>([])
   const [closers, setClosers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,8 +120,11 @@ export default function AdminParticipantes() {
   }, [activeEvent?.id])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    // Wait for event to be loaded before fetching data
+    if (!eventLoading) {
+      fetchData()
+    }
+  }, [fetchData, eventLoading])
 
   const filteredParticipants = useMemo(() => {
     const searchLower = debouncedSearch.toLowerCase()
