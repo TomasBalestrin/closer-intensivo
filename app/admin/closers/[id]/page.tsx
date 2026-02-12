@@ -84,13 +84,16 @@ export default function CloserDetail() {
     p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
   ).length
 
+  // Use max opportunities per day for conversion rate calculation
+  const maxOpportunitiesPerDay = Math.max(opportunitiesDay1, opportunitiesDay2, opportunitiesDay3)
+
   const altoQualified = opportunities.filter(p => p.qualification === 'alto').length
   const medioQualified = opportunities.filter(p => p.qualification === 'medio').length
   const baixoQualified = opportunities.filter(p => p.qualification === 'baixo').length
 
   const totalSalesValue = sales.reduce((sum, s) => sum + Number(s.total_value), 0)
   const totalEntryValue = sales.reduce((sum, s) => sum + Number(s.entry_value), 0)
-  const conversionRate = opportunitiesCheckedIn > 0 ? sales.length / opportunitiesCheckedIn : 0
+  const conversionRate = maxOpportunitiesPerDay > 0 ? sales.length / maxOpportunitiesPerDay : 0
 
   const filteredParticipants = participants.filter(p => {
     if (participantFilter === 'day1') return p.checked_in_day1

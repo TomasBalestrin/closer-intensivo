@@ -638,7 +638,7 @@ export default function AdminRelatorios() {
                       <td className="text-right py-3 px-4 font-semibold text-emerald-600">{data.sales}</td>
                       <td className="text-right py-3 px-4">
                         <span className={`font-semibold ${data.opportunities > 0 && data.sales > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                          {pct(data.sales, data.opportunities)}
+                          {pct(data.sales, Math.max(data.oppDay1, data.oppDay2, data.oppDay3))}
                         </span>
                       </td>
                     </tr>

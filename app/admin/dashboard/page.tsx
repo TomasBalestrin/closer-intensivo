@@ -132,7 +132,14 @@ export default function AdminDashboard() {
     const totalParticipants = filteredParticipants.length
     const totalOpportunities = opportunities.length
     const totalSalesCount = filteredSales.length
-    const conversionRate = totalOpportunities > 0 ? totalSalesCount / totalOpportunities : 0
+
+    // Calculate opportunities per day and use max for conversion rate
+    const oppDay1 = opportunities.filter(p => p.checked_in_day1).length
+    const oppDay2 = opportunities.filter(p => p.checked_in_day2).length
+    const oppDay3 = opportunities.filter(p => p.checked_in_day3).length
+    const maxOpportunitiesPerDay = Math.max(oppDay1, oppDay2, oppDay3)
+
+    const conversionRate = maxOpportunitiesPerDay > 0 ? totalSalesCount / maxOpportunitiesPerDay : 0
     const totalSalesValue = filteredSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0)
     const totalEntryValue = filteredSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0)
     return { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue }
@@ -149,14 +156,30 @@ export default function AdminDashboard() {
       return filteredSales.filter(s => ids.has(s.participant_id))
     }
 
+    // Calculate max opportunities per day for each qualification
+    const getMaxPerDay = (opps: typeof opportunities) => {
+      const d1 = opps.filter(p => p.checked_in_day1).length
+      const d2 = opps.filter(p => p.checked_in_day2).length
+      const d3 = opps.filter(p => p.checked_in_day3).length
+      return Math.max(d1, d2, d3)
+    }
+
     const altoSales = getSalesByQualification('alto')
     const medioSales = getSalesByQualification('medio')
     const baixoSales = getSalesByQualification('baixo')
 
-    return { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales }
+    const altoMaxPerDay = getMaxPerDay(altoQualified)
+    const medioMaxPerDay = getMaxPerDay(medioQualified)
+    const baixoMaxPerDay = getMaxPerDay(baixoQualified)
+
+    return {
+      altoQualified, medioQualified, baixoQualified,
+      altoSales, medioSales, baixoSales,
+      altoMaxPerDay, medioMaxPerDay, baixoMaxPerDay
+    }
   }, [opportunities, filteredSales])
 
-  const calcConversion = (salesArr: any[], oppCount: number) => oppCount === 0 ? 0 : salesArr.length / oppCount
+  const calcConversion = (salesCount: number, maxPerDay: number) => maxPerDay === 0 ? 0 : salesCount / maxPerDay
 
   // All closers ranked - uses ALL sales (not filtered by day) so ranking is global and consistent across all dashboards
   const allClosersRanked = useMemo(() => {
@@ -172,7 +195,7 @@ export default function AdminDashboard() {
   }, [closers, sales])
 
   const { totalParticipants, totalOpportunities, totalSalesCount, conversionRate, totalSalesValue, totalEntryValue } = stats
-  const { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales } = qualificationStats
+  const { altoQualified, medioQualified, baixoQualified, altoSales, medioSales, baixoSales, altoMaxPerDay, medioMaxPerDay, baixoMaxPerDay } = qualificationStats
 
   if (loading) {
     return (
@@ -290,7 +313,7 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(altoSales, altoQualified.length))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(altoSales.length, altoMaxPerDay))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>
@@ -316,7 +339,7 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(medioSales, medioQualified.length))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(medioSales.length, medioMaxPerDay))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>
@@ -342,7 +365,7 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(baixoSales, baixoQualified.length))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(baixoSales.length, baixoMaxPerDay))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>

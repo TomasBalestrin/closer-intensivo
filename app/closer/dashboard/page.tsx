@@ -63,10 +63,16 @@ export default function CloserDashboard() {
         p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       ).length
 
+      // Calculate opportunities per day and use max for conversion rate
+      const oppDay1 = opportunities.filter(p => p.checked_in_day1).length
+      const oppDay2 = opportunities.filter(p => p.checked_in_day2).length
+      const oppDay3 = opportunities.filter(p => p.checked_in_day3).length
+      const maxOpportunitiesPerDay = Math.max(oppDay1, oppDay2, oppDay3)
+
       const totalSalesValue = sales.reduce((sum, s) => sum + Number(s.total_value || 0), 0)
       const totalEntryValue = sales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0)
       const salesCount = sales.length
-      const conversionRate = checkedInOpportunities > 0 ? salesCount / checkedInOpportunities : 0
+      const conversionRate = maxOpportunitiesPerDay > 0 ? salesCount / maxOpportunitiesPerDay : 0
 
       setData({
         checkedInParticipants,

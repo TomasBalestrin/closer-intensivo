@@ -105,9 +105,15 @@ export default function AdminClosers() {
         p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       ).length
 
+      // Calculate opportunities per day and use max for conversion rate
+      const oppDay1 = opportunities.filter(p => p.checked_in_day1).length
+      const oppDay2 = opportunities.filter(p => p.checked_in_day2).length
+      const oppDay3 = opportunities.filter(p => p.checked_in_day3).length
+      const maxOpportunitiesPerDay = Math.max(oppDay1, oppDay2, oppDay3)
+
       const closerSales = salesByCloser.get(closer.id) || []
-      const conversionRate = opportunitiesCheckedIn > 0
-        ? closerSales.length / opportunitiesCheckedIn
+      const conversionRate = maxOpportunitiesPerDay > 0
+        ? closerSales.length / maxOpportunitiesPerDay
         : 0
 
       return {

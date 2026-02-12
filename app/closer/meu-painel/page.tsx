@@ -59,11 +59,15 @@ export default function MeuPainel() {
     ).length,
   }), [opportunities])
 
-  const salesStats = useMemo(() => ({
-    totalValue: sales.reduce((sum, s) => sum + Number(s.total_value), 0),
-    entryValue: sales.reduce((sum, s) => sum + Number(s.entry_value), 0),
-    conversionRate: opportunityStats.checkedIn > 0 ? sales.length / opportunityStats.checkedIn : 0,
-  }), [sales, opportunityStats.checkedIn])
+  const salesStats = useMemo(() => {
+    // Use max opportunities per day for conversion rate
+    const maxOpportunitiesPerDay = Math.max(opportunityStats.day1, opportunityStats.day2, opportunityStats.day3)
+    return {
+      totalValue: sales.reduce((sum, s) => sum + Number(s.total_value), 0),
+      entryValue: sales.reduce((sum, s) => sum + Number(s.entry_value), 0),
+      conversionRate: maxOpportunitiesPerDay > 0 ? sales.length / maxOpportunitiesPerDay : 0,
+    }
+  }, [sales, opportunityStats])
 
   const filteredParticipants = useMemo(() => participants.filter(p => {
     if (participantFilter === 'day1') return p.checked_in_day1
