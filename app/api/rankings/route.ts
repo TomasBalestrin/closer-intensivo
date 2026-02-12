@@ -48,15 +48,31 @@ export async function GET(request: Request) {
       salesQuery = salesQuery.eq('event_id', eventId)
     }
 
+    // Get closers - filter by event if provided
+    let closersQuery
+    if (eventId) {
+      // Get only closers that have access to this event
+      closersQuery = supabaseAdmin
+        .from('user_events')
+        .select('users:user_id(id, name, photo_url)')
+        .eq('event_id', eventId)
+        .eq('role', 'closer')
+    } else {
+      closersQuery = supabaseAdmin.from('users').select('id, name, photo_url').eq('role', 'closer')
+    }
+
     const [closersRes, salesRes] = await Promise.all([
-      supabaseAdmin.from('users').select('id, name, photo_url').eq('role', 'closer'),
+      closersQuery,
       salesQuery,
     ])
 
-    const allClosers = closersRes.data || []
+    // Extract users from user_events join if event is selected
+    const allClosers = eventId
+      ? (closersRes.data || []).map((ue: any) => ue.users).filter(Boolean)
+      : closersRes.data || []
     const allSales = salesRes.data || []
 
-    const rankings = allClosers.map(closer => {
+    const rankings = allClosers.map((closer: any) => {
       const closerSales = allSales.filter(s => s.closer_id === closer.id)
       return {
         id: closer.id,
@@ -66,7 +82,7 @@ export async function GET(request: Request) {
         totalValue: closerSales.reduce((sum, s) => sum + Number(s.total_value || 0), 0),
         entryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value || 0), 0),
       }
-    }).sort((a, b) => b.totalValue - a.totalValue)
+    }).sort((a: any, b: any) => b.totalValue - a.totalValue)
 
     return NextResponse.json({ rankings })
   } catch (error: any) {
