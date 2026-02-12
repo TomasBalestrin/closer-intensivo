@@ -17,6 +17,8 @@ import {
   Webhook,
   BarChart3,
   Calendar,
+  CalendarDays,
+  UserCog,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -43,6 +45,8 @@ export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
         { name: 'Participantes', href: '/admin/participantes', icon: Users },
         { name: 'Closers', href: '/admin/closers', icon: Trophy },
         { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
+        { name: 'Eventos', href: '/admin/eventos', icon: CalendarDays },
+        { name: 'Usuários', href: '/admin/usuarios', icon: UserCog },
         { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
