@@ -49,27 +49,29 @@ export async function GET(request: Request) {
     }
 
     // Get closers - filter by event if provided
-    let closersQuery
+    let allClosers: any[] = []
     if (eventId) {
-      // Get only closers that have access to this event
-      closersQuery = supabaseAdmin
+      // First get user_ids from user_events for this event with role 'closer'
+      const { data: userEventsData } = await supabaseAdmin
         .from('user_events')
-        .select('users:user_id(id, name, photo_url)')
+        .select('user_id')
         .eq('event_id', eventId)
         .eq('role', 'closer')
+
+      if (userEventsData && userEventsData.length > 0) {
+        const userIds = userEventsData.map((ue: any) => ue.user_id)
+        const { data: usersData } = await supabaseAdmin
+          .from('users')
+          .select('id, name, photo_url')
+          .in('id', userIds)
+        allClosers = usersData || []
+      }
     } else {
-      closersQuery = supabaseAdmin.from('users').select('id, name, photo_url').eq('role', 'closer')
+      const { data } = await supabaseAdmin.from('users').select('id, name, photo_url').eq('role', 'closer')
+      allClosers = data || []
     }
 
-    const [closersRes, salesRes] = await Promise.all([
-      closersQuery,
-      salesQuery,
-    ])
-
-    // Extract users from user_events join if event is selected
-    const allClosers = eventId
-      ? (closersRes.data || []).map((ue: any) => ue.users).filter(Boolean)
-      : closersRes.data || []
+    const salesRes = await salesQuery
     const allSales = salesRes.data || []
 
     const rankings = allClosers.map((closer: any) => {
