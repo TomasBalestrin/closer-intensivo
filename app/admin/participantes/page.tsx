@@ -79,24 +79,30 @@ export default function AdminParticipantes() {
     }
 
     // Get closers - filter by event if selected
-    let closersQuery
+    let closersData: User[] = []
     if (activeEvent?.id) {
-      // Get only closers that have access to this event
-      closersQuery = supabase
+      // First get user_ids from user_events for this event with role 'closer'
+      const { data: userEventsData } = await supabase
         .from('user_events')
-        .select('users:user_id(id, name, email, photo_url, role)')
+        .select('user_id')
         .eq('event_id', activeEvent.id)
         .eq('role', 'closer')
+
+      if (userEventsData && userEventsData.length > 0) {
+        const userIds = userEventsData.map((ue: any) => ue.user_id)
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, name, email, photo_url, role')
+          .in('id', userIds)
+        closersData = (usersData || []) as User[]
+      }
     } else {
-      closersQuery = supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'closer')
+      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      closersData = (data || []) as User[]
     }
 
-    const [participantsRes, closersRes, salesRes] = await Promise.all([
+    const [participantsRes, salesRes] = await Promise.all([
       participantsQuery,
-      closersQuery,
       salesQuery,
     ])
 
@@ -106,11 +112,6 @@ export default function AdminParticipantes() {
       ...p,
       hasSale: salesSet.has(p.id),
     })) || []
-
-    // Extract users from user_events join if event is selected
-    const closersData = activeEvent?.id
-      ? (closersRes.data || []).map((ue: any) => ue.users).filter(Boolean)
-      : closersRes.data || []
 
     setParticipants(participantsWithSales)
     setClosers(closersData)
