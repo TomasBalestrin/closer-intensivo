@@ -321,7 +321,7 @@ export default function AdminUsuarios() {
 
           {activeEvent && (
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
-              O usuário será automaticamente associado ao evento atual: <strong>{activeEvent.nome_evento || activeEvent.name}</strong>
+              O usuário será automaticamente associado ao evento atual: <strong>{activeEvent.nome_evento}</strong>
             </div>
           )}
 

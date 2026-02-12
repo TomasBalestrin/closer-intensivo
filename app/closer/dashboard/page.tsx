@@ -100,7 +100,7 @@ export default function CloserDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Meu Dashboard</h1>
         {activeEvent && (
           <span className="px-3 py-1 bg-amber-100 text-amber-800 text-sm font-medium rounded-full">
-            {activeEvent.nome_evento || activeEvent.name}
+            {activeEvent.nome_evento}
           </span>
         )}
       </div>
