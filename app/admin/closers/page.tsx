@@ -21,12 +21,15 @@ interface CloserWithStats extends User {
 export default function AdminClosers() {
   const router = useRouter()
   const supabase = createClient()
-  const { activeEvent } = useEvent()
+  const { activeEvent, isLoading: eventLoading } = useEvent()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchData()
-  }, [activeEvent?.id])
+    // Wait for event to be loaded before fetching data
+    if (!eventLoading) {
+      fetchData()
+    }
+  }, [activeEvent?.id, eventLoading])
 
   const [rawClosers, setRawClosers] = useState<User[]>([])
   const [rawParticipants, setRawParticipants] = useState<Participant[]>([])

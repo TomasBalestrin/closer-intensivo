@@ -16,7 +16,7 @@ type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
 const supabase = createClient()
 
 export default function AdminDashboard() {
-  const { activeEvent } = useEvent()
+  const { activeEvent, isLoading: eventLoading } = useEvent()
   const [dayFilter, setDayFilter] = useState<DayFilter>('todos')
   const [loading, setLoading] = useState(true)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -28,6 +28,8 @@ export default function AdminDashboard() {
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
     try {
+      console.log('Dashboard fetchData - activeEvent:', activeEvent?.id, activeEvent?.nome_evento)
+
       // Build queries with event filter
       let participantsQuery = supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id')
       let salesQuery = supabase.from('sales').select('*, closer:users(id, name, photo_url)').is('deleted_at', null)
@@ -66,6 +68,8 @@ export default function AdminDashboard() {
         salesQuery,
       ])
 
+      console.log('Dashboard results - participants:', participantsRes.data?.length, 'sales:', salesRes.data?.length)
+
       setParticipants((participantsRes.data || []) as Participant[])
       setSales((salesRes.data || []) as (Sale & { closer: User })[])
       setClosers(closersData)
@@ -76,8 +80,11 @@ export default function AdminDashboard() {
   }, [activeEvent?.id])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    // Wait for event to be loaded before fetching data
+    if (!eventLoading) {
+      fetchData()
+    }
+  }, [fetchData, eventLoading])
 
   // Realtime subscription com debounce para evitar múltiplos refetch
   useEffect(() => {
