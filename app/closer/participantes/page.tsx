@@ -9,6 +9,7 @@ import { Participant, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib
 import { getColorClass, getColorFromRevenue, getInstagramUrl } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
+import { useEvent } from '@/lib/hooks/use-event'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 
@@ -26,6 +27,7 @@ function getCachedParticipants(): any[] | null {
 export default function CloserParticipantes() {
   const router = useRouter()
   const supabase = createClient()
+  const { activeEvent } = useEvent()
   const restoringScroll = useRef(false)
 
   // Initialize from cache if available (avoids skeleton flash on back navigation)
@@ -52,16 +54,27 @@ export default function CloserParticipantes() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Build queries with event filter
+    let participantsQuery = supabase
+      .from('participants')
+      .select('*')
+      .eq('closer_id', user.id)
+      .order('created_at', { ascending: false })
+
+    let salesQuery = supabase
+      .from('sales')
+      .select('participant_id')
+      .is('deleted_at', null)
+
+    // Filter by active event if selected
+    if (activeEvent?.id) {
+      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    }
+
     const [participantsRes, salesRes] = await Promise.all([
-      supabase
-        .from('participants')
-        .select('*')
-        .eq('closer_id', user.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('sales')
-        .select('participant_id')
-        .is('deleted_at', null),
+      participantsQuery,
+      salesQuery,
     ])
 
     const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
@@ -77,7 +90,7 @@ export default function CloserParticipantes() {
     try {
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(participantsWithSales))
     } catch {}
-  }, [])
+  }, [activeEvent?.id])
 
   useEffect(() => {
     const hasCache = !!getCachedParticipants()
