@@ -38,15 +38,32 @@ export default function AdminDashboard() {
         salesQuery = salesQuery.eq('event_id', activeEvent.id)
       }
 
+      // Get closers - filter by event if selected
+      let closersQuery
+      if (activeEvent?.id) {
+        closersQuery = supabase
+          .from('user_events')
+          .select('users:user_id(id, name, email, photo_url)')
+          .eq('event_id', activeEvent.id)
+          .eq('role', 'closer')
+      } else {
+        closersQuery = supabase.from('users').select('id, name, email, photo_url').eq('role', 'closer')
+      }
+
       const [participantsRes, salesRes, closersRes] = await Promise.all([
         participantsQuery,
         salesQuery,
-        supabase.from('users').select('id, name, email, photo_url').eq('role', 'closer'),
+        closersQuery,
       ])
+
+      // Extract users from user_events join if event is selected
+      const closersData = activeEvent?.id
+        ? (closersRes.data || []).map((ue: any) => ue.users).filter(Boolean)
+        : closersRes.data || []
 
       setParticipants((participantsRes.data || []) as Participant[])
       setSales((salesRes.data || []) as (Sale & { closer: User })[])
-      setClosers((closersRes.data || []) as User[])
+      setClosers(closersData as User[])
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     }

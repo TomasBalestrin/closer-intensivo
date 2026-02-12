@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, Avatar, Loading, Button } from '@/components/ui'
 import { User, Sale, Participant } from '@/lib/types'
 import { formatCurrency, formatPercentage, exportToCSV } from '@/lib/utils'
+import { useEvent } from '@/lib/hooks/use-event'
 import { Download } from 'lucide-react'
 
 interface CloserWithStats extends User {
@@ -20,11 +21,12 @@ interface CloserWithStats extends User {
 export default function AdminClosers() {
   const router = useRouter()
   const supabase = createClient()
+  const { activeEvent } = useEvent()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [activeEvent?.id])
 
   const [rawClosers, setRawClosers] = useState<User[]>([])
   const [rawParticipants, setRawParticipants] = useState<Participant[]>([])
@@ -33,13 +35,36 @@ export default function AdminClosers() {
   const fetchData = async () => {
     setLoading(true)
 
+    // Build queries with event filter
+    let participantsQuery = supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3')
+    let salesQuery = supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null)
+
+    // Get closers - filter by event if selected
+    let closersQuery
+    if (activeEvent?.id) {
+      closersQuery = supabase
+        .from('user_events')
+        .select('users:user_id(id, name, email, photo_url, role)')
+        .eq('event_id', activeEvent.id)
+        .eq('role', 'closer')
+      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    } else {
+      closersQuery = supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer')
+    }
+
     const [closersRes, participantsRes, salesRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer'),
-      supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3'),
-      supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null),
+      closersQuery,
+      participantsQuery,
+      salesQuery,
     ])
 
-    setRawClosers(closersRes.data as User[] || [])
+    // Extract users from user_events join if event is selected
+    const closersData = activeEvent?.id
+      ? (closersRes.data || []).map((ue: any) => ue.users).filter(Boolean)
+      : closersRes.data || []
+
+    setRawClosers(closersData as User[])
     setRawParticipants(participantsRes.data as Participant[] || [])
     setRawSales(salesRes.data as Sale[] || [])
     setLoading(false)
