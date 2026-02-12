@@ -59,10 +59,13 @@ export default function NovoEvento() {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Create event
+      // Create event (name, start_date, end_date are NOT NULL columns)
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
+          name: formData.nome_evento,
+          start_date: formData.data_inicio,
+          end_date: formData.data_fim,
           nome_evento: formData.nome_evento,
           slug: formData.slug,
           data_inicio: formData.data_inicio,
