@@ -13,11 +13,16 @@ import {
   Badge,
   Select,
   Loading,
+  Modal,
 } from '@/components/ui'
 import { StatsCard } from '@/components/shared'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { User, Participant, Sale } from '@/lib/types'
 import { formatCurrency, formatPercentage, getColorClass } from '@/lib/utils'
+
+interface SaleWithParticipant extends Sale {
+  participant?: Participant
+}
 
 export default function CloserDetail() {
   const params = useParams()
@@ -26,8 +31,9 @@ export default function CloserDetail() {
 
   const [closer, setCloser] = useState<User | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
-  const [sales, setSales] = useState<Sale[]>([])
+  const [sales, setSales] = useState<SaleWithParticipant[]>([])
   const [loading, setLoading] = useState(true)
+  const [showSalesModal, setShowSalesModal] = useState(false)
 
   const [participantFilter, setParticipantFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
@@ -42,7 +48,7 @@ export default function CloserDetail() {
     const [closerRes, participantsRes, salesRes] = await Promise.all([
       supabase.from('users').select('*').eq('id', params.id).single(),
       supabase.from('participants').select('*').eq('closer_id', params.id),
-      supabase.from('sales').select('*').eq('closer_id', params.id),
+      supabase.from('sales').select('*, participant:participants(id, name, niche, email)').eq('closer_id', params.id).is('deleted_at', null),
     ])
 
     setCloser(closerRes.data)
@@ -137,11 +143,17 @@ export default function CloserDetail() {
             value={opportunitiesCheckedIn}
             icon="Target"
           />
-          <StatsCard
-            title="Vendas"
-            value={sales.length}
-            icon="DollarSign"
-          />
+          <div
+            onClick={() => setShowSalesModal(true)}
+            className="cursor-pointer hover:scale-[1.02] transition-transform"
+          >
+            <StatsCard
+              title="Vendas"
+              value={sales.length}
+              icon="DollarSign"
+              subtitle="Clique para ver detalhes"
+            />
+          </div>
           <StatsCard
             title="Taxa de Conversão"
             value={formatPercentage(conversionRate)}
@@ -289,6 +301,82 @@ export default function CloserDetail() {
           <p className="text-center text-gray-500 py-8">Nenhuma oportunidade encontrada</p>
         )}
       </section>
+
+      {/* Sales Modal */}
+      {showSalesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowSalesModal(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-bold text-gray-900">
+                Vendas de {closer?.name} ({sales.length})
+              </h2>
+              <button
+                onClick={() => setShowSalesModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[calc(80vh-80px)]">
+              {sales.length === 0 ? (
+                <p className="text-center text-gray-500 py-12">Nenhuma venda registrada</p>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Participante</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Nicho</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Valor Venda</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Valor Entrada</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {sales.map((sale) => (
+                      <tr
+                        key={sale.id}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => {
+                          setShowSalesModal(false)
+                          if (sale.participant?.id) {
+                            router.push(`/admin/participantes/${sale.participant.id}`)
+                          }
+                        }}
+                      >
+                        <td className="px-4 py-3">
+                          <span className="text-blue-600 hover:underline font-medium">
+                            {sale.participant?.name || 'Participante não encontrado'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {sale.participant?.niche || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900">
+                          {formatCurrency(Number(sale.total_value))}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {formatCurrency(Number(sale.entry_value))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t-2">
+                    <tr>
+                      <td className="px-4 py-3 font-bold text-gray-900" colSpan={2}>Total</td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                        {formatCurrency(totalSalesValue)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                        {formatCurrency(totalEntryValue)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

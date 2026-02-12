@@ -147,55 +147,77 @@ export default function AdminRelatorios() {
     const checkedD2 = filtered.filter(p => p.checked_in_day2).length
     const checkedD3 = filtered.filter(p => p.checked_in_day3).length
 
-    // Qualification breakdown
-    const qualBreakdown = { alto: 0, medio: 0, baixo: 0, sem: 0 }
+    // Qualification breakdown with day breakdown
+    const qualBreakdown = {
+      alto: { total: 0, day1: 0, day2: 0, day3: 0 },
+      medio: { total: 0, day1: 0, day2: 0, day3: 0 },
+      baixo: { total: 0, day1: 0, day2: 0, day3: 0 },
+      sem: { total: 0, day1: 0, day2: 0, day3: 0 }
+    }
     filtered.forEach(p => {
       const q = p.qualification || getQualificationFromRevenue(p.revenue)
-      if (q === 'alto') qualBreakdown.alto++
-      else if (q === 'medio') qualBreakdown.medio++
-      else if (q === 'baixo') qualBreakdown.baixo++
-      else qualBreakdown.sem++
+      const key = q === 'alto' ? 'alto' : q === 'medio' ? 'medio' : q === 'baixo' ? 'baixo' : 'sem'
+      qualBreakdown[key].total++
+      if (p.checked_in_day1) qualBreakdown[key].day1++
+      if (p.checked_in_day2) qualBreakdown[key].day2++
+      if (p.checked_in_day3) qualBreakdown[key].day3++
     })
 
-    // Revenue/color breakdown
-    const colorBreakdown: Record<string, { count: number; opportunities: number; checkedIn: number; sales: number }> = {}
+    // Revenue/color breakdown with opportunities per day
+    const colorBreakdown: Record<string, { count: number; opportunities: number; oppDay1: number; oppDay2: number; oppDay3: number; checkedIn: number; sales: number }> = {}
     const colorOrder = ['rosa', 'preto', 'azul_claro', 'verde', 'dourado', 'laranja']
-    colorOrder.forEach(c => { colorBreakdown[c] = { count: 0, opportunities: 0, checkedIn: 0, sales: 0 } })
-    colorBreakdown['sem'] = { count: 0, opportunities: 0, checkedIn: 0, sales: 0 }
+    colorOrder.forEach(c => { colorBreakdown[c] = { count: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, checkedIn: 0, sales: 0 } })
+    colorBreakdown['sem'] = { count: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, checkedIn: 0, sales: 0 }
 
     filtered.forEach(p => {
       const c = p.color || getColorFromRevenue(p.revenue) || 'sem'
-      if (!colorBreakdown[c]) colorBreakdown[c] = { count: 0, opportunities: 0, checkedIn: 0, sales: 0 }
+      if (!colorBreakdown[c]) colorBreakdown[c] = { count: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, checkedIn: 0, sales: 0 }
       colorBreakdown[c].count++
-      if (p.is_opportunity) colorBreakdown[c].opportunities++
+      if (p.is_opportunity) {
+        colorBreakdown[c].opportunities++
+        if (p.checked_in_day1) colorBreakdown[c].oppDay1++
+        if (p.checked_in_day2) colorBreakdown[c].oppDay2++
+        if (p.checked_in_day3) colorBreakdown[c].oppDay3++
+      }
       if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) colorBreakdown[c].checkedIn++
       if (salesMap[p.id]) colorBreakdown[c].sales++
     })
 
-    // Niche breakdown
-    const nicheMap: Record<string, { count: number; opportunities: number }> = {}
+    // Niche breakdown with sales and opportunities per day
+    const nicheMap: Record<string, { count: number; opportunities: number; oppDay1: number; oppDay2: number; oppDay3: number; sales: number }> = {}
     filtered.forEach(p => {
       const n = p.niche?.trim() || 'Não informado'
-      if (!nicheMap[n]) nicheMap[n] = { count: 0, opportunities: 0 }
+      if (!nicheMap[n]) nicheMap[n] = { count: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
       nicheMap[n].count++
-      if (p.is_opportunity) nicheMap[n].opportunities++
+      if (p.is_opportunity) {
+        nicheMap[n].opportunities++
+        if (p.checked_in_day1) nicheMap[n].oppDay1++
+        if (p.checked_in_day2) nicheMap[n].oppDay2++
+        if (p.checked_in_day3) nicheMap[n].oppDay3++
+      }
+      if (salesMap[p.id]) nicheMap[n].sales++
     })
     const nicheRanking = Object.entries(nicheMap)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 20)
 
-    // Closer breakdown
-    const closerMap: Record<string, { name: string; total: number; checkedIn: number; opportunities: number; sales: number }> = {}
-    closerMap['unassigned'] = { name: 'Sem closer', total: 0, checkedIn: 0, opportunities: 0, sales: 0 }
+    // Closer breakdown with opportunities per day
+    const closerMap: Record<string, { name: string; total: number; checkedIn: number; opportunities: number; oppDay1: number; oppDay2: number; oppDay3: number; sales: number }> = {}
+    closerMap['unassigned'] = { name: 'Sem closer', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     closers.forEach(c => {
-      closerMap[c.id] = { name: c.name, total: 0, checkedIn: 0, opportunities: 0, sales: 0 }
+      closerMap[c.id] = { name: c.name, total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     })
     filtered.forEach(p => {
       const key = p.closer_id || 'unassigned'
-      if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, sales: 0 }
+      if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
       closerMap[key].total++
       if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) closerMap[key].checkedIn++
-      if (p.is_opportunity) closerMap[key].opportunities++
+      if (p.is_opportunity) {
+        closerMap[key].opportunities++
+        if (p.checked_in_day1) closerMap[key].oppDay1++
+        if (p.checked_in_day2) closerMap[key].oppDay2++
+        if (p.checked_in_day3) closerMap[key].oppDay3++
+      }
       if (salesMap[p.id]) closerMap[key].sales++
     })
     const closerRanking = Object.entries(closerMap)
@@ -433,39 +455,51 @@ export default function AdminRelatorios() {
         <Card>
           <CardContent>
             <div className="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full text-sm min-w-[480px]">
+              <table className="w-full text-sm min-w-[700px]">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Qualificação</th>
-                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Quantidade</th>
-                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">% do Total</th>
-                    <th className="py-3 px-3 sm:px-4 font-semibold text-gray-700 w-1/3">Distribuição</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Total</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">%</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-blue-50">Dia 1</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-green-50">Dia 2</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-purple-50">Dia 3</th>
+                    <th className="py-3 px-3 sm:px-4 font-semibold text-gray-700 w-1/5">Distribuição</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    { label: 'Alto (R$ 50k+)', value: stats.qualBreakdown.alto, cls: 'bg-green-100 text-green-800', bar: 'bg-green-500' },
-                    { label: 'Médio (R$ 10k-50k)', value: stats.qualBreakdown.medio, cls: 'bg-amber-100 text-amber-800', bar: 'bg-amber-500' },
-                    { label: 'Baixo (até R$ 10k)', value: stats.qualBreakdown.baixo, cls: 'bg-red-100 text-red-800', bar: 'bg-red-500' },
-                    { label: 'Sem informação', value: stats.qualBreakdown.sem, cls: 'bg-gray-100 text-gray-600', bar: 'bg-gray-400' },
-                  ].map(row => (
-                    <tr key={row.label} className="border-b last:border-0">
-                      <td className="py-3 px-4">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${row.cls}`}>{row.label}</span>
-                      </td>
-                      <td className="text-right py-3 px-4 font-semibold">{row.value}</td>
-                      <td className="text-right py-3 px-4">{pct(row.value, stats.total)}</td>
-                      <td className="py-3 px-4">
-                        <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full ${row.bar} rounded-full transition-all`} style={{ width: `${stats.total > 0 ? (row.value / stats.total) * 100 : 0}%` }} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                    { key: 'alto', label: 'Alto (R$ 50k+)', cls: 'bg-green-100 text-green-800', bar: 'bg-green-500' },
+                    { key: 'medio', label: 'Médio (R$ 10k-50k)', cls: 'bg-amber-100 text-amber-800', bar: 'bg-amber-500' },
+                    { key: 'baixo', label: 'Baixo (até R$ 10k)', cls: 'bg-red-100 text-red-800', bar: 'bg-red-500' },
+                    { key: 'sem', label: 'Sem informação', cls: 'bg-gray-100 text-gray-600', bar: 'bg-gray-400' },
+                  ].map(row => {
+                    const data = stats.qualBreakdown[row.key as keyof typeof stats.qualBreakdown]
+                    return (
+                      <tr key={row.label} className="border-b last:border-0">
+                        <td className="py-3 px-4">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${row.cls}`}>{row.label}</span>
+                        </td>
+                        <td className="text-right py-3 px-4 font-semibold">{data.total}</td>
+                        <td className="text-right py-3 px-4">{pct(data.total, stats.total)}</td>
+                        <td className="text-right py-3 px-4 bg-blue-50/50">{data.day1}</td>
+                        <td className="text-right py-3 px-4 bg-green-50/50">{data.day2}</td>
+                        <td className="text-right py-3 px-4 bg-purple-50/50">{data.day3}</td>
+                        <td className="py-3 px-4">
+                          <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${row.bar} rounded-full transition-all`} style={{ width: `${stats.total > 0 ? (data.total / stats.total) * 100 : 0}%` }} />
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                   <tr className="bg-gray-50 font-semibold">
                     <td className="py-3 px-4">TOTAL</td>
                     <td className="text-right py-3 px-4">{stats.total}</td>
                     <td className="text-right py-3 px-4">100%</td>
+                    <td className="text-right py-3 px-4 bg-blue-50">{stats.checkedD1}</td>
+                    <td className="text-right py-3 px-4 bg-green-50">{stats.checkedD2}</td>
+                    <td className="text-right py-3 px-4 bg-purple-50">{stats.checkedD3}</td>
                     <td className="py-3 px-4"></td>
                   </tr>
                 </tbody>
@@ -481,16 +515,18 @@ export default function AdminRelatorios() {
         <Card>
           <CardContent>
             <div className="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full text-sm min-w-[600px]">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Faixa</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Qtd</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">%</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Oport.</th>
-                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Cred.</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-blue-50">Op. D1</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-green-50">Op. D2</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-purple-50">Op. D3</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Vendas</th>
-                    <th className="py-3 px-3 sm:px-4 w-1/5"></th>
+                    <th className="py-3 px-3 sm:px-4 w-1/6"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -506,9 +542,11 @@ export default function AdminRelatorios() {
                         </td>
                         <td className="text-right py-3 px-4 font-semibold">{v.count}</td>
                         <td className="text-right py-3 px-4">{pct(v.count, stats.total)}</td>
-                        <td className="text-right py-3 px-4">{v.opportunities}</td>
-                        <td className="text-right py-3 px-4">{v.checkedIn}</td>
-                        <td className="text-right py-3 px-4">{v.sales}</td>
+                        <td className="text-right py-3 px-4 font-semibold text-purple-600">{v.opportunities}</td>
+                        <td className="text-right py-3 px-4 bg-blue-50/50">{v.oppDay1}</td>
+                        <td className="text-right py-3 px-4 bg-green-50/50">{v.oppDay2}</td>
+                        <td className="text-right py-3 px-4 bg-purple-50/50">{v.oppDay3}</td>
+                        <td className="text-right py-3 px-4 font-semibold text-emerald-600">{v.sales}</td>
                         <td className="py-3 px-4">
                           <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                             <div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats.total > 0 ? (v.count / stats.total) * 100 : 0}%` }} />
@@ -530,15 +568,18 @@ export default function AdminRelatorios() {
         <Card>
           <CardContent>
             <div className="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full text-sm min-w-[540px]">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">#</th>
                     <th className="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Nicho</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Qtd</th>
-                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">%</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Vendas</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Oport.</th>
-                    <th className="py-3 px-3 sm:px-4 w-1/4"></th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-blue-50">Op. D1</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-green-50">Op. D2</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-purple-50">Op. D3</th>
+                    <th className="py-3 px-3 sm:px-4 w-1/6"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -547,8 +588,11 @@ export default function AdminRelatorios() {
                       <td className="py-3 px-4 text-gray-400 font-semibold">{i + 1}</td>
                       <td className="py-3 px-4 font-medium">{niche}</td>
                       <td className="text-right py-3 px-4 font-semibold">{data.count}</td>
-                      <td className="text-right py-3 px-4">{pct(data.count, stats.total)}</td>
-                      <td className="text-right py-3 px-4">{data.opportunities}</td>
+                      <td className="text-right py-3 px-4 font-semibold text-emerald-600">{data.sales}</td>
+                      <td className="text-right py-3 px-4 font-semibold text-purple-600">{data.opportunities}</td>
+                      <td className="text-right py-3 px-4 bg-blue-50/50">{data.oppDay1}</td>
+                      <td className="text-right py-3 px-4 bg-green-50/50">{data.oppDay2}</td>
+                      <td className="text-right py-3 px-4 bg-purple-50/50">{data.oppDay3}</td>
                       <td className="py-3 px-4">
                         <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full bg-purple-500 rounded-full" style={{ width: `${stats.total > 0 ? (data.count / stats.total) * 100 : 0}%` }} />
@@ -569,13 +613,15 @@ export default function AdminRelatorios() {
         <Card>
           <CardContent>
             <div className="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full text-sm min-w-[520px]">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Closer</th>
-                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Total</th>
-                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Cred.</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Part.</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Oport.</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-blue-50">Op. D1</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-green-50">Op. D2</th>
+                    <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700 bg-purple-50">Op. D3</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Vendas</th>
                     <th className="text-right py-3 px-3 sm:px-4 font-semibold text-gray-700">Conv.</th>
                   </tr>
@@ -585,12 +631,14 @@ export default function AdminRelatorios() {
                     <tr key={key} className="border-b last:border-0">
                       <td className="py-3 px-4 font-medium">{data.name}</td>
                       <td className="text-right py-3 px-4 font-semibold">{data.total}</td>
-                      <td className="text-right py-3 px-4">{data.checkedIn}</td>
-                      <td className="text-right py-3 px-4">{data.opportunities}</td>
-                      <td className="text-right py-3 px-4">{data.sales}</td>
+                      <td className="text-right py-3 px-4 font-semibold text-purple-600">{data.opportunities}</td>
+                      <td className="text-right py-3 px-4 bg-blue-50/50">{data.oppDay1}</td>
+                      <td className="text-right py-3 px-4 bg-green-50/50">{data.oppDay2}</td>
+                      <td className="text-right py-3 px-4 bg-purple-50/50">{data.oppDay3}</td>
+                      <td className="text-right py-3 px-4 font-semibold text-emerald-600">{data.sales}</td>
                       <td className="text-right py-3 px-4">
-                        <span className={`font-semibold ${data.total > 0 && data.sales > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                          {pct(data.sales, data.total)}
+                        <span className={`font-semibold ${data.opportunities > 0 && data.sales > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                          {pct(data.sales, data.opportunities)}
                         </span>
                       </td>
                     </tr>
