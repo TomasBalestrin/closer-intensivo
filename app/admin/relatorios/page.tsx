@@ -21,6 +21,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { User } from '@/lib/types'
+import { useEvent } from '@/lib/hooks/use-event'
 import {
   getColorClass,
   getColorFromRevenue,
@@ -53,6 +54,7 @@ type Participant = {
 
 export default function AdminRelatorios() {
   const supabase = createClient()
+  const { activeEvent, isLoading: eventLoading } = useEvent()
   const [participants, setParticipants] = useState<Participant[]>([])
   const [closers, setClosers] = useState<User[]>([])
   const [salesMap, setSalesMap] = useState<Record<string, boolean>>({})
@@ -90,23 +92,60 @@ export default function AdminRelatorios() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const [pRes, cRes, sRes] = await Promise.all([
-      supabase.from('participants').select('*'),
-      supabase.from('users').select('*').eq('role', 'closer'),
-      supabase.from('sales').select('participant_id'),
+
+    // Build queries with event filter
+    let participantsQuery = supabase.from('participants').select('*')
+    let salesQuery = supabase.from('sales').select('participant_id').is('deleted_at', null)
+
+    // Filter by active event if selected
+    if (activeEvent?.id) {
+      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    }
+
+    // Fetch closers based on event (two-step query for user_events)
+    let closersData: User[] = []
+    if (activeEvent?.id) {
+      const { data: userEventsData } = await supabase
+        .from('user_events')
+        .select('user_id')
+        .eq('event_id', activeEvent.id)
+        .eq('role', 'closer')
+
+      if (userEventsData && userEventsData.length > 0) {
+        const userIds = userEventsData.map((ue: any) => ue.user_id)
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', userIds)
+        closersData = (usersData || []) as User[]
+      }
+    } else {
+      // No event selected, get all closers
+      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      closersData = (data || []) as User[]
+    }
+
+    const [pRes, sRes] = await Promise.all([
+      participantsQuery,
+      salesQuery,
     ])
+
     if (pRes.error) console.error('Participants error:', pRes.error)
-    if (cRes.error) console.error('Closers error:', cRes.error)
     if (sRes.error) console.error('Sales error:', sRes.error)
     setParticipants((pRes.data || []) as any)
-    setClosers(cRes.data || [])
+    setClosers(closersData)
     const map: Record<string, boolean> = {}
     sRes.data?.forEach(s => { map[s.participant_id] = true })
     setSalesMap(map)
     setLoading(false)
-  }, [])
+  }, [activeEvent?.id])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    if (!eventLoading) {
+      fetchData()
+    }
+  }, [fetchData, eventLoading])
 
   // Filtered participants
   const filtered = useMemo(() => {
@@ -351,9 +390,16 @@ export default function AdminRelatorios() {
     <div className="space-y-4 sm:space-y-6 pb-20 lg:pb-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Relatórios</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">Análises e insights sobre os participantes do evento</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Relatórios</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">Análises e insights sobre os participantes do evento</p>
+          </div>
+          {activeEvent && (
+            <span className="px-3 py-1 bg-amber-100 text-amber-800 text-sm font-medium rounded-full">
+              {activeEvent.nome_evento}
+            </span>
+          )}
         </div>
         <span className="text-sm text-gray-500">{filtered.length} participantes {hasActiveFilters ? '(filtrados)' : ''}</span>
       </div>
