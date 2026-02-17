@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/webhooks/process-queue",
-      "schedule": "0 0 * * *"
-    }
-  ]
-}

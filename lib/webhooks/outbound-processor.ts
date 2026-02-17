@@ -41,26 +41,126 @@ export async function dispararWebhooks(event: WebhookEvent) {
 
   if (!webhooks || webhooks.length === 0) return
 
-  for (const webhook of webhooks) {
+  // Process webhooks immediately (don't wait for cron)
+  const promises = webhooks.map(async (webhook) => {
     // Check filters
-    if (!passaFiltros(webhook.filtros, event.dados)) continue
+    if (!passaFiltros(webhook.filtros, event.dados)) return
 
-    await supabase.from('webhook_queue').insert({
+    const payload = {
+      event: event.evento,
+      timestamp: new Date().toISOString(),
       webhook_id: webhook.id,
-      evento: event.evento,
-      payload: {
-        event: event.evento,
-        timestamp: new Date().toISOString(),
-        webhook_id: webhook.id,
-        data: event.dados,
-        metadata: {
-          source: 'bethel-events',
-          version: '1.0',
-          environment: process.env.NODE_ENV || 'production',
-        },
+      data: event.dados,
+      metadata: {
+        source: 'bethel-events',
+        version: '1.0',
+        environment: process.env.NODE_ENV || 'production',
       },
-      max_tentativas: webhook.retry_attempts,
+    }
+
+    // Try to send immediately
+    const success = await enviarWebhookImediato(webhook, event.evento, payload, supabase)
+
+    // If failed, queue for retry
+    if (!success) {
+      await supabase.from('webhook_queue').insert({
+        webhook_id: webhook.id,
+        evento: event.evento,
+        payload,
+        max_tentativas: webhook.retry_attempts,
+        tentativas: 1,
+        proxima_tentativa: new Date(Date.now() + (webhook.retry_delay_seconds || 30) * 1000).toISOString(),
+      })
+    }
+  })
+
+  // Process all webhooks in parallel (non-blocking)
+  await Promise.allSettled(promises)
+}
+
+async function enviarWebhookImediato(
+  webhook: any,
+  evento: string,
+  payload: any,
+  supabase: any
+): Promise<boolean> {
+  const inicio = Date.now()
+
+  try {
+    // Build headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(webhook.custom_headers || {}),
+    }
+
+    // Add authentication
+    if (webhook.auth_type === 'bearer' && webhook.auth_value_encrypted) {
+      headers['Authorization'] = `Bearer ${decrypt(webhook.auth_value_encrypted)}`
+    } else if (webhook.auth_type === 'api_key' && webhook.auth_value_encrypted) {
+      headers['X-API-Key'] = decrypt(webhook.auth_value_encrypted)
+    } else if (webhook.auth_type === 'basic' && webhook.auth_value_encrypted) {
+      headers['Authorization'] = `Basic ${decrypt(webhook.auth_value_encrypted)}`
+    }
+
+    // Send request with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), (webhook.timeout_seconds || 30) * 1000)
+
+    const response = await fetch(webhook.url, {
+      method: webhook.metodo || 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
+
+    const duracao = Date.now() - inicio
+    let responseBody = ''
+    try {
+      responseBody = await response.text()
+    } catch {}
+
+    // Log result
+    await supabase.from('webhook_logs').insert({
+      webhook_id: webhook.id,
+      direcao: 'outbound',
+      evento,
+      url: webhook.url,
+      metodo: webhook.metodo,
+      request_body: payload,
+      response_status: response.status,
+      response_body: responseBody.substring(0, 5000),
+      duracao_ms: duracao,
+      tentativa: 1,
+      status: response.ok ? 'success' : 'error',
+      erro_mensagem: response.ok ? null : `HTTP ${response.status}`,
+    })
+
+    if (response.ok) {
+      await supabase.rpc('incrementar_webhook_sucesso', { p_webhook_id: webhook.id })
+      return true
+    }
+
+    return false
+  } catch (error: any) {
+    const duracao = Date.now() - inicio
+    const isTimeout = error.name === 'AbortError'
+
+    // Log error
+    await supabase.from('webhook_logs').insert({
+      webhook_id: webhook.id,
+      direcao: 'outbound',
+      evento,
+      url: webhook.url,
+      request_body: payload,
+      duracao_ms: duracao,
+      tentativa: 1,
+      status: isTimeout ? 'timeout' : 'error',
+      erro_mensagem: isTimeout ? 'Request timeout' : error.message,
+    })
+
+    return false
   }
 }
 
