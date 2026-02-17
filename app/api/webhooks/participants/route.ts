@@ -186,6 +186,26 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
 export async function POST(request: Request) {
   const supabase = getSupabase()
   try {
+    // Extract event_id from query parameters
+    const url = new URL(request.url)
+    const eventId = url.searchParams.get('event_id')
+
+    // Validate event_id if provided
+    if (eventId) {
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('id', eventId)
+        .single()
+
+      if (eventError || !eventData) {
+        return NextResponse.json(
+          { error: 'Evento não encontrado. Verifique o event_id na URL.', event_id: eventId },
+          { status: 400 }
+        )
+      }
+    }
+
     const payload = await request.json()
 
     // Log the webhook
@@ -265,46 +285,37 @@ export async function POST(request: Request) {
     const color = getColorFromRevenue(extracted.revenue) || null
     const qualification = getQualificationFromRevenue(extracted.revenue) || null
 
-    // Check if participant already exists
+    // Check if participant already exists (scoped by event_id if provided)
     let existingParticipant = null
+
+    // Helper to build scoped queries
+    const scopedQuery = () => {
+      let query = supabase.from('participants').select('id')
+      if (eventId) query = query.eq('event_id', eventId)
+      return query
+    }
 
     // 1. By external_id
     if (externalId) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id')
-        .eq('external_id', externalId)
-        .single()
+      const { data } = await scopedQuery().eq('external_id', externalId).single()
       existingParticipant = data
     }
 
     // 2. By email
     if (!existingParticipant && extracted.email) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id')
-        .eq('email', extracted.email)
-        .single()
+      const { data } = await scopedQuery().eq('email', extracted.email).single()
       existingParticipant = data
     }
 
     // 3. By CPF
     if (!existingParticipant && extracted.cpf) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id')
-        .eq('cpf', extracted.cpf)
-        .single()
+      const { data } = await scopedQuery().eq('cpf', extracted.cpf).single()
       existingParticipant = data
     }
 
     // 4. By name (last resort)
     if (!existingParticipant) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id')
-        .eq('name', name)
-        .single()
+      const { data } = await scopedQuery().eq('name', name).single()
       existingParticipant = data
     }
 
@@ -329,6 +340,11 @@ export async function POST(request: Request) {
       qualification,
       webhook_data: payload,
       ...checkinData,
+    }
+
+    // Associate with event if event_id provided
+    if (eventId) {
+      participantData.event_id = eventId
     }
 
     if (is_opportunity !== undefined) {
