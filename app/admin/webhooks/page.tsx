@@ -41,6 +41,7 @@ export default function WebhooksPage() {
       setEvents(data || [])
     }
     fetchEvents()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const getFullUrl = () => {
@@ -235,7 +236,7 @@ export default function WebhooksPage() {
                         <td className="py-2 px-2 font-mono text-xs text-blue-700">participant.oportunidade</td>
                         <td className="py-2 px-2 text-gray-500">string</td>
                         <td className="py-2 px-2"><span className="text-gray-400">Não</span></td>
-                        <td className="py-2 px-2 text-gray-600">"Acompanhante" = não é oportunidade</td>
+                        <td className="py-2 px-2 text-gray-600">&quot;Acompanhante&quot; = não é oportunidade</td>
                       </tr>
                       <tr className="border-b border-gray-50">
                         <td className="py-2 px-2 font-mono text-xs text-blue-700">participant.funnel_origin</td>
@@ -253,19 +254,19 @@ export default function WebhooksPage() {
                         <td className="py-2 px-2 font-mono text-xs text-green-700">checkin_days.day_1</td>
                         <td className="py-2 px-2 text-gray-500">string</td>
                         <td className="py-2 px-2"><span className="text-gray-400">Não</span></td>
-                        <td className="py-2 px-2 text-gray-600">"checked_in" = presente, outro = ausente</td>
+                        <td className="py-2 px-2 text-gray-600">&quot;checked_in&quot; = presente, outro = ausente</td>
                       </tr>
                       <tr className="border-b border-gray-50 bg-green-50">
                         <td className="py-2 px-2 font-mono text-xs text-green-700">checkin_days.day_2</td>
                         <td className="py-2 px-2 text-gray-500">string</td>
                         <td className="py-2 px-2"><span className="text-gray-400">Não</span></td>
-                        <td className="py-2 px-2 text-gray-600">"checked_in" = presente, outro = ausente</td>
+                        <td className="py-2 px-2 text-gray-600">&quot;checked_in&quot; = presente, outro = ausente</td>
                       </tr>
                       <tr className="border-b border-gray-50 bg-green-50">
                         <td className="py-2 px-2 font-mono text-xs text-green-700">checkin_days.day_3</td>
                         <td className="py-2 px-2 text-gray-500">string</td>
                         <td className="py-2 px-2"><span className="text-gray-400">Não</span></td>
-                        <td className="py-2 px-2 text-gray-600">"checked_in" = presente, outro = ausente</td>
+                        <td className="py-2 px-2 text-gray-600">&quot;checked_in&quot; = presente, outro = ausente</td>
                       </tr>
                     </tbody>
                   </table>
