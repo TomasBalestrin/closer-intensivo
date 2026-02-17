@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   Card,
   CardHeader,
@@ -8,6 +9,7 @@ import {
   CardContent,
   Badge,
   Button,
+  Select,
   useToast,
 } from '@/components/ui'
 import {
@@ -19,7 +21,13 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from 'lucide-react'
+
+interface EventOption {
+  id: string
+  nome_evento: string
+}
 
 interface WebhookInfo {
   id: string
@@ -114,15 +122,30 @@ const WEBHOOKS: WebhookInfo[] = [
 ]
 
 export default function WebhooksPage() {
+  const supabase = createClient()
   const { showToast } = useToast()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [events, setEvents] = useState<EventOption[]>([])
+  const [selectedEventId, setSelectedEventId] = useState<string>('')
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const { data } = await supabase
+        .from('events')
+        .select('id, nome_evento')
+        .order('data_inicio', { ascending: false })
+      setEvents(data || [])
+    }
+    fetchEvents()
+  }, [])
 
   const getFullUrl = (path: string) => {
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}${path}`
+    const base = typeof window !== 'undefined' ? window.location.origin : ''
+    if (selectedEventId) {
+      return `${base}${path}?event_id=${selectedEventId}`
     }
-    return path
+    return `${base}${path}`
   }
 
   const handleCopy = async (path: string, id: string) => {
@@ -146,12 +169,49 @@ export default function WebhooksPage() {
     }
   }
 
+  const selectedEventName = events.find(e => e.id === selectedEventId)?.nome_evento
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Webhooks</h1>
         <p className="text-gray-600">Endpoints para receber dados externos via webhook</p>
       </div>
+
+      {/* Event Selector */}
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardContent className="py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">Selecione o Evento</h3>
+              <p className="text-xs text-gray-500">
+                Cada evento possui seus próprios links de webhook. Os participantes importados serão associados ao evento selecionado.
+              </p>
+            </div>
+            <Select
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(e.target.value)}
+              options={[
+                { value: '', label: 'Selecione um evento...' },
+                ...events.map(e => ({ value: e.id, label: e.nome_evento })),
+              ]}
+              className="w-full sm:w-72"
+            />
+          </div>
+          {!selectedEventId && (
+            <div className="mt-3 flex items-center gap-2 text-amber-700 text-sm">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>Selecione um evento para gerar os links de webhook com o event_id correto.</span>
+            </div>
+          )}
+          {selectedEventId && (
+            <div className="mt-3 flex items-center gap-2 text-green-700 text-sm">
+              <Check className="h-4 w-4 flex-shrink-0" />
+              <span>Links gerados para: <strong>{selectedEventName}</strong></span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="space-y-4">
         {WEBHOOKS.map((webhook) => (

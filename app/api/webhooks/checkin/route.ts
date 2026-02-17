@@ -15,6 +15,10 @@ function getSupabase() {
 export async function POST(request: Request) {
   const supabase = getSupabase()
   try {
+    // Extract event_id from query parameters
+    const reqUrl = new URL(request.url)
+    const eventId = reqUrl.searchParams.get('event_id')
+
     const payload = await request.json()
 
     // Log the webhook
@@ -41,42 +45,33 @@ export async function POST(request: Request) {
       )
     }
 
+    // Helper to build scoped queries by event
+    const scopedQuery = () => {
+      let query = supabase.from('participants').select('id, name')
+      if (eventId) query = query.eq('event_id', eventId)
+      return query
+    }
+
     // Find participant by priority: external_id > email > cpf > name
     let participant = null
 
     if (externalId) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('external_id', externalId)
-        .single()
+      const { data } = await scopedQuery().eq('external_id', externalId).single()
       participant = data
     }
 
     if (!participant && email) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('email', email)
-        .single()
+      const { data } = await scopedQuery().eq('email', email).single()
       participant = data
     }
 
     if (!participant && cpf) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('cpf', cpf)
-        .single()
+      const { data } = await scopedQuery().eq('cpf', cpf).single()
       participant = data
     }
 
     if (!participant && name) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('name', name)
-        .single()
+      const { data } = await scopedQuery().eq('name', name).single()
       participant = data
     }
 

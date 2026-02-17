@@ -126,6 +126,10 @@ const NAME_ALIASES = ['nome_completo', 'nome', 'name', 'full_name', 'fullname', 
 export async function POST(request: Request) {
   const supabase = getSupabase()
   try {
+    // Extract event_id from query parameters
+    const reqUrl = new URL(request.url)
+    const eventId = reqUrl.searchParams.get('event_id')
+
     const payload = await request.json()
 
     // Log the webhook
@@ -174,44 +178,33 @@ export async function POST(request: Request) {
       )
     }
 
+    // Helper to build scoped queries by event
+    const scopedQuery = () => {
+      let query = supabase.from('participants').select('id, name')
+      if (eventId) query = query.eq('event_id', eventId)
+      return query
+    }
+
     // Find participant - priority: external_id > email > cpf > name (case-insensitive)
     let existingParticipant = null
 
     if (externalId) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('external_id', externalId)
-        .single()
+      const { data } = await scopedQuery().eq('external_id', externalId).single()
       existingParticipant = data
     }
 
     if (!existingParticipant && email) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .ilike('email', email)
-        .single()
+      const { data } = await scopedQuery().ilike('email', email).single()
       existingParticipant = data
     }
 
     if (!existingParticipant && cpf) {
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .eq('cpf', cpf)
-        .single()
+      const { data } = await scopedQuery().eq('cpf', cpf).single()
       existingParticipant = data
     }
 
     if (!existingParticipant && name) {
-      // Try exact match first, then case-insensitive
-      const { data } = await supabase
-        .from('participants')
-        .select('id, name')
-        .ilike('name', name)
-        .limit(1)
-        .single()
+      const { data } = await scopedQuery().ilike('name', name).limit(1).single()
       existingParticipant = data
     }
 
