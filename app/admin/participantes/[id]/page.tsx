@@ -106,6 +106,11 @@ export default function ParticipantDetail() {
   const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [chamadoSaving, setChamadoSaving] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [eventData, setEventData] = useState<{ id: string; data_inicio: string } | null>(null)
+
+  // Check if event is from March 2026 onwards (new interface)
+  const isNewInterface = eventData?.data_inicio ? new Date(eventData.data_inicio) >= new Date('2026-03-01') : false
 
   useEffect(() => {
     fetchData()
@@ -115,13 +120,19 @@ export default function ParticipantDetail() {
     setLoading(true)
 
     const [participantRes, closersRes, formsRes, salesRes] = await Promise.all([
-      supabase.from('participants').select('*').eq('id', params.id).single(),
+      supabase.from('participants').select('*, event:events(id, data_inicio)').eq('id', params.id).single(),
       supabase.from('users').select('*').eq('role', 'closer'),
       supabase.from('disc_forms').select('*').eq('participant_id', params.id),
       supabase.from('sales').select('*, closer:users(*)').eq('participant_id', params.id).is('deleted_at', null),
     ])
 
     if (participantRes.data) {
+      // Set event data for interface versioning
+      const eventInfo = (participantRes.data as any).event
+      if (eventInfo) {
+        setEventData({ id: eventInfo.id, data_inicio: eventInfo.data_inicio })
+      }
+
       // Hydrate analysis data from webhook_data if individual columns are missing
       let p = participantRes.data
       if (!p.disc_profile && p.webhook_data) {
@@ -668,257 +679,605 @@ export default function ParticipantDetail() {
         {activeTab === 'dados' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {/* Webhook Data */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dados do Participante</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">Faturamento:</span>
-                      <p className="font-medium">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Nicho:</span>
-                      <p className="font-medium">{participant.niche || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Email:</span>
-                      {participant.email ? (
-                        <a
-                          href={`mailto:${participant.email}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {participant.email}
-                        </a>
+              {/* Dados do Participante - Nova Interface (Março 2026+) */}
+              {isNewInterface ? (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Dados do Participante</CardTitle>
+                    <Button
+                      variant={isEditing ? 'primary' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        if (isEditing) {
+                          handleSave()
+                        }
+                        setIsEditing(!isEditing)
+                      }}
+                      loading={saving}
+                    >
+                      {isEditing ? (
+                        <>
+                          <Check className="h-4 w-4 mr-1" />
+                          Salvar
+                        </>
                       ) : (
-                        <p className="text-gray-400">-</p>
+                        <>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar
+                        </>
                       )}
-                    </div>
-                    <div>
-                      <span className="text-gray-500">WhatsApp:</span>
-                      {participant.phone ? (
-                        <a
-                          href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          {participant.phone}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <p className="text-gray-400">-</p>
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Instagram:</span>
-                      {participant.instagram ? (
-                        <a
-                          href={getInstagramUrl(participant.instagram) || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          {participant.instagram}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <p className="text-gray-400">-</p>
-                      )}
-                    </div>
-                    {[1, 2, 3].map((day) => {
-                      const field = `checked_in_day${day}` as keyof Participant
-                      const isChecked = participant[field] as boolean
-                      const isSaving = checkinSaving === day
-                      return (
-                        <button
-                          key={day}
-                          onClick={() => handleToggleCheckin(day)}
-                          disabled={isSaving}
-                          className={`flex items-center gap-2 p-3 sm:p-2 rounded-lg border-2 transition-all text-left min-h-[48px] ${
-                            isChecked
-                              ? 'bg-green-50 border-green-300 hover:bg-green-100 active:bg-green-200'
-                              : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200'
-                          } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
-                        >
-                          <div className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-full flex-shrink-0 ${
-                            isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                          }`}>
-                            {isSaving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : isChecked ? (
-                              <Check className="h-4 w-4" />
-                            ) : (
-                              <span className="text-xs font-bold">D{day}</span>
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      {/* Faturamento */}
+                      <div>
+                        <span className="text-gray-500">Faturamento:</span>
+                        {isEditing ? (
+                          <Select
+                            value={formData.revenue}
+                            onChange={(e) => {
+                              const rev = e.target.value
+                              const autoColor = getColorFromRevenue(rev) || ''
+                              const autoQual = getQualificationFromRevenue(rev) || ''
+                              setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
+                            }}
+                            options={[
+                              { value: '', label: 'Selecione...' },
+                              ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
+                            ]}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="font-medium">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</p>
+                        )}
+                      </div>
+
+                      {/* Cor */}
+                      <div>
+                        <span className="text-gray-500">Cor:</span>
+                        <div className={`mt-1 px-3 py-1.5 rounded-lg text-sm font-medium inline-block ${getColorClass(participant.color || formData.color) || 'bg-gray-100 text-gray-500'}`}>
+                          {participant.color || formData.color || '-'}
+                        </div>
+                      </div>
+
+                      {/* Qualificação */}
+                      <div>
+                        <span className="text-gray-500">Qualificação:</span>
+                        <div className={`mt-1 px-3 py-1.5 rounded-lg text-sm font-medium inline-block ${getQualificationClass(participant.qualification || formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
+                          {participant.qualification === 'alto' ? 'Alto' : participant.qualification === 'medio' ? 'Médio' : participant.qualification === 'baixo' ? 'Baixo' : formData.qualification || '-'}
+                        </div>
+                      </div>
+
+                      {/* Nicho */}
+                      <div>
+                        <span className="text-gray-500">Nicho:</span>
+                        <p className="font-medium">{participant.niche || '-'}</p>
+                      </div>
+
+                      {/* Email */}
+                      <div>
+                        <span className="text-gray-500">Email:</span>
+                        {participant.email ? (
+                          <a href={`mailto:${participant.email}`} className="text-blue-600 hover:underline block">
+                            {participant.email}
+                          </a>
+                        ) : (
+                          <p className="text-gray-400">-</p>
+                        )}
+                      </div>
+
+                      {/* WhatsApp */}
+                      <div>
+                        <span className="text-gray-500">WhatsApp:</span>
+                        {participant.phone ? (
+                          <a
+                            href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            {participant.phone}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <p className="text-gray-400">-</p>
+                        )}
+                      </div>
+
+                      {/* Instagram */}
+                      <div>
+                        <span className="text-gray-500">Instagram:</span>
+                        {participant.instagram ? (
+                          <a
+                            href={getInstagramUrl(participant.instagram) || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            {participant.instagram}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <p className="text-gray-400">-</p>
+                        )}
+                      </div>
+
+                      {/* CPF */}
+                      <div>
+                        <span className="text-gray-500">CPF:</span>
+                        {isEditing ? (
+                          <Input
+                            value={formData.cpf}
+                            onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                            placeholder="000.000.000-00"
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="font-medium">{participant.cpf || '-'}</p>
+                        )}
+                      </div>
+
+                      {/* Nome no Crachá */}
+                      <div>
+                        <span className="text-gray-500">Nome no Crachá:</span>
+                        {isEditing ? (
+                          <Input
+                            value={formData.badge_name}
+                            onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="font-medium">{participant.badge_name || '-'}</p>
+                        )}
+                      </div>
+
+                      {/* Check-ins */}
+                      {[1, 2, 3].map((day) => {
+                        const field = `checked_in_day${day}` as keyof Participant
+                        const isChecked = participant[field] as boolean
+                        const isSaving = checkinSaving === day
+                        return (
+                          <button
+                            key={day}
+                            onClick={() => handleToggleCheckin(day)}
+                            disabled={isSaving}
+                            className={`flex items-center gap-2 p-3 sm:p-2 rounded-lg border-2 transition-all text-left min-h-[48px] ${
+                              isChecked
+                                ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+                          >
+                            <div className={`flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0 ${
+                              isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : isChecked ? (
+                                <Check className="h-4 w-4" />
+                              ) : (
+                                <span className="text-xs font-bold">D{day}</span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-gray-500 text-xs">Check-in Dia {day}</p>
+                              <p className={`font-medium text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
+                                {isChecked ? 'Credenciado' : 'Não'}
+                              </p>
+                            </div>
+                          </button>
+                        )
+                      })}
+
+                      {/* Funil de Origem */}
+                      <div>
+                        <span className="text-gray-500">Funil de Origem:</span>
+                        {isEditing ? (
+                          <Select
+                            value={formData.funnel}
+                            onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                            options={FUNIL_OPTIONS}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="font-medium">{participant.funnel || '-'}</p>
+                        )}
+                      </div>
+
+                      {/* Closer/Vendedor */}
+                      <div>
+                        <span className="text-gray-500">Closer/Vendedor:</span>
+                        {isEditing ? (
+                          <Select
+                            value={formData.seller_closer_id}
+                            onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
+                            options={[
+                              { value: '', label: 'Selecione...' },
+                              ...closers.map(c => ({ value: c.id, label: c.name })),
+                            ]}
+                            className="mt-1"
+                          />
+                        ) : participant.seller_closer_id ? (
+                          <p className="font-medium">{closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</p>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Adicionar
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Mentorado que Convidou */}
+                      <div>
+                        <span className="text-gray-500">Mentorado que Convidou:</span>
+                        {isEditing ? (
+                          <Input
+                            value={formData.mentee_inviter}
+                            onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
+                            className="mt-1"
+                          />
+                        ) : participant.mentee_inviter ? (
+                          <p className="font-medium">{participant.mentee_inviter}</p>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Adicionar
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Acompanhante */}
+                      <div>
+                        <span className="text-gray-500">Acompanhante:</span>
+                        {isEditing ? (
+                          <Input
+                            value={formData.companion}
+                            onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
+                            className="mt-1"
+                          />
+                        ) : participant.companion ? (
+                          <div>
+                            <p className="font-medium">{participant.companion}</p>
+                            {companionMatch && (
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
+                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                              >
+                                <Users className="h-3 w-3" />
+                                Ver card
+                              </button>
                             )}
                           </div>
-                          <div>
-                            <p className="text-gray-500 text-xs">Check-in Dia {day}</p>
-                            <p className={`font-medium text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
-                              {isChecked ? 'Credenciado' : 'Não'}
-                            </p>
-                          </div>
-                        </button>
-                      )
-                    })}
-                    <div>
-                      <span className="text-gray-500">CPF:</span>
-                      <p className="font-medium">{participant.cpf || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Nome no Crachá:</span>
-                      <p className="font-medium">{participant.badge_name || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Lucro Líquido:</span>
-                      <p className="font-medium">{participant.net_profit || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Sócio:</span>
-                      <p className="font-medium">{participant.partner || '-'}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Adicionar
+                          </button>
+                        )}
+                      </div>
 
-              {/* Manual Fields */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Campos Manuais</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Select
-                      label="Faturamento"
-                      value={formData.revenue}
-                      onChange={(e) => {
-                        const rev = e.target.value
-                        const autoColor = getColorFromRevenue(rev) || ''
-                        const autoQual = getQualificationFromRevenue(rev) || ''
-                        setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
-                      }}
-                      options={[
-                        { value: '', label: 'Selecione...' },
-                        ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
-                      ]}
-                    />
-                    <div className="grid grid-cols-2 gap-2">
+                      {/* Lucro Líquido */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cor (automático)</label>
-                        <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getColorClass(formData.color) || 'bg-gray-100 text-gray-500'}`}>
-                          {formData.color ? FATURAMENTO_OPTIONS.find(o => o.color === formData.color)?.color?.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()) || formData.color : 'Selecione faturamento'}
-                        </div>
+                        <span className="text-gray-500">Lucro Líquido:</span>
+                        {isEditing ? (
+                          <Input
+                            value={formData.net_profit}
+                            onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="font-medium">{participant.net_profit || '-'}</p>
+                        )}
                       </div>
+
+                      {/* Sócio */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Qualificação (automático)</label>
-                        <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getQualificationClass(formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
-                          {formData.qualification === 'alto' ? 'Alto Qualificado' : formData.qualification === 'medio' ? 'Médio Qualificado' : formData.qualification === 'baixo' ? 'Baixo Qualificado' : 'Selecione faturamento'}
-                        </div>
+                        <span className="text-gray-500">Sócio:</span>
+                        {isEditing ? (
+                          <Input
+                            value={formData.partner}
+                            onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="font-medium">{participant.partner || '-'}</p>
+                        )}
+                      </div>
+
+                      {/* É Oportunidade */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">Oportunidade:</span>
+                        {isEditing ? (
+                          <Checkbox
+                            id="is_opportunity"
+                            checked={formData.is_opportunity}
+                            onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
+                          />
+                        ) : (
+                          <Badge variant={participant.is_opportunity ? 'success' : 'secondary'}>
+                            {participant.is_opportunity ? 'Sim' : 'Não'}
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                    <Select
-                      label="Funil de Origem"
-                      value={formData.funnel}
-                      onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
-                      options={FUNIL_OPTIONS}
-                    />
-                    <Select
-                      label="Vendedor/Convidador"
-                      value={formData.seller_closer_id}
-                      onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value, seller_closer_other: e.target.value === 'outros' ? formData.seller_closer_other : '' })}
-                      options={[
-                        { value: '', label: 'Selecione...' },
-                        ...closers.map(c => ({ value: c.id, label: c.name })),
-                        { value: 'outros', label: 'Outros' },
-                      ]}
-                    />
-                    {formData.seller_closer_id === 'outros' && (
-                      <Input
-                        label="Nome do Vendedor"
-                        value={formData.seller_closer_other}
-                        onChange={(e) => setFormData({ ...formData, seller_closer_other: e.target.value })}
-                        placeholder="Digite o nome do vendedor"
-                        required
-                      />
-                    )}
-                    <Input
-                      label="Mentorado que Convidou"
-                      value={formData.mentee_inviter}
-                      onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
-                    />
-                    <div>
-                      <Input
-                        label="Acompanhante"
-                        value={formData.companion}
-                        onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                      />
-                      {companionMatch && (
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
-                          className="mt-1 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          <Users className="h-3 w-3" />
-                          Ver card de {companionMatch.name}
-                        </button>
-                      )}
-                    </div>
-                    <Select
-                      label="Vezes Chamado"
-                      value={formData.times_called.toString()}
-                      onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
-                      options={[0,1,2,3,4].map(n => ({ value: n.toString(), label: n.toString() }))}
-                    />
-                    <div className="flex items-center pt-6">
-                      <Checkbox
-                        id="is_opportunity"
-                        label="É Oportunidade"
-                        checked={formData.is_opportunity}
-                        onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
-                      />
-                    </div>
-                    <Input
-                      label="CPF"
-                      value={formData.cpf}
-                      onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                      placeholder="000.000.000-00"
-                    />
-                    <Input
-                      label="Nome no Crachá"
-                      value={formData.badge_name}
-                      onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
-                    />
-                    <Input
-                      label="Lucro Líquido"
-                      value={formData.net_profit}
-                      onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
-                      placeholder="R$ 0.000,00"
-                    />
-                    <Input
-                      label="Sócio"
-                      value={formData.partner}
-                      onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
-                    />
-                    <div className="md:col-span-2">
+
+                    {/* Observações - sempre editável */}
+                    <div className="mt-6 pt-4 border-t">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
                       <textarea
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        onBlur={handleSave}
                         placeholder="Adicione observações sobre o participante..."
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
                       />
                     </div>
-                  </div>
-                  <div className="mt-6">
-                    <Button onClick={handleSave} loading={saving}>
-                      Salvar Alterações
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ) : (
+                /* Interface Antiga (Janeiro) - mantém os dois cards separados */
+                <>
+                  {/* Webhook Data */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Dados do Participante</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Faturamento:</span>
+                          <p className="font-medium">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Nicho:</span>
+                          <p className="font-medium">{participant.niche || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Email:</span>
+                          {participant.email ? (
+                            <a href={`mailto:${participant.email}`} className="text-blue-600 hover:underline">
+                              {participant.email}
+                            </a>
+                          ) : (
+                            <p className="text-gray-400">-</p>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-gray-500">WhatsApp:</span>
+                          {participant.phone ? (
+                            <a
+                              href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              {participant.phone}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <p className="text-gray-400">-</p>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Instagram:</span>
+                          {participant.instagram ? (
+                            <a
+                              href={getInstagramUrl(participant.instagram) || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              {participant.instagram}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <p className="text-gray-400">-</p>
+                          )}
+                        </div>
+                        {[1, 2, 3].map((day) => {
+                          const field = `checked_in_day${day}` as keyof Participant
+                          const isChecked = participant[field] as boolean
+                          const isSaving = checkinSaving === day
+                          return (
+                            <button
+                              key={day}
+                              onClick={() => handleToggleCheckin(day)}
+                              disabled={isSaving}
+                              className={`flex items-center gap-2 p-3 sm:p-2 rounded-lg border-2 transition-all text-left min-h-[48px] ${
+                                isChecked
+                                  ? 'bg-green-50 border-green-300 hover:bg-green-100 active:bg-green-200'
+                                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200'
+                              } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+                            >
+                              <div className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-full flex-shrink-0 ${
+                                isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                              }`}>
+                                {isSaving ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : isChecked ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <span className="text-xs font-bold">D{day}</span>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-gray-500 text-xs">Check-in Dia {day}</p>
+                                <p className={`font-medium text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
+                                  {isChecked ? 'Credenciado' : 'Não'}
+                                </p>
+                              </div>
+                            </button>
+                          )
+                        })}
+                        <div>
+                          <span className="text-gray-500">CPF:</span>
+                          <p className="font-medium">{participant.cpf || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Nome no Crachá:</span>
+                          <p className="font-medium">{participant.badge_name || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Lucro Líquido:</span>
+                          <p className="font-medium">{participant.net_profit || '-'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Sócio:</span>
+                          <p className="font-medium">{participant.partner || '-'}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Manual Fields */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Campos Manuais</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Select
+                          label="Faturamento"
+                          value={formData.revenue}
+                          onChange={(e) => {
+                            const rev = e.target.value
+                            const autoColor = getColorFromRevenue(rev) || ''
+                            const autoQual = getQualificationFromRevenue(rev) || ''
+                            setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
+                          }}
+                          options={[
+                            { value: '', label: 'Selecione...' },
+                            ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
+                          ]}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Cor (automático)</label>
+                            <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getColorClass(formData.color) || 'bg-gray-100 text-gray-500'}`}>
+                              {formData.color ? FATURAMENTO_OPTIONS.find(o => o.color === formData.color)?.color?.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()) || formData.color : 'Selecione faturamento'}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Qualificação (automático)</label>
+                            <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getQualificationClass(formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
+                              {formData.qualification === 'alto' ? 'Alto Qualificado' : formData.qualification === 'medio' ? 'Médio Qualificado' : formData.qualification === 'baixo' ? 'Baixo Qualificado' : 'Selecione faturamento'}
+                            </div>
+                          </div>
+                        </div>
+                        <Select
+                          label="Funil de Origem"
+                          value={formData.funnel}
+                          onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                          options={FUNIL_OPTIONS}
+                        />
+                        <Select
+                          label="Vendedor/Convidador"
+                          value={formData.seller_closer_id}
+                          onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value, seller_closer_other: e.target.value === 'outros' ? formData.seller_closer_other : '' })}
+                          options={[
+                            { value: '', label: 'Selecione...' },
+                            ...closers.map(c => ({ value: c.id, label: c.name })),
+                            { value: 'outros', label: 'Outros' },
+                          ]}
+                        />
+                        {formData.seller_closer_id === 'outros' && (
+                          <Input
+                            label="Nome do Vendedor"
+                            value={formData.seller_closer_other}
+                            onChange={(e) => setFormData({ ...formData, seller_closer_other: e.target.value })}
+                            placeholder="Digite o nome do vendedor"
+                            required
+                          />
+                        )}
+                        <Input
+                          label="Mentorado que Convidou"
+                          value={formData.mentee_inviter}
+                          onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
+                        />
+                        <div>
+                          <Input
+                            label="Acompanhante"
+                            value={formData.companion}
+                            onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
+                          />
+                          {companionMatch && (
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
+                              className="mt-1 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              <Users className="h-3 w-3" />
+                              Ver card de {companionMatch.name}
+                            </button>
+                          )}
+                        </div>
+                        <Select
+                          label="Vezes Chamado"
+                          value={formData.times_called.toString()}
+                          onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
+                          options={[0,1,2,3,4].map(n => ({ value: n.toString(), label: n.toString() }))}
+                        />
+                        <div className="flex items-center pt-6">
+                          <Checkbox
+                            id="is_opportunity"
+                            label="É Oportunidade"
+                            checked={formData.is_opportunity}
+                            onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
+                          />
+                        </div>
+                        <Input
+                          label="CPF"
+                          value={formData.cpf}
+                          onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                          placeholder="000.000.000-00"
+                        />
+                        <Input
+                          label="Nome no Crachá"
+                          value={formData.badge_name}
+                          onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
+                        />
+                        <Input
+                          label="Lucro Líquido"
+                          value={formData.net_profit}
+                          onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
+                          placeholder="R$ 0.000,00"
+                        />
+                        <Input
+                          label="Sócio"
+                          value={formData.partner}
+                          onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
+                        />
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
+                          <textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                            placeholder="Adicione observações sobre o participante..."
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-6">
+                        <Button onClick={handleSave} loading={saving}>
+                          Salvar Alterações
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
 
               {/* Respostas do Webhook */}
               {(participant.challenge_answer || participant.desired_change_answer) && (
