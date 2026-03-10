@@ -109,6 +109,23 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'partner', 'socio', 'voce_tem_socio', 'tem_socio', 'parceiro',
     'has_partner',
   ]],
+  ['companion', [
+    'companion', 'acompanhante', 'nome_acompanhante', 'nome_do_acompanhante',
+    'qual_o_nome_e_sobrenome_do_seu_acompanhante', 'acompanhante_nome',
+  ]],
+  ['relacao_acompanhante', [
+    'relacao_acompanhante', 'seu_acompanhante_e', 'tipo_acompanhante',
+    'relacao_com_acompanhante', 'quem_e_acompanhante',
+  ]],
+  ['qr_code', [
+    'qr_code', 'qrcode', 'codigo_qr', 'code',
+  ]],
+  ['status', [
+    'status', 'participant_status', 'estado',
+  ]],
+  ['category', [
+    'category', 'categoria', 'tipo_ingresso', 'ticket_type', 'ingresso',
+  ]],
   ['photo_url', [
     'photo_url', 'foto', 'foto_perfil', 'foto_url', 'photo', 'profile_photo',
     'qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos', 'imagem', 'avatar',
@@ -133,6 +150,11 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
 const OPPORTUNITY_ALIASES = [
   'is_opportunity', 'oportunidade', 'opportunity', 'e_oportunidade',
   'eh_oportunidade', 'oport',
+]
+
+const TEM_ACOMPANHANTE_ALIASES = [
+  'tem_acompanhante', 'voce_vai_com_acompanhante', 'vai_com_acompanhante',
+  'has_companion', 'com_acompanhante', 'acompanhante_sim_nao',
 ]
 
 // Aliases for external ID
@@ -268,6 +290,10 @@ export async function POST(request: Request) {
     const hasOpportunityField = rawOpportunity !== null
     const is_opportunity = hasOpportunityField ? isTruthy(rawOpportunity) : undefined
 
+    // Extract tem_acompanhante flag
+    const rawTemAcompanhante = findValue(flat, TEM_ACOMPANHANTE_ALIASES)
+    const tem_acompanhante = rawTemAcompanhante !== null ? isTruthy(rawTemAcompanhante) : undefined
+
     // Name is the only required field
     const name = extracted.name
     if (!name) {
@@ -336,6 +362,11 @@ export async function POST(request: Request) {
       funnel: extracted.funnel || null,
       challenge_answer: extracted.challenge_answer || null,
       desired_change_answer: extracted.desired_change_answer || null,
+      companion: extracted.companion || null,
+      relacao_acompanhante: extracted.relacao_acompanhante || null,
+      qr_code: extracted.qr_code || null,
+      status: extracted.status || null,
+      category: extracted.category || null,
       color,
       qualification,
       webhook_data: payload,
@@ -349,6 +380,10 @@ export async function POST(request: Request) {
 
     if (is_opportunity !== undefined) {
       participantData.is_opportunity = is_opportunity
+    }
+
+    if (tem_acompanhante !== undefined) {
+      participantData.tem_acompanhante = tem_acompanhante
     }
 
     // Remove null values for updates (don't overwrite existing data with null)
@@ -502,6 +537,12 @@ export async function GET() {
       funil: 'funnel, funil, origem, source, canal, etc.',
       dificuldade: 'challenge_answer, maior_dificuldade, dificuldade, etc.',
       objetivo: 'desired_change_answer, o_que_busca, objetivo, etc.',
+      acompanhante: 'companion, nome_acompanhante, etc.',
+      relacao_acompanhante: 'seu_acompanhante_e, tipo_acompanhante, etc.',
+      tem_acompanhante: 'voce_vai_com_acompanhante (boolean/SIM/NAO)',
+      qr_code: 'qr_code, qrcode, codigo_qr, etc.',
+      categoria: 'category, categoria, tipo_ingresso, etc.',
+      status: 'status, participant_status, etc.',
       oportunidade: 'is_opportunity, oportunidade (boolean/string)',
       id_externo: 'participant_id, external_id, form_id, etc.',
     },
