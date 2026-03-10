@@ -1004,7 +1004,7 @@ export default function ParticipantDetail() {
                             onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
                           />
                         ) : (
-                          <Badge variant={participant.is_opportunity ? 'success' : 'secondary'}>
+                          <Badge variant={participant.is_opportunity ? 'success' : 'default'}>
                             {participant.is_opportunity ? 'Sim' : 'Não'}
                           </Badge>
                         )}
