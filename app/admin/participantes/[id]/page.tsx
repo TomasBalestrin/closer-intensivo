@@ -45,11 +45,12 @@ import {
   Phone,
   PhoneCall,
   Mail,
+  Code,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue } from '@/lib/utils'
 
-type TabType = 'dados' | 'vendas' | 'disc' | 'acoes'
+type TabType = 'dados' | 'vendas' | 'disc' | 'acoes' | 'webhook'
 
 export default function ParticipantDetail() {
   const params = useParams()
@@ -592,6 +593,7 @@ export default function ParticipantDetail() {
     { id: 'vendas' as TabType, label: 'Vendas', icon: ShoppingCart, count: sales.length },
     { id: 'disc' as TabType, label: 'DISC', icon: Brain, badge: participant.disc_profile },
     { id: 'acoes' as TabType, label: 'Ações', icon: Zap },
+    { id: 'webhook' as TabType, label: 'Webhook', icon: Code },
   ]
 
   return (
@@ -2014,6 +2016,55 @@ export default function ParticipantDetail() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* WEBHOOK TAB */}
+        {activeTab === 'webhook' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                Dados do Webhook
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {participant.webhook_data ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500">
+                    Payload original recebido via webhook. Use para verificar quais campos estão sendo enviados.
+                  </p>
+                  <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-[600px]">
+                    <pre className="text-sm text-green-400 font-mono whitespace-pre-wrap">
+                      {JSON.stringify(participant.webhook_data, null, 2)}
+                    </pre>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h4 className="font-medium text-amber-800 mb-2">Campos esperados pelo sistema:</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-amber-700">
+                      <div><strong>Nome:</strong> nome, name, nome_completo</div>
+                      <div><strong>Email:</strong> email, e_mail</div>
+                      <div><strong>Telefone:</strong> phone, whatsapp, telefone</div>
+                      <div><strong>Instagram:</strong> instagram, insta</div>
+                      <div><strong>CPF:</strong> cpf, documento</div>
+                      <div><strong>Nicho:</strong> nicho, area_atuacao, setor</div>
+                      <div><strong>Faturamento:</strong> faturamento, revenue</div>
+                      <div><strong>Lucro:</strong> lucro_liquido, net_profit</div>
+                      <div><strong>Crachá:</strong> badge_name, nome_para_cracha</div>
+                      <div><strong>Sócio:</strong> socio, partner</div>
+                      <div><strong>Funil:</strong> funnel, funil, origem</div>
+                      <div><strong>Foto:</strong> photo_url, foto</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Code className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum dado de webhook disponível.</p>
+                  <p className="text-sm mt-1">Este participante pode ter sido cadastrado manualmente.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
 
