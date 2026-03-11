@@ -596,33 +596,6 @@ export default function ParticipantDetail() {
     { id: 'webhook' as TabType, label: 'Webhook', icon: Code },
   ]
 
-  // Calculate lead score based on qualification, revenue, checkins, opportunity
-  const calculateLeadScore = () => {
-    let score = 0
-    // Qualification: alto=40, medio=25, baixo=10
-    if (participant.qualification === 'alto') score += 40
-    else if (participant.qualification === 'medio') score += 25
-    else if (participant.qualification === 'baixo') score += 10
-    // Has phone/email: +10 each
-    if (participant.phone) score += 10
-    if (participant.email) score += 10
-    // Checkins: +5 each
-    if (participant.checked_in_day1) score += 5
-    if (participant.checked_in_day2) score += 5
-    if (participant.checked_in_day3) score += 5
-    // Is opportunity: +15
-    if (participant.is_opportunity) score += 15
-    // Has DISC: +10
-    if (participant.disc_profile) score += 10
-    return Math.min(score, 100)
-  }
-
-  const leadScore = calculateLeadScore()
-  const scoreColor = leadScore >= 70 ? 'text-green-600 bg-green-50 border-green-200' :
-                     leadScore >= 40 ? 'text-amber-600 bg-amber-50 border-amber-200' :
-                     'text-red-600 bg-red-50 border-red-200'
-  const scoreLabel = leadScore >= 70 ? 'Quente' : leadScore >= 40 ? 'Morno' : 'Frio'
-
   return (
     <div className="space-y-6">
       {/* Header Compacto */}
@@ -704,44 +677,19 @@ export default function ParticipantDetail() {
                 </div>
               </div>
             </div>
-
-            {/* Score Card */}
-            <div className={`flex-shrink-0 p-4 rounded-xl border-2 text-center min-w-[100px] ${scoreColor}`}>
-              <p className="text-xs font-medium uppercase tracking-wider opacity-75">Score</p>
-              <p className="text-3xl font-bold">{leadScore}</p>
-              <p className="text-xs font-semibold">{scoreLabel}</p>
-            </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions - Simplificado */}
           <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-gray-100">
             {participant.phone && (
-              <>
-                <a
-                  href={`tel:${participant.phone.replace(/\D/g, '')}`}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
-                >
-                  <Phone className="h-4 w-4" />
-                  Ligar
-                </a>
-                <a
-                  href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  WhatsApp
-                </a>
-              </>
-            )}
-            {participant.email && (
               <a
-                href={`mailto:${participant.email}`}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors"
+                href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
               >
-                <Mail className="h-4 w-4" />
-                Email
+                <MessageSquare className="h-4 w-4" />
+                WhatsApp
               </a>
             )}
             <button
