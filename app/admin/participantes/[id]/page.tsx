@@ -596,33 +596,6 @@ export default function ParticipantDetail() {
     { id: 'webhook' as TabType, label: 'Webhook', icon: Code },
   ]
 
-  // Calculate lead score based on qualification, revenue, checkins, opportunity
-  const calculateLeadScore = () => {
-    let score = 0
-    // Qualification: alto=40, medio=25, baixo=10
-    if (participant.qualification === 'alto') score += 40
-    else if (participant.qualification === 'medio') score += 25
-    else if (participant.qualification === 'baixo') score += 10
-    // Has phone/email: +10 each
-    if (participant.phone) score += 10
-    if (participant.email) score += 10
-    // Checkins: +5 each
-    if (participant.checked_in_day1) score += 5
-    if (participant.checked_in_day2) score += 5
-    if (participant.checked_in_day3) score += 5
-    // Is opportunity: +15
-    if (participant.is_opportunity) score += 15
-    // Has DISC: +10
-    if (participant.disc_profile) score += 10
-    return Math.min(score, 100)
-  }
-
-  const leadScore = calculateLeadScore()
-  const scoreColor = leadScore >= 70 ? 'text-green-600 bg-green-50 border-green-200' :
-                     leadScore >= 40 ? 'text-amber-600 bg-amber-50 border-amber-200' :
-                     'text-red-600 bg-red-50 border-red-200'
-  const scoreLabel = leadScore >= 70 ? 'Quente' : leadScore >= 40 ? 'Morno' : 'Frio'
-
   return (
     <div className="space-y-6">
       {/* Header Compacto */}
@@ -704,44 +677,19 @@ export default function ParticipantDetail() {
                 </div>
               </div>
             </div>
-
-            {/* Score Card */}
-            <div className={`flex-shrink-0 p-4 rounded-xl border-2 text-center min-w-[100px] ${scoreColor}`}>
-              <p className="text-xs font-medium uppercase tracking-wider opacity-75">Score</p>
-              <p className="text-3xl font-bold">{leadScore}</p>
-              <p className="text-xs font-semibold">{scoreLabel}</p>
-            </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions - Simplificado */}
           <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-gray-100">
             {participant.phone && (
-              <>
-                <a
-                  href={`tel:${participant.phone.replace(/\D/g, '')}`}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
-                >
-                  <Phone className="h-4 w-4" />
-                  Ligar
-                </a>
-                <a
-                  href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  WhatsApp
-                </a>
-              </>
-            )}
-            {participant.email && (
               <a
-                href={`mailto:${participant.email}`}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors"
+                href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
               >
-                <Mail className="h-4 w-4" />
-                Email
+                <MessageSquare className="h-4 w-4" />
+                WhatsApp
               </a>
             )}
             <button
@@ -849,10 +797,10 @@ export default function ParticipantDetail() {
                     </CardContent>
                   </Card>
 
-                  {/* Perfil do Lead */}
+                  {/* Informações do Participante */}
                   <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-3">
-                      <CardTitle className="text-base">Perfil do Lead</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between pb-4">
+                      <CardTitle className="text-base">Informações do Participante</CardTitle>
                       <Button
                         variant={isEditing ? 'primary' : 'ghost'}
                         size="sm"
@@ -877,12 +825,12 @@ export default function ParticipantDetail() {
                         )}
                       </Button>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Métricas Principais */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <CardContent>
+                      {/* Tabela de Dados - Mostra TUDO */}
+                      <div className="divide-y divide-gray-100">
                         {/* Faturamento */}
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <p className="text-xs text-gray-500 mb-1">Faturamento</p>
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Faturamento</span>
                           {isEditing ? (
                             <Select
                               value={formData.revenue}
@@ -896,213 +844,186 @@ export default function ParticipantDetail() {
                                 { value: '', label: 'Selecione...' },
                                 ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
                               ]}
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="font-semibold text-gray-900">{normalizeRevenue(participant.revenue) || participant.revenue || 'Não informado'}</p>
-                        )}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</span>
+                          )}
                         </div>
 
                         {/* Nicho */}
-                        {(participant.niche || isEditing) && (
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs text-gray-500 mb-1">Nicho</p>
-                            <p className="font-semibold text-gray-900">{participant.niche || 'Não informado'}</p>
-                          </div>
-                        )}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Nicho</span>
+                          <span className="text-sm font-medium text-gray-900">{participant.niche || '-'}</span>
+                        </div>
 
                         {/* CPF */}
-                        {(participant.cpf || isEditing) && (
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs text-gray-500 mb-1">CPF</p>
-                            {isEditing ? (
-                              <Input
-                                value={formData.cpf}
-                                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                                placeholder="000.000.000-00"
-                              />
-                            ) : (
-                              <p className="font-semibold text-gray-900">{participant.cpf}</p>
-                            )}
-                          </div>
-                        )}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">CPF</span>
+                          {isEditing ? (
+                            <Input
+                              value={formData.cpf}
+                              onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                              placeholder="000.000.000-00"
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.cpf || '-'}</span>
+                          )}
+                        </div>
 
                         {/* Nome no Crachá */}
-                        {(participant.badge_name || isEditing) && (
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs text-gray-500 mb-1">Nome no Crachá</p>
-                            {isEditing ? (
-                              <Input
-                                value={formData.badge_name}
-                                onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
-                              />
-                            ) : (
-                              <p className="font-semibold text-gray-900">{participant.badge_name}</p>
-                            )}
-                          </div>
-                        )}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Nome no Crachá</span>
+                          {isEditing ? (
+                            <Input
+                              value={formData.badge_name}
+                              onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.badge_name || '-'}</span>
+                          )}
+                        </div>
 
-                        {/* QR Code */}
-                        {(participant as any).qr_code && (
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs text-gray-500 mb-1">QR Code</p>
-                            <p className="font-mono font-semibold text-gray-900">{(participant as any).qr_code}</p>
-                          </div>
-                        )}
-                      </div>
+                        {/* Funil de Origem */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Funil de Origem</span>
+                          {isEditing ? (
+                            <Select
+                              value={formData.funnel}
+                              onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                              options={FUNIL_OPTIONS}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.funnel || '-'}</span>
+                          )}
+                        </div>
 
-                      {/* Relacionamento */}
-                      {(participant.funnel || participant.seller_closer_id || participant.mentee_inviter || participant.companion || isEditing) && (
-                        <>
-                          <div className="pt-4 border-t border-gray-100">
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Relacionamento</p>
-                            <div className="grid grid-cols-2 gap-4">
-                              {/* Funil de Origem */}
-                              {(participant.funnel || isEditing) && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-1">Funil de Origem</p>
-                                  {isEditing ? (
-                                    <Select
-                                      value={formData.funnel}
-                                      onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
-                                      options={FUNIL_OPTIONS}
-                                    />
-                                  ) : (
-                                    <p className="font-medium text-gray-900">{participant.funnel}</p>
-                                  )}
-                                </div>
-                              )}
+                        {/* Vendedor/Closer que vendeu */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Vendedor/Closer</span>
+                          {isEditing ? (
+                            <Select
+                              value={formData.seller_closer_id}
+                              onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
+                              options={[
+                                { value: '', label: 'Selecione...' },
+                                ...closers.map(c => ({ value: c.id, label: c.name })),
+                              ]}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</span>
+                          )}
+                        </div>
 
-                              {/* Closer/Vendedor */}
-                              {(participant.seller_closer_id || isEditing) && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-1">Closer/Vendedor</p>
-                                  {isEditing ? (
-                                    <Select
-                                      value={formData.seller_closer_id}
-                                      onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
-                                      options={[
-                                        { value: '', label: 'Selecione...' },
-                                        ...closers.map(c => ({ value: c.id, label: c.name })),
-                                      ]}
-                                    />
-                                  ) : (
-                                    <p className="font-medium text-gray-900">{closers.find(c => c.id === participant.seller_closer_id)?.name}</p>
-                                  )}
-                                </div>
-                              )}
+                        {/* Mentorado que Convidou */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Mentorado que Convidou</span>
+                          {isEditing ? (
+                            <Input
+                              value={formData.mentee_inviter}
+                              onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.mentee_inviter || '-'}</span>
+                          )}
+                        </div>
 
-                              {/* Mentorado que Convidou */}
-                              {(participant.mentee_inviter || isEditing) && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-1">Mentorado que Convidou</p>
-                                  {isEditing ? (
-                                    <Input
-                                      value={formData.mentee_inviter}
-                                      onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
-                                    />
-                                  ) : (
-                                    <p className="font-medium text-gray-900">{participant.mentee_inviter}</p>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Acompanhante */}
-                              {(participant.companion || isEditing) && (
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-1">Acompanhante</p>
-                                  {isEditing ? (
-                                    <Input
-                                      value={formData.companion}
-                                      onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                                    />
-                                  ) : (
-                                    <div>
-                                      <p className="font-medium text-gray-900">{participant.companion}</p>
-                                      {companionMatch && (
-                                        <button
-                                          type="button"
-                                          onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
-                                          className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
-                                        >
-                                          <Users className="h-3 w-3" />
-                                          Ver card
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
+                        {/* Acompanhante */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Acompanhante</span>
+                          {isEditing ? (
+                            <Input
+                              value={formData.companion}
+                              onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
+                              className="w-48"
+                            />
+                          ) : (
+                            <div className="text-right">
+                              <span className="text-sm font-medium text-gray-900">{participant.companion || '-'}</span>
+                              {companionMatch && (
+                                <button
+                                  type="button"
+                                  onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
+                                  className="block text-xs text-blue-600 hover:underline mt-0.5"
+                                >
+                                  Ver ficha
+                                </button>
                               )}
                             </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Dados Financeiros */}
-                      {(participant.net_profit || participant.partner || isEditing) && (
-                        <div className="pt-4 border-t border-gray-100">
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Dados Financeiros</p>
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Lucro Líquido */}
-                            {(participant.net_profit || isEditing) && (
-                              <div>
-                                <p className="text-xs text-gray-500 mb-1">Lucro Líquido</p>
-                                {isEditing ? (
-                                  <Input
-                                    value={formData.net_profit}
-                                    onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
-                                  />
-                                ) : (
-                                  <p className="font-medium text-gray-900">{participant.net_profit}</p>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Sócio */}
-                            {(participant.partner || isEditing) && (
-                              <div>
-                                <p className="text-xs text-gray-500 mb-1">Sócio</p>
-                                {isEditing ? (
-                                  <Input
-                                    value={formData.partner}
-                                    onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
-                                  />
-                                ) : (
-                                  <p className="font-medium text-gray-900">{participant.partner}</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      )}
 
-                      {/* Oportunidade Toggle */}
-                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Marcar como Oportunidade</p>
-                          <p className="text-xs text-gray-500">Este lead é uma oportunidade de venda</p>
+                        {/* Lucro Líquido */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Lucro Líquido</span>
+                          {isEditing ? (
+                            <Input
+                              value={formData.net_profit}
+                              onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.net_profit || '-'}</span>
+                          )}
                         </div>
-                        {isEditing ? (
-                          <Checkbox
-                            id="is_opportunity"
-                            checked={formData.is_opportunity}
-                            onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setFormData({ ...formData, is_opportunity: !participant.is_opportunity })
-                              setIsEditing(true)
-                            }}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                              participant.is_opportunity ? 'bg-green-500' : 'bg-gray-200'
-                            }`}
-                          >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              participant.is_opportunity ? 'translate-x-6' : 'translate-x-1'
-                            }`} />
-                          </button>
+
+                        {/* Sócio */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Sócio</span>
+                          {isEditing ? (
+                            <Input
+                              value={formData.partner}
+                              onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
+                              className="w-48"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.partner || '-'}</span>
+                          )}
+                        </div>
+
+                        {/* QR Code - se existir */}
+                        {(participant as any).qr_code && (
+                          <div className="py-3 flex items-center justify-between">
+                            <span className="text-sm text-gray-600">QR Code</span>
+                            <span className="text-sm font-mono font-medium text-gray-900">{(participant as any).qr_code}</span>
+                          </div>
                         )}
+
+                        {/* Vezes Chamado */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Vezes Chamado</span>
+                          {isEditing ? (
+                            <Select
+                              value={formData.times_called.toString()}
+                              onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
+                              options={[0,1,2,3,4,5].map(n => ({ value: n.toString(), label: n.toString() }))}
+                              className="w-24"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-900">{participant.times_called || 0}</span>
+                          )}
+                        </div>
+
+                        {/* Oportunidade */}
+                        <div className="py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-600">É Oportunidade?</span>
+                          {isEditing ? (
+                            <Checkbox
+                              id="is_opportunity"
+                              checked={formData.is_opportunity}
+                              onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
+                            />
+                          ) : (
+                            <span className={`text-sm font-medium ${participant.is_opportunity ? 'text-green-600' : 'text-gray-500'}`}>
+                              {participant.is_opportunity ? 'Sim' : 'Não'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
