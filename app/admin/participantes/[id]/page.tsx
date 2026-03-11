@@ -1054,27 +1054,6 @@ export default function ParticipantDetail() {
                       </div>
                     </div>
 
-                    {/* Respostas do Formulário */}
-                    {(participant.challenge_answer || participant.desired_change_answer) && (
-                      <div className="mt-6 pt-4 border-t">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">Respostas do Formulário</h4>
-                        <div className="space-y-4">
-                          {participant.challenge_answer && (
-                            <div className="bg-amber-50 rounded-lg p-4">
-                              <p className="text-xs text-amber-700 font-medium mb-1">Maior Dificuldade no Negócio</p>
-                              <p className="text-sm text-gray-800">{participant.challenge_answer}</p>
-                            </div>
-                          )}
-                          {participant.desired_change_answer && (
-                            <div className="bg-blue-50 rounded-lg p-4">
-                              <p className="text-xs text-blue-700 font-medium mb-1">O que pretende aprender no Intensivo</p>
-                              <p className="text-sm text-gray-800">{participant.desired_change_answer}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Observações - sempre editável */}
                     <div className="mt-6 pt-4 border-t">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
