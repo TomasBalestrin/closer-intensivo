@@ -121,7 +121,8 @@ export async function POST(
     const cpf = extractFromFormData(formData, 'cpf') || participant.cpf || payload.cpf
     const phone = extractFromFormData(formData, 'phone') || participant.phone || payload.phone
     const badgeName = extractFromFormData(formData, 'badge_name')
-    const niche = participant.setor || extractFromFormData(formData, 'niche') || payload.niche
+    // Note: participant.setor is category, not niche - use form_data for actual niche
+    const niche = extractFromFormData(formData, 'niche') || payload.niche
     const revenue = participant.faturamento || extractFromFormData(formData, 'revenue') || payload.faturamento
     const photoUrl = extractFromFormData(formData, 'photo_url')
     const challengeAnswer = extractFromFormData(formData, 'challenge_answer')
@@ -129,6 +130,12 @@ export async function POST(
     const instagram = cleanInstagram(extractFromFormData(formData, 'instagram') || participant.instagram)
     const partner = extractFromFormData(formData, 'partner')
     const netProfit = extractFromFormData(formData, 'net_profit')
+
+    // Extract additional fields from participant object
+    const closer = participant.closer || payload.closer
+    const category = participant.category || participant.setor || payload.category
+    const qrCode = participant.qr_code || participant.qrcode || payload.qr_code
+    const status = participant.status || payload.status
 
     // Parse checkin days
     const checkedInDay1 = parseCheckinStatus(checkinDays.day_1)
@@ -190,6 +197,10 @@ export async function POST(
       color,
       qualification,
       funnel: participant.funnel_origin || payload.funnel_origin || null,
+      closer,
+      category,
+      qr_code: qrCode,
+      status,
       is_opportunity: isOpportunity,
       checked_in_day1: checkedInDay1,
       checked_in_day2: checkedInDay2,
