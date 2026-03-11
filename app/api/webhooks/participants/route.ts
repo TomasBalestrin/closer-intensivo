@@ -123,9 +123,7 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['qr_code', [
     'qr_code', 'qrcode', 'codigo_qr', 'code',
   ]],
-  ['status', [
-    'status', 'participant_status', 'estado',
-  ]],
+  // status removido - conflita com constraint do banco
   ['category', [
     'category', 'categoria', 'tipo_ingresso', 'ticket_type', 'ingresso', 'setor',
   ]],
@@ -374,7 +372,7 @@ export async function POST(request: Request) {
       companion: extracted.companion || null,
       relacao_acompanhante: extracted.relacao_acompanhante || null,
       qr_code: extracted.qr_code || null,
-      status: extracted.status || null,
+      // status removido - conflita com constraint do banco
       category: extracted.category || null,
       closer: extracted.closer || null,
       color,
@@ -552,7 +550,6 @@ export async function GET() {
       tem_acompanhante: 'voce_vai_com_acompanhante (boolean/SIM/NAO)',
       qr_code: 'qr_code, qrcode, codigo_qr, etc.',
       categoria: 'category, categoria, tipo_ingresso, etc.',
-      status: 'status, participant_status, etc.',
       oportunidade: 'is_opportunity, oportunidade (boolean/string)',
       id_externo: 'participant_id, external_id, form_id, etc.',
     },
