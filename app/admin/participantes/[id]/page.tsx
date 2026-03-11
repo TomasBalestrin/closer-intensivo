@@ -1031,34 +1031,41 @@ export default function ParticipantDetail() {
                             </span>
                           )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
 
-                  {/* Respostas do Formulário (form_data) */}
-                  {(participant as any).form_data && Object.keys((participant as any).form_data).length > 0 && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Respostas do Formulário</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="divide-y divide-gray-100">
-                          {Object.entries((participant as any).form_data).map(([pergunta, resposta]) => (
-                            <div key={pergunta} className="py-3">
-                              <span className="text-sm text-gray-600 block">{pergunta}</span>
-                              <span className="text-sm font-medium text-gray-900">
+                        {/* Dados dinâmicos do form_data (perguntas/respostas do webhook) */}
+                        {(participant as any).form_data && Object.entries((participant as any).form_data)
+                          .filter(([pergunta]) => {
+                            // Filtrar perguntas que já são exibidas nos campos fixos acima
+                            const camposJaExibidos = [
+                              'Qual o seu nome?', 'nome_completo', 'nome',
+                              'Digite seu CPF', 'CPF',
+                              'Nome para crachá?', 'Nome no crachá',
+                              'Qual o seu faturamento mensal?', 'Quanto você fatura por mês?',
+                              'Qual sua área de atuação?', 'Qual sua área de atuação profissional',
+                              'Qual o seu e-mail?', 'Digite seu e-mail', 'email',
+                              'Qual o seu número de telefone?', 'Telefone', 'WhatsApp',
+                              'Qual seu @ do Instagram?', 'Instagram',
+                              'Adicione uma foto sua para perfil.', 'Foto de perfil',
+                            ]
+                            return !camposJaExibidos.some(campo =>
+                              pergunta.toLowerCase().includes(campo.toLowerCase())
+                            )
+                          })
+                          .map(([pergunta, resposta]) => (
+                            <div key={pergunta} className="py-3 flex items-center justify-between">
+                              <span className="text-sm text-gray-600">{pergunta}</span>
+                              <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">
                                 {typeof resposta === 'boolean'
                                   ? (resposta ? 'Sim' : 'Não')
-                                  : typeof resposta === 'string' && resposta.startsWith('http')
+                                  : typeof resposta === 'string' && (resposta as string).startsWith('http')
                                     ? <a href={resposta as string} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver arquivo</a>
                                     : String(resposta) || '-'}
                               </span>
                             </div>
                           ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   {/* Observações */}
                   <Card>
