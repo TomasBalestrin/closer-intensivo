@@ -996,6 +996,47 @@ export default function ParticipantDetail() {
                         )}
                       </div>
 
+                      {/* Relação com Acompanhante */}
+                      {(participant as any).relacao_acompanhante && (
+                        <div>
+                          <span className="text-gray-500">Relação Acompanhante:</span>
+                          <p className="font-medium">{(participant as any).relacao_acompanhante}</p>
+                        </div>
+                      )}
+
+                      {/* QR Code */}
+                      {(participant as any).qr_code && (
+                        <div>
+                          <span className="text-gray-500">QR Code:</span>
+                          <p className="font-mono font-medium text-sm bg-gray-100 px-2 py-1 rounded inline-block mt-1">
+                            {(participant as any).qr_code}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Categoria */}
+                      {(participant as any).category && (
+                        <div>
+                          <span className="text-gray-500">Categoria:</span>
+                          <Badge variant="info" className="mt-1">
+                            {(participant as any).category}
+                          </Badge>
+                        </div>
+                      )}
+
+                      {/* Status */}
+                      {(participant as any).status && (
+                        <div>
+                          <span className="text-gray-500">Status:</span>
+                          <Badge
+                            variant={(participant as any).status === 'confirmed' ? 'success' : 'warning'}
+                            className="mt-1"
+                          >
+                            {(participant as any).status === 'confirmed' ? 'Confirmado' : (participant as any).status}
+                          </Badge>
+                        </div>
+                      )}
+
                       {/* É Oportunidade */}
                       <div className="flex items-center gap-2">
                         <span className="text-gray-500">Oportunidade:</span>
@@ -1012,6 +1053,27 @@ export default function ParticipantDetail() {
                         )}
                       </div>
                     </div>
+
+                    {/* Respostas do Formulário */}
+                    {(participant.challenge_answer || participant.desired_change_answer) && (
+                      <div className="mt-6 pt-4 border-t">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Respostas do Formulário</h4>
+                        <div className="space-y-4">
+                          {participant.challenge_answer && (
+                            <div className="bg-amber-50 rounded-lg p-4">
+                              <p className="text-xs text-amber-700 font-medium mb-1">Maior Dificuldade no Negócio</p>
+                              <p className="text-sm text-gray-800">{participant.challenge_answer}</p>
+                            </div>
+                          )}
+                          {participant.desired_change_answer && (
+                            <div className="bg-blue-50 rounded-lg p-4">
+                              <p className="text-xs text-blue-700 font-medium mb-1">O que pretende aprender no Intensivo</p>
+                              <p className="text-sm text-gray-800">{participant.desired_change_answer}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Observações - sempre editável */}
                     <div className="mt-6 pt-4 border-t">

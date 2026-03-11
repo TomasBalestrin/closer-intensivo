@@ -254,6 +254,12 @@ export interface Database {
           net_profit: string | null
           partner: string | null
           notes: string | null
+          // New fields from form_data
+          tem_acompanhante: boolean
+          relacao_acompanhante: string | null
+          qr_code: string | null
+          status: string | null
+          category: string | null
           created_at: string
           updated_at: string
         }
@@ -310,6 +316,11 @@ export interface Database {
           net_profit?: string | null
           partner?: string | null
           notes?: string | null
+          tem_acompanhante?: boolean
+          relacao_acompanhante?: string | null
+          qr_code?: string | null
+          status?: string | null
+          category?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -366,6 +377,11 @@ export interface Database {
           net_profit?: string | null
           partner?: string | null
           notes?: string | null
+          tem_acompanhante?: boolean
+          relacao_acompanhante?: string | null
+          qr_code?: string | null
+          status?: string | null
+          category?: string | null
           created_at?: string
           updated_at?: string
         }
