@@ -11,9 +11,10 @@ interface ModalProps {
   title: string
   children: React.ReactNode
   className?: string
+  fullScreenMobile?: boolean
 }
 
-export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, className, fullScreenMobile = true }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={onClose}
@@ -44,17 +45,39 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       <div
         ref={modalRef}
         className={cn(
-          'relative z-50 w-full max-w-lg bg-white rounded-lg shadow-xl max-h-[90vh] overflow-auto',
+          'relative z-50 w-full bg-white shadow-xl overflow-auto',
+          // Mobile: full screen by default
+          fullScreenMobile
+            ? 'h-full max-h-full sm:h-auto sm:max-h-[90vh] sm:rounded-xl sm:max-w-lg'
+            : 'max-h-[90vh] rounded-xl max-w-lg mx-4',
           className
         )}
       >
-        <div className="flex items-center justify-between p-4 border-b">
+        {/* Mobile swipe indicator */}
+        <div className="sm:hidden flex justify-center pt-2 pb-0">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+
+        <div className={cn(
+          "flex items-center justify-between border-b sticky top-0 bg-white z-10",
+          fullScreenMobile ? "p-4 pt-2 sm:pt-4" : "p-4"
+        )}>
           <h2 className="text-lg font-semibold">{title}</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] p-2"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className={cn(
+          "pb-safe",
+          fullScreenMobile ? "p-4 pb-6" : "p-4"
+        )}>
+          {children}
+        </div>
       </div>
     </div>
   )
