@@ -597,143 +597,150 @@ export default function ParticipantDetail() {
   ]
 
   return (
-    <div className="space-y-6">
-      {/* Header Compacto - Mobile Optimized */}
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={() => router.back()} className="min-h-[44px] px-3">
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          <span className="hidden sm:inline">Voltar</span>
-        </Button>
-        <Button variant="danger" size="sm" onClick={() => setDeleteParticipantModal(true)} className="min-h-[44px]">
-          <Trash2 className="h-5 w-5 sm:mr-2" />
-          <span className="hidden sm:inline">Excluir</span>
+    <div className="space-y-4 lg:space-y-6">
+      {/* Mobile: Compact Header with Back Button */}
+      <div className="flex items-center gap-2 -mx-2 lg:mx-0">
+        <button
+          onClick={() => router.back()}
+          className="p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-600" />
+        </button>
+        <h1 className="flex-1 font-bold text-gray-900 text-lg lg:text-xl truncate">
+          {participant.name}
+        </h1>
+        {/* Desktop only: Delete button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setDeleteParticipantModal(true)}
+          className="hidden lg:flex text-red-600 hover:text-red-700 hover:bg-red-50"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Excluir
         </Button>
       </div>
 
-      {/* Hero Card - Informações Principais */}
-      <Card className="overflow-hidden">
-        <div className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-            {/* Avatar e Info Principal */}
-            <div className="flex items-start gap-4 flex-1">
-              <button
-                onClick={() => participant.photo_url && setPhotoModal(true)}
-                className={`flex-shrink-0 ${participant.photo_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-              >
-                <Avatar src={participant.photo_url} alt={participant.name} size="xl" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 truncate">{participant.name}</h1>
-                <div className="mt-1 space-y-1">
-                  {participant.email && (
-                    <p className="text-gray-600 text-sm truncate">{participant.email}</p>
-                  )}
-                  <div className="flex items-center gap-3 text-sm text-gray-500">
-                    {participant.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3.5 w-3.5" />
-                        {participant.phone}
-                      </span>
-                    )}
-                    {participant.instagram && (
-                      <span className="flex items-center gap-1">
-                        @{participant.instagram.replace('@', '')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {/* Badges */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  {participant.color && (
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getColorClass(participant.color)}`}>
-                      {formatColorLabel(participant.color)}
-                    </span>
-                  )}
-                  {participant.qualification && (
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getQualificationClass(participant.qualification)}`}>
-                      {formatQualificationLabel(participant.qualification)}
-                    </span>
-                  )}
-                  {(participant as any).category && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {(participant as any).category}
-                    </span>
-                  )}
-                  {(participant as any).status && (
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass((participant as any).status)}`}>
-                      {formatStatusLabel((participant as any).status)}
-                    </span>
-                  )}
-                  {participant.is_opportunity && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                      Oportunidade
-                    </span>
-                  )}
-                  {hasDiscProfile && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      DISC: {participant.disc_profile}
-                    </span>
-                  )}
-                </div>
-              </div>
+      {/* Compact Profile Card */}
+      <Card className="!p-3 lg:!p-5">
+        {/* Row 1: Avatar + Info + Quick Actions */}
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => participant.photo_url && setPhotoModal(true)}
+            className="flex-shrink-0"
+          >
+            <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            {/* Contact Info */}
+            <div className="space-y-1">
+              {participant.email && (
+                <p className="text-gray-600 text-sm truncate">{participant.email}</p>
+              )}
+              {participant.phone && (
+                <p className="text-gray-500 text-sm">{participant.phone}</p>
+              )}
+            </div>
+
+            {/* Badges - Horizontal scroll on mobile */}
+            <div className="flex gap-1.5 mt-2 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
+              {participant.color && (
+                <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${getColorClass(participant.color)}`}>
+                  {formatColorLabel(participant.color)}
+                </span>
+              )}
+              {participant.qualification && (
+                <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${getQualificationClass(participant.qualification)}`}>
+                  {formatQualificationLabel(participant.qualification)}
+                </span>
+              )}
+              {(participant as any).category && (
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  {(participant as any).category}
+                </span>
+              )}
+              {(participant as any).status && (
+                <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusClass((participant as any).status)}`}>
+                  {formatStatusLabel((participant as any).status)}
+                </span>
+              )}
+              {participant.is_opportunity && (
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                  Oportunidade
+                </span>
+              )}
+              {hasDiscProfile && (
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  DISC: {participant.disc_profile}
+                </span>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Quick Actions - Simplificado */}
-          <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-gray-100">
-            {participant.phone && (
-              <a
-                href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
-              >
-                <MessageSquare className="h-4 w-4" />
-                WhatsApp
-              </a>
-            )}
-            <button
-              onClick={handleMarcarChamado}
-              disabled={chamadoSaving}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                participant.chamado
-                  ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                  : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-              }`}
+        {/* Row 2: Action Buttons - Compact */}
+        <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+          {participant.phone && (
+            <a
+              href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500 active:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors touch-manipulation"
             >
-              {chamadoSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <PhoneCall className="h-4 w-4" />
-              )}
-              {participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Marcar Chamado'}
-            </button>
-          </div>
+              <MessageSquare className="h-4 w-4" />
+              <span>WhatsApp</span>
+            </a>
+          )}
+          <button
+            onClick={handleMarcarChamado}
+            disabled={chamadoSaving}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-medium text-sm transition-colors touch-manipulation ${
+              participant.chamado
+                ? 'bg-yellow-100 text-yellow-800 active:bg-yellow-200'
+                : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+            }`}
+          >
+            {chamadoSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <PhoneCall className="h-4 w-4" />
+            )}
+            <span>{participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Chamado'}</span>
+          </button>
+          {/* Mobile: More options */}
+          <button
+            onClick={() => setDeleteParticipantModal(true)}
+            className="lg:hidden p-2.5 rounded-lg bg-gray-100 text-gray-500 active:bg-red-100 active:text-red-600 transition-colors touch-manipulation"
+            title="Mais opções"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
         </div>
       </Card>
 
       {/* Tabs - Mobile Optimized */}
-      <div className="border-b border-gray-200 sticky top-0 bg-gray-50/95 backdrop-blur-sm z-10 -mx-4 px-4 lg:mx-0 lg:px-0 lg:static lg:bg-transparent lg:backdrop-blur-none">
-        <nav className="flex gap-1 overflow-x-auto scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0 lg:gap-2 snap-x snap-mandatory">
+      <div className="border-b border-gray-200 bg-white -mx-4 px-4 lg:mx-0 lg:px-0">
+        <nav className="flex overflow-x-auto scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3.5 border-b-2 font-medium transition-all whitespace-nowrap flex-shrink-0 min-h-[52px] snap-start touch-manipulation active:scale-[0.97] ${
+              className={`flex items-center gap-1.5 px-3 lg:px-4 py-2.5 border-b-2 font-medium transition-all whitespace-nowrap flex-shrink-0 text-sm touch-manipulation ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50 lg:bg-transparent'
+                  ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 active:text-gray-700'
               }`}
             >
-              <tab.icon className="h-5 w-5" />
-              <span className="text-[15px]">{tab.label}</span>
+              <tab.icon className="h-4 w-4" />
+              <span>{tab.label}</span>
               {tab.count !== undefined && tab.count > 0 && (
-                <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full font-medium">
                   {tab.count}
                 </span>
               )}
               {tab.badge && (
-                <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-bold">
+                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold">
                   {tab.badge}
                 </span>
               )}
