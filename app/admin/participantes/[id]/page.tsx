@@ -598,15 +598,15 @@ export default function ParticipantDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Header Compacto */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
+      {/* Header Compacto - Mobile Optimized */}
+      <div className="flex items-center justify-between gap-3">
+        <Button variant="ghost" onClick={() => router.back()} className="min-h-[44px] px-3">
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          <span className="hidden sm:inline">Voltar</span>
         </Button>
-        <Button variant="danger" size="sm" onClick={() => setDeleteParticipantModal(true)}>
-          <Trash2 className="h-4 w-4 mr-2" />
-          Excluir
+        <Button variant="danger" size="sm" onClick={() => setDeleteParticipantModal(true)} className="min-h-[44px]">
+          <Trash2 className="h-5 w-5 sm:mr-2" />
+          <span className="hidden sm:inline">Excluir</span>
         </Button>
       </div>
 
@@ -712,23 +712,23 @@ export default function ParticipantDetail() {
         </div>
       </Card>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-2 sm:gap-4 overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
+      {/* Tabs - Mobile Optimized */}
+      <div className="border-b border-gray-200 sticky top-0 bg-gray-50/95 backdrop-blur-sm z-10 -mx-4 px-4 lg:mx-0 lg:px-0 lg:static lg:bg-transparent lg:backdrop-blur-none">
+        <nav className="flex gap-1 overflow-x-auto scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0 lg:gap-2 snap-x snap-mandatory">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 border-b-2 font-medium transition-colors whitespace-nowrap flex-shrink-0 min-h-[44px] ${
+              className={`flex items-center gap-2 px-4 py-3.5 border-b-2 font-medium transition-all whitespace-nowrap flex-shrink-0 min-h-[52px] snap-start touch-manipulation active:scale-[0.97] ${
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/50 lg:bg-transparent'
+                  : 'border-transparent text-gray-500 active:text-gray-700'
               }`}
             >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
+              <tab.icon className="h-5 w-5" />
+              <span className="text-[15px]">{tab.label}</span>
               {tab.count !== undefined && tab.count > 0 && (
-                <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                <span className="ml-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
                   {tab.count}
                 </span>
               )}

@@ -44,11 +44,12 @@ export function BottomNav({ role }: BottomNavProps) {
     <nav
       className={cn(
         'lg:hidden fixed bottom-0 left-0 right-0 z-30',
-        'bg-white/80 backdrop-blur-lg border-t border-gray-200',
-        'pb-[env(safe-area-inset-bottom)]'
+        'bg-white/95 backdrop-blur-xl border-t border-gray-200/80',
+        'pb-[env(safe-area-inset-bottom)]',
+        'shadow-[0_-4px_20px_rgba(0,0,0,0.08)]'
       )}
     >
-      <div className="flex items-center justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-[60px] px-1">
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
@@ -56,24 +57,30 @@ export function BottomNav({ role }: BottomNavProps) {
               key={item.name}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 flex-1 h-full',
-                'transition-colors duration-200 ease-in-out',
+                'flex flex-col items-center justify-center gap-1 flex-1 h-full min-w-[64px]',
+                'transition-all duration-200 ease-out touch-manipulation',
+                'active:scale-95 active:opacity-80',
                 isActive
                   ? 'text-amber-600'
-                  : 'text-gray-400 hover:text-gray-600'
+                  : 'text-gray-400'
               )}
             >
-              <item.icon
-                className={cn(
-                  'h-5 w-5 transition-transform duration-200',
-                  isActive && 'scale-110'
-                )}
-                strokeWidth={isActive ? 2.5 : 2}
-              />
+              <div className={cn(
+                'relative flex items-center justify-center w-10 h-8 rounded-full transition-all duration-200',
+                isActive && 'bg-amber-100'
+              )}>
+                <item.icon
+                  className={cn(
+                    'h-[22px] w-[22px] transition-all duration-200',
+                    isActive && 'scale-105'
+                  )}
+                  strokeWidth={isActive ? 2.5 : 1.8}
+                />
+              </div>
               <span
                 className={cn(
-                  'text-[10px] leading-tight',
-                  isActive ? 'font-semibold' : 'font-medium'
+                  'text-[11px] leading-none tracking-tight',
+                  isActive ? 'font-bold' : 'font-medium'
                 )}
               >
                 {item.name}

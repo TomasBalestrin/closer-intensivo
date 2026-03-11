@@ -301,3 +301,326 @@
     }
   }
 }
+
+/* ============================================
+   MOBILE-FIRST OPTIMIZATIONS
+   ============================================ */
+
+/* Touch Target Optimization - Minimum 44x44px (WCAG AAA) */
+@media (max-width: 1023px) {
+  /* Larger touch targets for all interactive elements */
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+  }
+
+  /* Form inputs with comfortable touch targets */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  input[type="url"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+
+  /* Better spacing for form groups */
+  .space-y-4 > * + * {
+    margin-top: 1.25rem;
+  }
+
+  /* Larger text for better readability */
+  .text-sm {
+    font-size: 0.9375rem; /* 15px instead of 14px */
+  }
+
+  .text-xs {
+    font-size: 0.8125rem; /* 13px instead of 12px */
+  }
+}
+
+/* Mobile-specific scrolling improvements */
+@media (max-width: 1023px) {
+  /* Momentum scrolling */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Hide scrollbars on mobile for cleaner UI */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Horizontal scroll indicator gradient */
+  .scroll-hint-left {
+    mask-image: linear-gradient(to right, transparent, black 20px);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 20px);
+  }
+
+  .scroll-hint-right {
+    mask-image: linear-gradient(to left, transparent, black 20px);
+    -webkit-mask-image: linear-gradient(to left, transparent, black 20px);
+  }
+}
+
+/* Active states for touch feedback */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch-friendly active states */
+  button:active,
+  [role="button"]:active,
+  a:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+
+  /* Remove hover effects on touch devices */
+  button:hover,
+  [role="button"]:hover,
+  a:hover {
+    transform: none;
+  }
+}
+
+/* Mobile card optimizations */
+@media (max-width: 1023px) {
+  .card,
+  .stat-card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
+
+  /* Full-width cards on mobile */
+  .mobile-full-width {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+/* Safe area utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+/* Bottom nav spacing utility */
+.pb-bottom-nav {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+/* Modal mobile full-screen */
+@media (max-width: 640px) {
+  .modal-mobile-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .modal-mobile-fullscreen > div:first-child {
+    border-radius: 0 !important;
+  }
+}
+
+/* Swipe gesture indicator */
+.swipe-indicator {
+  width: 36px;
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  margin: 8px auto;
+}
+
+/* Pull-to-refresh indicator */
+.pull-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+/* Mobile list item with swipe actions */
+.swipe-item {
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* Floating action button */
+.fab {
+  position: fixed;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  right: 1rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+}
+
+/* Mobile typography improvements */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    line-height: 1.35;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  /* Better line height for readability */
+  p, li, span {
+    line-height: 1.6;
+  }
+}
+
+/* Thumb-friendly zone utilities (bottom of screen) */
+.thumb-zone {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile-optimized badges */
+@media (max-width: 640px) {
+  .badge {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+}
+
+/* Sticky header mobile optimization */
+@media (max-width: 1023px) {
+  .sticky-header-mobile {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(249, 250, 251, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 0.75rem 1rem;
+    margin: -1rem -1rem 1rem -1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+}
+
+/* Loading skeleton for mobile */
+.skeleton-mobile {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Bottom sheet style modal */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 90vh;
+  border-radius: 1rem 1rem 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform 0.3s ease-out;
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+/* Action sheet items */
+.action-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem;
+  min-height: 52px;
+  text-align: left;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s;
+}
+
+.action-sheet-item:active {
+  background-color: #f3f4f6;
+}
+
+/* Haptic feedback simulation (visual) */
+@keyframes haptic-tap {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+}
+
+.haptic-tap:active {
+  animation: haptic-tap 0.1s ease-in-out;
+}

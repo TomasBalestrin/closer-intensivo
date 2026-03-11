@@ -455,22 +455,27 @@ export default function AdminParticipantes() {
             <ParticipantGridSkeleton count={6} />
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="flex items-center gap-2 col-span-full mb-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0}
-                    onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-600">
-                    {selectedParticipants.length > 0 && `${selectedParticipants.length} selecionado(s)`}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {/* Selection header - mobile optimized */}
+                <div className="flex items-center gap-3 col-span-full mb-1 p-3 -mx-1 sm:mx-0 bg-gray-50/80 rounded-lg">
+                  <button
+                    onClick={toggleSelectAll as any}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg active:bg-gray-200 transition-colors touch-manipulation"
+                  >
+                    {selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0 ? (
+                      <CheckSquare className="h-6 w-6 text-blue-600" />
+                    ) : (
+                      <Square className="h-6 w-6 text-gray-400" />
+                    )}
+                  </button>
+                  <span className="text-sm text-gray-600 flex-1">
+                    {selectedParticipants.length > 0 ? `${selectedParticipants.length} selecionado(s)` : 'Selecionar'}
                   </span>
                   {selectedParticipants.length > 0 && (
                     <Button
                       size="sm"
                       onClick={() => setShowAssignModal(true)}
-                      className="ml-auto"
+                      className="min-h-[44px]"
                     >
                       Atribuir Vendedor
                     </Button>
@@ -483,20 +488,21 @@ export default function AdminParticipantes() {
                   <Card
                     key={participant.id}
                     className={cn(
-                      'cursor-pointer hover:shadow-lg transition-shadow',
+                      'cursor-pointer transition-all active:scale-[0.98] touch-manipulation',
+                      'hover:shadow-lg',
                       CARD_STATUS_STYLES[cardStatus]
                     )}
                     onClick={() => router.push(`/admin/participantes/${participant.id}`)}
                   >
-                    <div className="flex gap-4">
+                    <div className="flex gap-3 sm:gap-4">
                       <button
                         onClick={(e) => toggleSelect(participant.id, e)}
-                        className="mt-1"
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center -m-2 rounded-lg active:bg-gray-100 transition-colors touch-manipulation"
                       >
                         {selectedParticipants.includes(participant.id) ? (
-                          <CheckSquare className="h-5 w-5 text-blue-600" />
+                          <CheckSquare className="h-6 w-6 text-blue-600" />
                         ) : (
-                          <Square className="h-5 w-5 text-gray-400" />
+                          <Square className="h-6 w-6 text-gray-400" />
                         )}
                       </button>
                       <Avatar
@@ -506,14 +512,14 @@ export default function AdminParticipantes() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900 truncate">
+                          <h3 className="font-semibold text-gray-900 text-[15px] truncate">
                             {participant.name}
                           </h3>
                           {participant.is_opportunity && (
                             <Badge variant="success">Oportunidade</Badge>
                           )}
                           {(participant.color || getColorFromRevenue(participant.revenue)) && (
-                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getColorClass(participant.color || getColorFromRevenue(participant.revenue))}`}>
+                            <span className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full ${getColorClass(participant.color || getColorFromRevenue(participant.revenue))}`}>
                               {(participant.color || getColorFromRevenue(participant.revenue)) === 'rosa' && 'Rosa'}
                               {(participant.color || getColorFromRevenue(participant.revenue)) === 'preto' && 'Preto'}
                               {(participant.color || getColorFromRevenue(participant.revenue)) === 'azul_claro' && 'Azul Claro'}
@@ -524,13 +530,13 @@ export default function AdminParticipantes() {
                           )}
                         </div>
                         {participant.revenue && (
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 mt-0.5">
                             Faturamento: {participant.revenue}
                           </p>
                         )}
                         {participant.niche && (
                           <span
-                            className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${getColorClass(
+                            className={`inline-block mt-2 px-2.5 py-1 text-xs font-medium rounded-full ${getColorClass(
                               participant.color || getColorFromRevenue(participant.revenue)
                             )}`}
                           >
@@ -543,16 +549,16 @@ export default function AdminParticipantes() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1 mt-2 text-sm text-blue-600 hover:underline"
+                            className="flex items-center gap-1.5 mt-2 text-sm text-blue-600 active:text-blue-800 min-h-[32px]"
                           >
-                            <ExternalLink className="h-3 w-3" />
+                            <ExternalLink className="h-4 w-4" />
                             {participant.instagram}
                           </a>
                         )}
                       </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-gray-500">
-                      <span>
+                    <div className="mt-3 pt-3 border-t flex items-center justify-between text-sm text-gray-500">
+                      <span className="text-[13px]">
                         Check-ins: {[
                           participant.checked_in_day1 && 'D1',
                           participant.checked_in_day2 && 'D2',
@@ -560,8 +566,8 @@ export default function AdminParticipantes() {
                         ].filter(Boolean).join(', ') || 'Nenhum'}
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1" title="Vezes chamado">
-                          <Phone className="h-3 w-3" />
+                        <span className="flex items-center gap-1 text-[13px]" title="Vezes chamado">
+                          <Phone className="h-4 w-4" />
                           {participant.times_called || 0}x
                         </span>
                         {participant.hasSale && (
