@@ -75,9 +75,7 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['qr_code', [
     'qr_code', 'qrcode', 'codigo_qr', 'code',
   ]],
-  ['status', [
-    'status', 'participant_status', 'estado',
-  ]],
+  // status removido - conflita com constraint do banco
   ['category', [
     'category', 'categoria', 'tipo_ingresso', 'ticket_type', 'ingresso',
   ]],
