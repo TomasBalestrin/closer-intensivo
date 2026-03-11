@@ -126,7 +126,7 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['challenge_answer', ['challenge_answer', 'maior_dificuldade', 'dificuldade', 'challenge', 'qual_sua_maior_dificuldade_no_seu_negocio_hoje', 'desafio', 'principal_dificuldade', 'dificuldade_atual', 'qual_a_maior_dificuldade_no_seu_negocio']],
   ['desired_change_answer', ['desired_change_answer', 'o_que_busca', 'objetivo', 'desired_change', 'o_que_pretende_aprender_no_intensivo_da_alta_performance', 'o_que_espera', 'expectativa', 'meta', 'o_que_quer_aprender', 'o_que_voce_pretende_aprender_no_intensivo']],
   ['photo_url', ['photo_url', 'foto', 'foto_perfil', 'foto_url', 'photo', 'profile_photo', 'qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos', 'imagem', 'avatar', 'foto_de_perfil', 'adicione_uma_foto_sua_para_perfil']],
-  ['niche', ['niche', 'nicho', 'area_atuacao', 'qual_sua_area_de_atuacao_profissional', 'segmento', 'area', 'setor', 'profissao', 'ramo', 'qual_a_sua_area_de_atuacao']],
+  ['niche', ['niche', 'nicho', 'area_atuacao', 'qual_sua_area_de_atuacao_profissional', 'qual_sua_area_de_atuacao', 'qual_a_sua_area_de_atuacao', 'area_de_atuacao', 'segmento', 'area', 'setor', 'profissao', 'ramo']],
   ['revenue', ['revenue', 'faturamento', 'quanto_voce_fatura_por_mes', 'faturamento_mensal', 'receita', 'renda', 'ganho_mensal', 'quanto_fatura', 'qual_o_seu_faturamento_mensal']],
   ['phone', ['phone', 'telefone', 'whatsapp', 'celular', 'digite_seu_whatsapp', 'numero_whatsapp', 'tel', 'mobile', 'phone_number', 'qual_o_telefone', 'qual_o_seu_numero_de_telefone']],
   ['instagram', ['instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle', 'perfil_instagram', 'user_instagram', 'arroba', 'qual_seu_instagram']],

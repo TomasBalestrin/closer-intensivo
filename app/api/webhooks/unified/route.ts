@@ -29,7 +29,7 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   cpf: ['digite_seu_cpf', 'cpf', 'cnpj', 'cpf_cnpj', 'documento'],
   phone: ['qual_o_telefone', 'telefone', 'whatsapp', 'celular', 'qual_o_seu_numero_de_telefone'],
   badge_name: ['nome_para_cracha', 'cracha', 'apelido'],
-  niche: ['qual_a_sua_area_de_atuacao', 'nicho', 'area_atuacao', 'segmento', 'profissao'],
+  niche: ['qual_a_sua_area_de_atuacao', 'qual_sua_area_de_atuacao', 'area_de_atuacao', 'nicho', 'area_atuacao', 'segmento', 'profissao'],
   revenue: ['qual_o_seu_faturamento_mensal', 'faturamento', 'faturamento_mensal', 'quanto_fatura'],
   photo_url: ['adicione_uma_foto_sua_para_perfil', 'foto', 'foto_perfil', 'photo'],
   challenge_answer: ['qual_a_maior_dificuldade_no_seu_negocio', 'maior_dificuldade', 'dificuldade', 'desafio'],

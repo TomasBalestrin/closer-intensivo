@@ -118,7 +118,8 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ]],
   ['niche', [
     'niche', 'nicho', 'area_atuacao', 'qual_sua_area_de_atuacao_profissional',
-    'segmento', 'area', 'setor', 'profissao', 'ramo', 'qual_a_sua_area_de_atuacao',
+    'qual_sua_area_de_atuacao', 'qual_a_sua_area_de_atuacao', 'area_de_atuacao',
+    'segmento', 'area', 'setor', 'profissao', 'ramo',
   ]],
   ['revenue', [
     'revenue', 'faturamento', 'quanto_voce_fatura_por_mes', 'faturamento_mensal',
