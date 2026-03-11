@@ -596,54 +596,173 @@ export default function ParticipantDetail() {
     { id: 'webhook' as TabType, label: 'Webhook', icon: Code },
   ]
 
+  // Calculate lead score based on qualification, revenue, checkins, opportunity
+  const calculateLeadScore = () => {
+    let score = 0
+    // Qualification: alto=40, medio=25, baixo=10
+    if (participant.qualification === 'alto') score += 40
+    else if (participant.qualification === 'medio') score += 25
+    else if (participant.qualification === 'baixo') score += 10
+    // Has phone/email: +10 each
+    if (participant.phone) score += 10
+    if (participant.email) score += 10
+    // Checkins: +5 each
+    if (participant.checked_in_day1) score += 5
+    if (participant.checked_in_day2) score += 5
+    if (participant.checked_in_day3) score += 5
+    // Is opportunity: +15
+    if (participant.is_opportunity) score += 15
+    // Has DISC: +10
+    if (participant.disc_profile) score += 10
+    return Math.min(score, 100)
+  }
+
+  const leadScore = calculateLeadScore()
+  const scoreColor = leadScore >= 70 ? 'text-green-600 bg-green-50 border-green-200' :
+                     leadScore >= 40 ? 'text-amber-600 bg-amber-50 border-amber-200' :
+                     'text-red-600 bg-red-50 border-red-200'
+  const scoreLabel = leadScore >= 70 ? 'Quente' : leadScore >= 40 ? 'Morno' : 'Frio'
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header Compacto */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
-          <div className="flex items-center gap-3">
-            <button onClick={() => participant.photo_url && setPhotoModal(true)} className={participant.photo_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}>
-              <Avatar src={participant.photo_url} alt={participant.name} size="lg" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{participant.name}</h1>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {participant.is_opportunity && <Badge variant="success">Oportunidade</Badge>}
-                {hasDiscProfile && <Badge variant="info">DISC: {participant.disc_profile}</Badge>}
-                {participant.qualification && (
-                  <Badge variant={participant.qualification === 'alto' ? 'success' : participant.qualification === 'medio' ? 'warning' : 'danger'}>
-                    {participant.qualification === 'alto' ? 'Alto' : participant.qualification === 'medio' ? 'Médio' : 'Baixo'}
-                  </Badge>
-                )}
-                <button
-                  onClick={handleMarcarChamado}
-                  disabled={chamadoSaving}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                    participant.chamado
-                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                      : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                  }`}
-                >
-                  {chamadoSaving ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <PhoneCall className="h-3 w-3" />
-                  )}
-                  {participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Marcar Chamado'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <Button variant="danger" onClick={() => setDeleteParticipantModal(true)}>
+        <Button variant="ghost" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+        <Button variant="danger" size="sm" onClick={() => setDeleteParticipantModal(true)}>
           <Trash2 className="h-4 w-4 mr-2" />
           Excluir
         </Button>
       </div>
+
+      {/* Hero Card - Informações Principais */}
+      <Card className="overflow-hidden">
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+            {/* Avatar e Info Principal */}
+            <div className="flex items-start gap-4 flex-1">
+              <button
+                onClick={() => participant.photo_url && setPhotoModal(true)}
+                className={`flex-shrink-0 ${participant.photo_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              >
+                <Avatar src={participant.photo_url} alt={participant.name} size="xl" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold text-gray-900 truncate">{participant.name}</h1>
+                <div className="mt-1 space-y-1">
+                  {participant.email && (
+                    <p className="text-gray-600 text-sm truncate">{participant.email}</p>
+                  )}
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                    {participant.phone && (
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5" />
+                        {participant.phone}
+                      </span>
+                    )}
+                    {participant.instagram && (
+                      <span className="flex items-center gap-1">
+                        @{participant.instagram.replace('@', '')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {/* Badges */}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  {participant.color && (
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getColorClass(participant.color)}`}>
+                      {formatColorLabel(participant.color)}
+                    </span>
+                  )}
+                  {participant.qualification && (
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getQualificationClass(participant.qualification)}`}>
+                      {formatQualificationLabel(participant.qualification)}
+                    </span>
+                  )}
+                  {(participant as any).category && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      {(participant as any).category}
+                    </span>
+                  )}
+                  {(participant as any).status && (
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass((participant as any).status)}`}>
+                      {formatStatusLabel((participant as any).status)}
+                    </span>
+                  )}
+                  {participant.is_opportunity && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      Oportunidade
+                    </span>
+                  )}
+                  {hasDiscProfile && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                      DISC: {participant.disc_profile}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Score Card */}
+            <div className={`flex-shrink-0 p-4 rounded-xl border-2 text-center min-w-[100px] ${scoreColor}`}>
+              <p className="text-xs font-medium uppercase tracking-wider opacity-75">Score</p>
+              <p className="text-3xl font-bold">{leadScore}</p>
+              <p className="text-xs font-semibold">{scoreLabel}</p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-gray-100">
+            {participant.phone && (
+              <>
+                <a
+                  href={`tel:${participant.phone.replace(/\D/g, '')}`}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm transition-colors"
+                >
+                  <Phone className="h-4 w-4" />
+                  Ligar
+                </a>
+                <a
+                  href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  WhatsApp
+                </a>
+              </>
+            )}
+            {participant.email && (
+              <a
+                href={`mailto:${participant.email}`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors"
+              >
+                <Mail className="h-4 w-4" />
+                Email
+              </a>
+            )}
+            <button
+              onClick={handleMarcarChamado}
+              disabled={chamadoSaving}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                participant.chamado
+                  ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                  : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+              }`}
+            >
+              {chamadoSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PhoneCall className="h-4 w-4" />
+              )}
+              {participant.chamado ? `Chamado (${participant.times_called || 1}x)` : 'Marcar Chamado'}
+            </button>
+          </div>
+        </div>
+      </Card>
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
@@ -681,362 +800,288 @@ export default function ParticipantDetail() {
         {activeTab === 'dados' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {/* Dados do Participante - Nova Interface (Março 2026+) */}
+              {/* Nova Interface (Março 2026+) */}
               {isNewInterface ? (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Dados do Participante</CardTitle>
-                    <Button
-                      variant={isEditing ? 'primary' : 'ghost'}
-                      size="sm"
-                      onClick={() => {
-                        if (isEditing) {
-                          handleSave()
-                        }
-                        setIsEditing(!isEditing)
-                      }}
-                      loading={saving}
-                    >
-                      {isEditing ? (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          Salvar
-                        </>
-                      ) : (
-                        <>
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Editar
-                        </>
-                      )}
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                      {/* Faturamento */}
-                      <div>
-                        <span className="text-gray-500">Faturamento:</span>
+                <>
+                  {/* Presença no Evento */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Presença no Evento</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-3">
+                        {[1, 2, 3].map((day) => {
+                          const field = `checked_in_day${day}` as keyof Participant
+                          const isChecked = participant[field] as boolean
+                          const isSaving = checkinSaving === day
+                          return (
+                            <button
+                              key={day}
+                              onClick={() => handleToggleCheckin(day)}
+                              disabled={isSaving}
+                              className={`flex-1 flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
+                                isChecked
+                                  ? 'bg-green-50 border-green-400'
+                                  : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                              } ${isSaving ? 'opacity-60' : 'cursor-pointer'}`}
+                            >
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                                isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                              }`}>
+                                {isSaving ? (
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : isChecked ? (
+                                  <Check className="h-5 w-5" />
+                                ) : (
+                                  <span className="font-bold">D{day}</span>
+                                )}
+                              </div>
+                              <span className={`text-sm font-medium ${isChecked ? 'text-green-700' : 'text-gray-500'}`}>
+                                Dia {day}
+                              </span>
+                              <span className={`text-xs ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
+                                {isChecked ? 'Presente' : 'Ausente'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Perfil do Lead */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                      <CardTitle className="text-base">Perfil do Lead</CardTitle>
+                      <Button
+                        variant={isEditing ? 'primary' : 'ghost'}
+                        size="sm"
+                        onClick={() => {
+                          if (isEditing) {
+                            handleSave()
+                          }
+                          setIsEditing(!isEditing)
+                        }}
+                        loading={saving}
+                      >
                         {isEditing ? (
-                          <Select
-                            value={formData.revenue}
-                            onChange={(e) => {
-                              const rev = e.target.value
-                              const autoColor = getColorFromRevenue(rev) || ''
-                              const autoQual = getQualificationFromRevenue(rev) || ''
-                              setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
-                            }}
-                            options={[
-                              { value: '', label: 'Selecione...' },
-                              ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
-                            ]}
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            Salvar
+                          </>
+                        ) : (
+                          <>
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Editar
+                          </>
+                        )}
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Métricas Principais */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {/* Faturamento */}
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-1">Faturamento</p>
+                          {isEditing ? (
+                            <Select
+                              value={formData.revenue}
+                              onChange={(e) => {
+                                const rev = e.target.value
+                                const autoColor = getColorFromRevenue(rev) || ''
+                                const autoQual = getQualificationFromRevenue(rev) || ''
+                                setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
+                              }}
+                              options={[
+                                { value: '', label: 'Selecione...' },
+                                ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
+                              ]}
                             className="mt-1"
                           />
                         ) : (
-                          <p className="font-medium">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</p>
+                          <p className="font-semibold text-gray-900">{normalizeRevenue(participant.revenue) || participant.revenue || 'Não informado'}</p>
                         )}
-                      </div>
-
-                      {/* Cor */}
-                      <div>
-                        <span className="text-gray-500">Cor:</span>
-                        <div className={`mt-1 px-3 py-1.5 rounded-lg text-sm font-medium inline-block ${getColorClass(participant.color || formData.color) || 'bg-gray-100 text-gray-500'}`}>
-                          {formatColorLabel(participant.color || formData.color) || 'Não definida'}
                         </div>
-                      </div>
 
-                      {/* Qualificação */}
-                      <div>
-                        <span className="text-gray-500">Qualificação:</span>
-                        <div className={`mt-1 px-3 py-1.5 rounded-lg text-sm font-medium inline-block ${getQualificationClass(participant.qualification || formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
-                          {formatQualificationLabel(participant.qualification || formData.qualification) || 'Não definida'}
-                        </div>
-                      </div>
-
-                      {/* Nicho */}
-                      <div>
-                        <span className="text-gray-500">Nicho:</span>
-                        <p className="font-medium">{participant.niche || '-'}</p>
-                      </div>
-
-                      {/* Email */}
-                      <div>
-                        <span className="text-gray-500">Email:</span>
-                        {participant.email ? (
-                          <a href={`mailto:${participant.email}`} className="text-blue-600 hover:underline block">
-                            {participant.email}
-                          </a>
-                        ) : (
-                          <p className="text-gray-400">-</p>
+                        {/* Nicho */}
+                        {(participant.niche || isEditing) && (
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Nicho</p>
+                            <p className="font-semibold text-gray-900">{participant.niche || 'Não informado'}</p>
+                          </div>
                         )}
-                      </div>
 
-                      {/* WhatsApp */}
-                      <div>
-                        <span className="text-gray-500">WhatsApp:</span>
-                        {participant.phone ? (
-                          <a
-                            href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            {participant.phone}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <p className="text-gray-400">-</p>
-                        )}
-                      </div>
-
-                      {/* Instagram */}
-                      <div>
-                        <span className="text-gray-500">Instagram:</span>
-                        {participant.instagram ? (
-                          <a
-                            href={getInstagramUrl(participant.instagram) || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            {participant.instagram}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <p className="text-gray-400">-</p>
-                        )}
-                      </div>
-
-                      {/* CPF */}
-                      <div>
-                        <span className="text-gray-500">CPF:</span>
-                        {isEditing ? (
-                          <Input
-                            value={formData.cpf}
-                            onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                            placeholder="000.000.000-00"
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="font-medium">{participant.cpf || '-'}</p>
-                        )}
-                      </div>
-
-                      {/* Nome no Crachá */}
-                      <div>
-                        <span className="text-gray-500">Nome no Crachá:</span>
-                        {isEditing ? (
-                          <Input
-                            value={formData.badge_name}
-                            onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="font-medium">{participant.badge_name || '-'}</p>
-                        )}
-                      </div>
-
-                      {/* Check-ins */}
-                      {[1, 2, 3].map((day) => {
-                        const field = `checked_in_day${day}` as keyof Participant
-                        const isChecked = participant[field] as boolean
-                        const isSaving = checkinSaving === day
-                        return (
-                          <button
-                            key={day}
-                            onClick={() => handleToggleCheckin(day)}
-                            disabled={isSaving}
-                            className={`flex items-center gap-2 p-3 sm:p-2 rounded-lg border-2 transition-all text-left min-h-[48px] ${
-                              isChecked
-                                ? 'bg-green-50 border-green-300 hover:bg-green-100'
-                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                            } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
-                          >
-                            <div className={`flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0 ${
-                              isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {isSaving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : isChecked ? (
-                                <Check className="h-4 w-4" />
-                              ) : (
-                                <span className="text-xs font-bold">D{day}</span>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs">Check-in Dia {day}</p>
-                              <p className={`font-medium text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
-                                {isChecked ? 'Credenciado' : 'Não'}
-                              </p>
-                            </div>
-                          </button>
-                        )
-                      })}
-
-                      {/* Funil de Origem */}
-                      <div>
-                        <span className="text-gray-500">Funil de Origem:</span>
-                        {isEditing ? (
-                          <Select
-                            value={formData.funnel}
-                            onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
-                            options={FUNIL_OPTIONS}
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="font-medium">{participant.funnel || '-'}</p>
-                        )}
-                      </div>
-
-                      {/* Closer/Vendedor */}
-                      <div>
-                        <span className="text-gray-500">Closer/Vendedor:</span>
-                        {isEditing ? (
-                          <Select
-                            value={formData.seller_closer_id}
-                            onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
-                            options={[
-                              { value: '', label: 'Selecione...' },
-                              ...closers.map(c => ({ value: c.id, label: c.name })),
-                            ]}
-                            className="mt-1"
-                          />
-                        ) : participant.seller_closer_id ? (
-                          <p className="font-medium">{closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</p>
-                        ) : (
-                          <button
-                            onClick={() => setIsEditing(true)}
-                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Adicionar
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Mentorado que Convidou */}
-                      <div>
-                        <span className="text-gray-500">Mentorado que Convidou:</span>
-                        {isEditing ? (
-                          <Input
-                            value={formData.mentee_inviter}
-                            onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
-                            className="mt-1"
-                          />
-                        ) : participant.mentee_inviter ? (
-                          <p className="font-medium">{participant.mentee_inviter}</p>
-                        ) : (
-                          <button
-                            onClick={() => setIsEditing(true)}
-                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Adicionar
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Acompanhante */}
-                      <div>
-                        <span className="text-gray-500">Acompanhante:</span>
-                        {isEditing ? (
-                          <Input
-                            value={formData.companion}
-                            onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                            className="mt-1"
-                          />
-                        ) : participant.companion ? (
-                          <div>
-                            <p className="font-medium">{participant.companion}</p>
-                            {companionMatch && (
-                              <button
-                                type="button"
-                                onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
-                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                              >
-                                <Users className="h-3 w-3" />
-                                Ver card
-                              </button>
+                        {/* CPF */}
+                        {(participant.cpf || isEditing) && (
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">CPF</p>
+                            {isEditing ? (
+                              <Input
+                                value={formData.cpf}
+                                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                                placeholder="000.000.000-00"
+                              />
+                            ) : (
+                              <p className="font-semibold text-gray-900">{participant.cpf}</p>
                             )}
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => setIsEditing(true)}
-                            className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Adicionar
-                          </button>
+                        )}
+
+                        {/* Nome no Crachá */}
+                        {(participant.badge_name || isEditing) && (
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Nome no Crachá</p>
+                            {isEditing ? (
+                              <Input
+                                value={formData.badge_name}
+                                onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
+                              />
+                            ) : (
+                              <p className="font-semibold text-gray-900">{participant.badge_name}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* QR Code */}
+                        {(participant as any).qr_code && (
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">QR Code</p>
+                            <p className="font-mono font-semibold text-gray-900">{(participant as any).qr_code}</p>
+                          </div>
                         )}
                       </div>
 
-                      {/* Lucro Líquido */}
-                      <div>
-                        <span className="text-gray-500">Lucro Líquido:</span>
-                        {isEditing ? (
-                          <Input
-                            value={formData.net_profit}
-                            onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="font-medium">{participant.net_profit || '-'}</p>
-                        )}
-                      </div>
+                      {/* Relacionamento */}
+                      {(participant.funnel || participant.seller_closer_id || participant.mentee_inviter || participant.companion || isEditing) && (
+                        <>
+                          <div className="pt-4 border-t border-gray-100">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Relacionamento</p>
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* Funil de Origem */}
+                              {(participant.funnel || isEditing) && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">Funil de Origem</p>
+                                  {isEditing ? (
+                                    <Select
+                                      value={formData.funnel}
+                                      onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
+                                      options={FUNIL_OPTIONS}
+                                    />
+                                  ) : (
+                                    <p className="font-medium text-gray-900">{participant.funnel}</p>
+                                  )}
+                                </div>
+                              )}
 
-                      {/* Sócio */}
-                      <div>
-                        <span className="text-gray-500">Sócio:</span>
-                        {isEditing ? (
-                          <Input
-                            value={formData.partner}
-                            onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
-                            className="mt-1"
-                          />
-                        ) : (
-                          <p className="font-medium">{participant.partner || '-'}</p>
-                        )}
-                      </div>
+                              {/* Closer/Vendedor */}
+                              {(participant.seller_closer_id || isEditing) && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">Closer/Vendedor</p>
+                                  {isEditing ? (
+                                    <Select
+                                      value={formData.seller_closer_id}
+                                      onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
+                                      options={[
+                                        { value: '', label: 'Selecione...' },
+                                        ...closers.map(c => ({ value: c.id, label: c.name })),
+                                      ]}
+                                    />
+                                  ) : (
+                                    <p className="font-medium text-gray-900">{closers.find(c => c.id === participant.seller_closer_id)?.name}</p>
+                                  )}
+                                </div>
+                              )}
 
-                      {/* Relação com Acompanhante */}
-                      {(participant as any).relacao_acompanhante && (
-                        <div>
-                          <span className="text-gray-500">Relação Acompanhante:</span>
-                          <p className="font-medium">{(participant as any).relacao_acompanhante}</p>
+                              {/* Mentorado que Convidou */}
+                              {(participant.mentee_inviter || isEditing) && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">Mentorado que Convidou</p>
+                                  {isEditing ? (
+                                    <Input
+                                      value={formData.mentee_inviter}
+                                      onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
+                                    />
+                                  ) : (
+                                    <p className="font-medium text-gray-900">{participant.mentee_inviter}</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Acompanhante */}
+                              {(participant.companion || isEditing) && (
+                                <div>
+                                  <p className="text-xs text-gray-500 mb-1">Acompanhante</p>
+                                  {isEditing ? (
+                                    <Input
+                                      value={formData.companion}
+                                      onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
+                                    />
+                                  ) : (
+                                    <div>
+                                      <p className="font-medium text-gray-900">{participant.companion}</p>
+                                      {companionMatch && (
+                                        <button
+                                          type="button"
+                                          onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
+                                          className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                                        >
+                                          <Users className="h-3 w-3" />
+                                          Ver card
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Dados Financeiros */}
+                      {(participant.net_profit || participant.partner || isEditing) && (
+                        <div className="pt-4 border-t border-gray-100">
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Dados Financeiros</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Lucro Líquido */}
+                            {(participant.net_profit || isEditing) && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Lucro Líquido</p>
+                                {isEditing ? (
+                                  <Input
+                                    value={formData.net_profit}
+                                    onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
+                                  />
+                                ) : (
+                                  <p className="font-medium text-gray-900">{participant.net_profit}</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Sócio */}
+                            {(participant.partner || isEditing) && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Sócio</p>
+                                {isEditing ? (
+                                  <Input
+                                    value={formData.partner}
+                                    onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
+                                  />
+                                ) : (
+                                  <p className="font-medium text-gray-900">{participant.partner}</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      {/* QR Code */}
-                      {(participant as any).qr_code && (
+                      {/* Oportunidade Toggle */}
+                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
                         <div>
-                          <span className="text-gray-500">QR Code:</span>
-                          <p className="font-mono font-medium text-sm bg-gray-100 px-2 py-1 rounded inline-block mt-1">
-                            {(participant as any).qr_code}
-                          </p>
+                          <p className="text-sm font-medium text-gray-700">Marcar como Oportunidade</p>
+                          <p className="text-xs text-gray-500">Este lead é uma oportunidade de venda</p>
                         </div>
-                      )}
-
-                      {/* Categoria */}
-                      {(participant as any).category && (
-                        <div>
-                          <span className="text-gray-500">Categoria:</span>
-                          <span className="mt-1 px-2.5 py-1 rounded-full text-xs font-medium inline-block bg-blue-100 text-blue-800 max-w-full truncate" title={(participant as any).category}>
-                            {(participant as any).category}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Status */}
-                      {(participant as any).status && (
-                        <div>
-                          <span className="text-gray-500">Status:</span>
-                          <span className={`mt-1 px-2.5 py-1 rounded-full text-xs font-medium inline-block ${getStatusClass((participant as any).status)}`}>
-                            {formatStatusLabel((participant as any).status)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* É Oportunidade */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Oportunidade:</span>
                         {isEditing ? (
                           <Checkbox
                             id="is_opportunity"
@@ -1044,27 +1089,41 @@ export default function ParticipantDetail() {
                             onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
                           />
                         ) : (
-                          <Badge variant={participant.is_opportunity ? 'success' : 'default'}>
-                            {participant.is_opportunity ? 'Sim' : 'Não'}
-                          </Badge>
+                          <button
+                            onClick={() => {
+                              setFormData({ ...formData, is_opportunity: !participant.is_opportunity })
+                              setIsEditing(true)
+                            }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              participant.is_opportunity ? 'bg-green-500' : 'bg-gray-200'
+                            }`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              participant.is_opportunity ? 'translate-x-6' : 'translate-x-1'
+                            }`} />
+                          </button>
                         )}
                       </div>
-                    </div>
+                    </CardContent>
+                  </Card>
 
-                    {/* Observações - sempre editável */}
-                    <div className="mt-6 pt-4 border-t">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
+                  {/* Observações */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Observações</CardTitle>
+                    </CardHeader>
+                    <CardContent>
                       <textarea
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         onBlur={handleSave}
                         placeholder="Adicione observações sobre o participante..."
-                        rows={3}
+                        rows={4}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
                       />
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </>
               ) : (
                 /* Interface Antiga (Janeiro) - mantém os dois cards separados */
                 <>
@@ -1319,26 +1378,32 @@ export default function ParticipantDetail() {
                 </>
               )}
 
-              {/* Respostas do Webhook */}
+              {/* Respostas do Formulário */}
               {(participant.challenge_answer || participant.desired_change_answer) && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-purple-600" />
-                      Respostas do Participante
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-purple-600" />
+                      Respostas do Formulário
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3">
                     {participant.challenge_answer && (
-                      <div className="p-4 bg-purple-50/50 rounded-xl border border-purple-100">
-                        <p className="text-xs uppercase tracking-wider text-purple-500 font-semibold mb-2">Maior dificuldade</p>
-                        <p className="text-gray-700">{participant.challenge_answer}</p>
+                      <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl">
+                        <p className="text-xs font-semibold text-purple-600 mb-2 flex items-center gap-1">
+                          <Target className="h-3 w-3" />
+                          Maior dificuldade
+                        </p>
+                        <p className="text-gray-800 text-sm leading-relaxed">{participant.challenge_answer}</p>
                       </div>
                     )}
                     {participant.desired_change_answer && (
-                      <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                        <p className="text-xs uppercase tracking-wider text-indigo-500 font-semibold mb-2">O que espera do evento</p>
-                        <p className="text-gray-700">{participant.desired_change_answer}</p>
+                      <div className="p-4 bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl">
+                        <p className="text-xs font-semibold text-indigo-600 mb-2 flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3" />
+                          O que espera do evento
+                        </p>
+                        <p className="text-gray-800 text-sm leading-relaxed">{participant.desired_change_answer}</p>
                       </div>
                     )}
                   </CardContent>
@@ -1348,39 +1413,112 @@ export default function ParticipantDetail() {
 
             {/* Sidebar */}
             <div className="space-y-4">
+              {/* Closer Card */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Closer Atribuído</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Closer Responsável</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {assignedCloser ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
                       <Avatar src={assignedCloser.photo_url} alt={assignedCloser.name} />
-                      <span className="font-medium">{assignedCloser.name}</span>
+                      <div>
+                        <p className="font-semibold text-gray-900">{assignedCloser.name}</p>
+                        <p className="text-xs text-green-600">Closer atribuído</p>
+                      </div>
                     </div>
                   ) : (
-                    <p className="text-gray-500">Nenhum closer atribuído</p>
+                    <div className="text-center py-4">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 mx-auto mb-2 flex items-center justify-center">
+                        <UserPlus className="h-6 w-6 text-gray-400" />
+                      </div>
+                      <p className="text-sm text-gray-500 mb-3">Nenhum closer atribuído</p>
+                    </div>
                   )}
-                  <Button variant="secondary" className="w-full mt-4" onClick={() => setAssignCloserModal(true)}>
+                  <Button variant="secondary" className="w-full mt-3" onClick={() => setAssignCloserModal(true)}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     {assignedCloser ? 'Alterar' : 'Atribuir'} Closer
                   </Button>
                 </CardContent>
               </Card>
 
-              {participant.primary_archetype && (
-                <Card className="border-purple-200 bg-purple-50/30">
+              {/* Resumo de Vendas */}
+              {sales.length > 0 && (
+                <Card className="border-green-200 bg-green-50/30">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-purple-800">Arquétipos</CardTitle>
+                    <CardTitle className="text-base text-green-800 flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Resumo de Vendas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-700">Total de Vendas</span>
+                        <span className="font-bold text-green-800">{sales.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-green-700">Valor Total</span>
+                        <span className="font-bold text-green-800">
+                          {formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3 text-green-700"
+                      onClick={() => setActiveTab('vendas')}
+                    >
+                      Ver detalhes
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Arquétipos */}
+              {participant.primary_archetype && (
+                <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-purple-100/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base text-purple-800">Arquétipos</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-center">
                       <div className="text-4xl mb-2">{getArchetypeIcon(participant.primary_archetype)}</div>
                       <p className="font-bold text-purple-800">{participant.primary_archetype}</p>
                       {participant.secondary_archetype && (
-                        <p className="text-sm text-purple-600">+ {participant.secondary_archetype}</p>
+                        <p className="text-sm text-purple-600 mt-1">
+                          + {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}
+                        </p>
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* DISC Profile */}
+              {hasDiscProfile && (
+                <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-blue-100/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base text-blue-800 flex items-center gap-2">
+                      <Brain className="h-4 w-4" />
+                      Perfil DISC
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-xl bg-blue-600 text-white flex items-center justify-center text-3xl font-bold">
+                        {participant.disc_profile}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3 text-blue-700"
+                      onClick={() => setActiveTab('disc')}
+                    >
+                      Ver análise completa
+                    </Button>
                   </CardContent>
                 </Card>
               )}
