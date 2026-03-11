@@ -34,7 +34,7 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   photo_url: ['adicione_uma_foto_sua_para_perfil', 'foto', 'foto_perfil', 'photo'],
   challenge_answer: ['qual_a_maior_dificuldade_no_seu_negocio', 'maior_dificuldade', 'dificuldade', 'desafio'],
   desired_change_answer: ['o_que_voce_pretende_aprender_no_intensivo', 'o_que_busca', 'objetivo', 'expectativa'],
-  instagram: ['instagram', 'insta', 'qual_seu_instagram'],
+  instagram: ['instagram', 'insta', 'qual_seu_instagram', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram'],
   partner: ['voce_tem_socio', 'socio', 'tem_socio'],
   net_profit: ['lucro_liquido', 'qual_seu_lucro_liquido_mensal', 'lucro'],
 }

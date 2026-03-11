@@ -44,7 +44,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, getQualificationClass } from '@/lib/utils'
 
 type TabType = 'dados' | 'disc' | 'vendas'
 

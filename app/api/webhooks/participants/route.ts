@@ -84,8 +84,8 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'qual_o_seu_numero_de_telefone', 'numero_de_telefone',
   ]],
   ['instagram', [
-    'instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle',
-    'perfil_instagram', 'user_instagram', 'arroba',
+    'instagram', 'insta', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram',
+    'ig', 'instagram_handle', 'perfil_instagram', 'user_instagram', 'arroba',
   ]],
   ['cpf', [
     'cpf', 'cnpj', 'cpf_cnpj', 'documento', 'digite_o_seu_cpf_ou_cnpj',

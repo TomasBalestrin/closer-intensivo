@@ -48,7 +48,7 @@ import {
   Code,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel } from '@/lib/utils'
 
 type TabType = 'dados' | 'vendas' | 'disc' | 'acoes' | 'webhook'
 
@@ -739,7 +739,7 @@ export default function ParticipantDetail() {
                       <div>
                         <span className="text-gray-500">Cor:</span>
                         <div className={`mt-1 px-3 py-1.5 rounded-lg text-sm font-medium inline-block ${getColorClass(participant.color || formData.color) || 'bg-gray-100 text-gray-500'}`}>
-                          {participant.color || formData.color || '-'}
+                          {formatColorLabel(participant.color || formData.color) || 'Não definida'}
                         </div>
                       </div>
 
@@ -747,7 +747,7 @@ export default function ParticipantDetail() {
                       <div>
                         <span className="text-gray-500">Qualificação:</span>
                         <div className={`mt-1 px-3 py-1.5 rounded-lg text-sm font-medium inline-block ${getQualificationClass(participant.qualification || formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
-                          {participant.qualification === 'alto' ? 'Alto' : participant.qualification === 'medio' ? 'Médio' : participant.qualification === 'baixo' ? 'Baixo' : formData.qualification || '-'}
+                          {formatQualificationLabel(participant.qualification || formData.qualification) || 'Não definida'}
                         </div>
                       </div>
 
@@ -1018,9 +1018,9 @@ export default function ParticipantDetail() {
                       {(participant as any).category && (
                         <div>
                           <span className="text-gray-500">Categoria:</span>
-                          <Badge variant="info" className="mt-1">
+                          <span className="mt-1 px-2.5 py-1 rounded-full text-xs font-medium inline-block bg-blue-100 text-blue-800 max-w-full truncate" title={(participant as any).category}>
                             {(participant as any).category}
-                          </Badge>
+                          </span>
                         </div>
                       )}
 
@@ -1028,12 +1028,9 @@ export default function ParticipantDetail() {
                       {(participant as any).status && (
                         <div>
                           <span className="text-gray-500">Status:</span>
-                          <Badge
-                            variant={(participant as any).status === 'confirmed' ? 'success' : 'warning'}
-                            className="mt-1"
-                          >
-                            {(participant as any).status === 'confirmed' ? 'Confirmado' : (participant as any).status}
-                          </Badge>
+                          <span className={`mt-1 px-2.5 py-1 rounded-full text-xs font-medium inline-block ${getStatusClass((participant as any).status)}`}>
+                            {formatStatusLabel((participant as any).status)}
+                          </span>
                         </div>
                       )}
 
