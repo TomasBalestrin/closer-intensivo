@@ -56,20 +56,38 @@ export function normalizeRevenue(revenue: string | null): string {
   // Check if already matches an option exactly
   const exact = FATURAMENTO_OPTIONS.find(opt => opt.value === revenue)
   if (exact) return exact.value
-  // Extract numbers from string
-  const numbers = revenue.replace(/[R$\s]/g, '').match(/[\d.]+/g)
+
+  // Handle special cases like "300k", "500K", etc.
+  const kMatch = revenue.match(/(\d+)\s*[kK]/i)
+  if (kMatch) {
+    const numK = parseInt(kMatch[1]) * 1000
+    const range = FATURAMENTO_OPTIONS.find(opt => numK <= opt.max)
+    if (range) return range.value
+    return FATURAMENTO_OPTIONS[FATURAMENTO_OPTIONS.length - 1].value
+  }
+
+  // Extract numbers from string - include comma for Brazilian format (5.000,00)
+  const numbers = revenue.replace(/[R$\s]/g, '').match(/[\d.,]+/g)
   if (!numbers || numbers.length === 0) return revenue
+
+  // Parse Brazilian number format: 5.000,00 -> 5000.00
+  const parseBRNumber = (str: string): number => {
+    // Remove dots (thousand separators), replace comma with dot (decimal)
+    return parseFloat(str.replace(/\./g, '').replace(',', '.'))
+  }
+
   // Parse the max number (second number, or only number)
   const maxNum = numbers.length > 1
-    ? parseFloat(numbers[1].replace(/\./g, '').replace(',', '.'))
-    : parseFloat(numbers[0].replace(/\./g, '').replace(',', '.'))
+    ? parseBRNumber(numbers[1])
+    : parseBRNumber(numbers[0])
+
   // Handle "Até" / below minimum
   if (revenue.toLowerCase().startsWith('até') || revenue.toLowerCase().startsWith('ate')) {
     return FATURAMENTO_OPTIONS[0].value
   }
   // Handle "Acima de R$ X" - find the range where the number fits as a minimum
   if (revenue.toLowerCase().includes('acima')) {
-    const num = parseFloat((numbers[0] || '0').replace(/\./g, '').replace(',', '.'))
+    const num = parseBRNumber(numbers[0] || '0')
     // Find the first range whose max is greater than the extracted number
     const range = FATURAMENTO_OPTIONS.find(opt => num < opt.max && opt.max !== Infinity)
     if (range) return range.value
