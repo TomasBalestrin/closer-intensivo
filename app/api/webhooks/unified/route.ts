@@ -131,7 +131,8 @@ export async function POST(request: Request) {
     const cpf = extractFromFormData(formData, 'cpf')
     const phone = extractFromFormData(formData, 'phone')
     const badgeName = extractFromFormData(formData, 'badge_name')
-    const niche = participant.setor || extractFromFormData(formData, 'niche')
+    // Note: participant.setor is category, not niche
+    const niche = extractFromFormData(formData, 'niche')
     const revenue = participant.faturamento || extractFromFormData(formData, 'revenue')
     const photoUrl = extractFromFormData(formData, 'photo_url')
     const challengeAnswer = extractFromFormData(formData, 'challenge_answer')
@@ -139,6 +140,12 @@ export async function POST(request: Request) {
     const instagram = cleanInstagram(extractFromFormData(formData, 'instagram'))
     const partner = extractFromFormData(formData, 'partner')
     const netProfit = extractFromFormData(formData, 'net_profit')
+
+    // Extract additional fields from participant object
+    const closer = participant.closer
+    const category = participant.category || participant.setor
+    const qrCode = participant.qr_code || participant.qrcode
+    const status = participant.status
 
     // Parse checkin days
     const checkedInDay1 = parseCheckinStatus(checkinDays.day_1)
@@ -208,6 +215,10 @@ export async function POST(request: Request) {
       color,
       qualification,
       funnel: participant.funnel_origin || null,
+      closer,
+      category,
+      qr_code: qrCode,
+      status,
       is_opportunity: isOpportunity,
       checked_in_day1: checkedInDay1,
       checked_in_day2: checkedInDay2,

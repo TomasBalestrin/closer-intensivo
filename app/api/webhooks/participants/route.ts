@@ -72,6 +72,7 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['name', [
     'nome_completo', 'nome', 'name', 'full_name', 'fullname', 'participant_name',
     'nome_do_participante', 'nome_participante', 'primeiro_nome',
+    'digite_seu_nome_completo',
   ]],
   ['email', [
     'login_value', 'email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante',
@@ -80,6 +81,7 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['phone', [
     'phone', 'telefone', 'whatsapp', 'celular', 'digite_seu_whatsapp',
     'numero_whatsapp', 'tel', 'mobile', 'phone_number',
+    'qual_o_seu_numero_de_telefone', 'numero_de_telefone',
   ]],
   ['instagram', [
     'instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle',
@@ -91,11 +93,11 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ]],
   ['niche', [
     'niche', 'nicho', 'area_atuacao', 'qual_sua_area_de_atuacao_profissional',
-    'segmento', 'area', 'setor', 'profissao', 'ramo',
+    'qual_a_sua_area_de_atuacao', 'segmento', 'profissao', 'ramo',
   ]],
   ['revenue', [
     'revenue', 'faturamento', 'quanto_voce_fatura_por_mes', 'faturamento_mensal',
-    'receita', 'renda', 'ganho_mensal', 'quanto_fatura',
+    'qual_o_seu_faturamento_mensal', 'receita', 'renda', 'ganho_mensal', 'quanto_fatura',
   ]],
   ['net_profit', [
     'net_profit', 'lucro_liquido', 'qual_seu_lucro_liquido_mensal', 'lucro',
@@ -124,25 +126,31 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'status', 'participant_status', 'estado',
   ]],
   ['category', [
-    'category', 'categoria', 'tipo_ingresso', 'ticket_type', 'ingresso',
+    'category', 'categoria', 'tipo_ingresso', 'ticket_type', 'ingresso', 'setor',
   ]],
   ['photo_url', [
     'photo_url', 'foto', 'foto_perfil', 'foto_url', 'photo', 'profile_photo',
     'qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos', 'imagem', 'avatar',
-    'foto_de_perfil',
+    'foto_de_perfil', 'adicione_uma_foto_sua_para_perfil',
   ]],
   ['funnel', [
     'funnel', 'funil', 'origem', 'source', 'canal', 'form_name',
+    'funnel_origin', 'origem_funil',
   ]],
   ['challenge_answer', [
     'challenge_answer', 'maior_dificuldade', 'dificuldade', 'challenge',
     'qual_sua_maior_dificuldade_no_seu_negocio_hoje', 'desafio',
     'principal_dificuldade', 'dificuldade_atual',
+    'qual_a_maior_dificuldade_no_seu_negocio',
   ]],
   ['desired_change_answer', [
     'desired_change_answer', 'o_que_busca', 'objetivo', 'desired_change',
     'o_que_pretende_aprender_no_intensivo_da_alta_performance',
     'o_que_espera', 'expectativa', 'meta', 'o_que_quer_aprender',
+    'o_que_voce_pretende_aprender_no_intensivo',
+  ]],
+  ['closer', [
+    'closer', 'vendedor', 'consultor', 'atendente', 'responsavel',
   ]],
 ]
 
@@ -367,6 +375,7 @@ export async function POST(request: Request) {
       qr_code: extracted.qr_code || null,
       status: extracted.status || null,
       category: extracted.category || null,
+      closer: extracted.closer || null,
       color,
       qualification,
       webhook_data: payload,
