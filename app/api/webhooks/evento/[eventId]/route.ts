@@ -27,7 +27,7 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   cpf: ['digite_seu_cpf', 'cpf', 'cnpj', 'cpf_cnpj', 'documento', 'digite_o_seu_cpf_ou_cnpj'],
   phone: ['qual_o_telefone', 'telefone', 'whatsapp', 'celular', 'qual_o_seu_numero_de_telefone', 'digite_seu_whatsapp'],
   badge_name: ['nome_para_cracha', 'cracha', 'apelido'],
-  niche: ['qual_a_sua_area_de_atuacao', 'nicho', 'area_atuacao', 'segmento', 'profissao', 'qual_sua_area_de_atuacao_profissional'],
+  niche: ['qual_a_sua_area_de_atuacao', 'qual_sua_area_de_atuacao', 'area_de_atuacao', 'nicho', 'area_atuacao', 'segmento', 'profissao'],
   revenue: ['qual_o_seu_faturamento_mensal', 'faturamento', 'faturamento_mensal', 'quanto_fatura', 'quanto_voce_fatura_por_mes'],
   photo_url: ['adicione_uma_foto_sua_para_perfil', 'foto', 'foto_perfil', 'photo', 'qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos'],
   challenge_answer: ['qual_a_maior_dificuldade_no_seu_negocio', 'maior_dificuldade', 'dificuldade', 'desafio', 'qual_sua_maior_dificuldade_no_seu_negocio_hoje'],
