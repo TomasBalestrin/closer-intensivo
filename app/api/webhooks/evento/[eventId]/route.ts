@@ -135,7 +135,7 @@ export async function POST(
     const closer = participant.closer || payload.closer
     const category = participant.category || participant.setor || payload.category
     const qrCode = participant.qr_code || participant.qrcode || payload.qr_code
-    const status = participant.status || payload.status
+    // status removido - conflita com constraint do banco
 
     // Parse checkin days
     const checkedInDay1 = parseCheckinStatus(checkinDays.day_1)
@@ -200,7 +200,7 @@ export async function POST(
       closer,
       category,
       qr_code: qrCode,
-      status,
+      // status removido - conflita com constraint do banco
       is_opportunity: isOpportunity,
       checked_in_day1: checkedInDay1,
       checked_in_day2: checkedInDay2,

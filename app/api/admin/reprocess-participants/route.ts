@@ -393,7 +393,6 @@ export async function GET() {
       'relacao_acompanhante (tipo: sócio, esposa, etc)',
       'tem_acompanhante (boolean)',
       'qr_code',
-      'status',
       'category (categoria do ingresso)',
       'cpf',
       'badge_name (nome para crachá)',
