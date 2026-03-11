@@ -28,6 +28,65 @@ export function getColorClass(color: string | null): string {
   return color ? colorMap[color] || 'bg-gray-200 text-gray-800' : 'bg-gray-200 text-gray-800'
 }
 
+// Format color name for display (azul_claro → Azul Claro)
+export function formatColorLabel(color: string | null): string {
+  if (!color) return ''
+  const labels: Record<string, string> = {
+    rosa: 'Rosa',
+    preto: 'Preto',
+    azul_claro: 'Azul Claro',
+    verde: 'Verde',
+    dourado: 'Dourado',
+    laranja: 'Laranja',
+  }
+  return labels[color] || color
+}
+
+// Format status for display
+export function formatStatusLabel(status: string | null): string {
+  if (!status) return ''
+  const labels: Record<string, string> = {
+    novo: 'Cadastrado',
+    new: 'Cadastrado',
+    confirmed: 'Confirmado',
+    confirmado: 'Confirmado',
+    pending: 'Pendente',
+    pendente: 'Pendente',
+    cancelled: 'Cancelado',
+    cancelado: 'Cancelado',
+    checked_in: 'Presente',
+  }
+  return labels[status.toLowerCase()] || status
+}
+
+// Get status badge class
+export function getStatusClass(status: string | null): string {
+  if (!status) return 'bg-gray-100 text-gray-600'
+  const classes: Record<string, string> = {
+    novo: 'bg-blue-100 text-blue-800',
+    new: 'bg-blue-100 text-blue-800',
+    confirmed: 'bg-green-100 text-green-800',
+    confirmado: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    pendente: 'bg-yellow-100 text-yellow-800',
+    cancelled: 'bg-red-100 text-red-800',
+    cancelado: 'bg-red-100 text-red-800',
+    checked_in: 'bg-emerald-100 text-emerald-800',
+  }
+  return classes[status.toLowerCase()] || 'bg-gray-100 text-gray-600'
+}
+
+// Format qualification for display
+export function formatQualificationLabel(qualification: string | null): string {
+  if (!qualification) return ''
+  const labels: Record<string, string> = {
+    baixo: 'Baixo',
+    medio: 'Médio',
+    alto: 'Alto',
+  }
+  return labels[qualification] || qualification
+}
+
 export function getQualificationClass(qualification: string | null): string {
   const qualMap: Record<string, string> = {
     baixo: 'bg-red-100 text-red-800',
