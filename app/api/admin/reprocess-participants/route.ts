@@ -219,7 +219,7 @@ function extractFieldsFromUnifiedFormat(webhookData: any): Record<string, any> {
   // Direct fields from participant object
   if (participant.qr_code) extracted.qr_code = participant.qr_code
   if (participant.category) extracted.category = participant.category
-  if (participant.status) extracted.status = participant.status
+  // status removido - conflita com constraint do banco
   if (participant.setor) extracted.niche = participant.setor
   if (participant.faturamento) extracted.revenue = participant.faturamento
   if (participant.funnel_origin) extracted.funnel = participant.funnel_origin
