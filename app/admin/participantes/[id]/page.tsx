@@ -1035,6 +1035,31 @@ export default function ParticipantDetail() {
                     </CardContent>
                   </Card>
 
+                  {/* Respostas do Formulário (form_data) */}
+                  {(participant as any).form_data && Object.keys((participant as any).form_data).length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Respostas do Formulário</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="divide-y divide-gray-100">
+                          {Object.entries((participant as any).form_data).map(([pergunta, resposta]) => (
+                            <div key={pergunta} className="py-3">
+                              <span className="text-sm text-gray-600 block">{pergunta}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {typeof resposta === 'boolean'
+                                  ? (resposta ? 'Sim' : 'Não')
+                                  : typeof resposta === 'string' && resposta.startsWith('http')
+                                    ? <a href={resposta as string} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver arquivo</a>
+                                    : String(resposta) || '-'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {/* Observações */}
                   <Card>
                     <CardHeader className="pb-3">
