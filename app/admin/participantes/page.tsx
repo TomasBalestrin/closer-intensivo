@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
-import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone } from 'lucide-react'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2 } from 'lucide-react'
 import { Participant, User, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue, cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
@@ -57,6 +57,8 @@ export default function AdminParticipantes() {
   })
   const [creating, setCreating] = useState(false)
   const [assigning, setAssigning] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -272,6 +274,30 @@ export default function AdminParticipantes() {
     }
   }
 
+  // Bulk delete participants
+  const handleBulkDelete = async () => {
+    if (selectedParticipants.length === 0) return
+
+    setDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .delete()
+        .in('id', selectedParticipants)
+
+      if (error) throw error
+
+      setShowDeleteModal(false)
+      setSelectedParticipants([])
+      fetchData()
+    } catch (error) {
+      console.error('Error deleting participants:', error)
+      alert('Erro ao excluir participantes')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   // Toggle selection
   const toggleSelectAll = () => {
     if (selectedParticipants.length === filteredParticipants.length) {
@@ -472,13 +498,24 @@ export default function AdminParticipantes() {
                     {selectedParticipants.length > 0 ? `${selectedParticipants.length} selecionado(s)` : 'Selecionar'}
                   </span>
                   {selectedParticipants.length > 0 && (
-                    <Button
-                      size="sm"
-                      onClick={() => setShowAssignModal(true)}
-                      className="min-h-[44px]"
-                    >
-                      Atribuir Vendedor
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowAssignModal(true)}
+                        className="min-h-[44px]"
+                      >
+                        Atribuir Vendedor
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => setShowDeleteModal(true)}
+                        className="min-h-[44px]"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Excluir
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -691,6 +728,30 @@ export default function AdminParticipantes() {
             </Button>
             <Button onClick={handleBulkAssign} disabled={assigning || !assignCloserId}>
               {assigning ? 'Atribuindo...' : 'Atribuir'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Confirmar Exclusão"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Tem certeza que deseja excluir <strong>{selectedParticipants.length}</strong> participante(s)?
+          </p>
+          <p className="text-sm text-red-600">
+            Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleBulkDelete} disabled={deleting}>
+              {deleting ? 'Excluindo...' : 'Excluir'}
             </Button>
           </div>
         </div>

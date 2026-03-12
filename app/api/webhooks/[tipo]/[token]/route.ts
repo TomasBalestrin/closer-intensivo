@@ -18,22 +18,33 @@ function cleanInstagram(value: string | undefined): string | null {
 
 // Handler: Participantes
 async function processarParticipante(body: any, supabase: any) {
+  // Support new format: participant.form_data contains questions/answers
+  const participant = body.participant || {}
+  const formData = participant.form_data || {}
   const fields = body.fields || body
-  const name = fields?.nome_completo || fields?.nome || body?.nome || body?.name
-  const email = fields?.digite_seu_melhor_email || fields?.email || body?.email
-  const phone = fields?.digite_seu_whatsapp || fields?.telefone || body?.telefone
-  const instagram = cleanInstagram(fields?.qual_seu_do_instagram || fields?.instagram)
-  const cpf = fields?.digite_o_seu_cpf_ou_cnpj || fields?.cpf || body?.cpf
-  const badge_name = fields?.nome_para_cracha || fields?.badge_name
-  const partner = fields?.voce_tem_socio || fields?.partner
-  const niche = fields?.qual_sua_area_de_atuacao_profissional || fields?.niche || body?.niche
-  const revenue = fields?.quanto_voce_fatura_por_mes || fields?.revenue || body?.faturamento
-  const net_profit = fields?.qual_seu_lucro_liquido_mensal || fields?.net_profit
-  const photo_url = fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos || fields?.photo_url
-  const external_id = body?.participant_id || body?.external_id
+  const event = body.event || {}
+
+  // Extract from form_data (questions as keys) or legacy fields
+  const name = participant.name || formData['Qual o seu nome?'] || formData['nome_completo'] || fields?.nome_completo || fields?.nome || body?.nome || body?.name
+  const email = participant.email || formData['Qual o seu e-mail?'] || formData['Digite seu e-mail'] || fields?.digite_seu_melhor_email || fields?.email || body?.email
+  const phone = formData['Qual o seu número de telefone?'] || formData['Telefone'] || formData['WhatsApp'] || fields?.digite_seu_whatsapp || fields?.telefone || body?.telefone
+  const instagram = cleanInstagram(formData['Qual seu @ do Instagram?'] || formData['Instagram'] || fields?.qual_seu_do_instagram || fields?.instagram)
+  const cpf = formData['Digite seu CPF'] || formData['CPF'] || fields?.digite_o_seu_cpf_ou_cnpj || fields?.cpf || body?.cpf
+  const badge_name = formData['Nome para crachá?'] || formData['Nome no crachá'] || fields?.nome_para_cracha || fields?.badge_name
+  const niche = formData['Qual sua área de atuação?'] || formData['Qual sua área de atuação profissional'] || fields?.qual_sua_area_de_atuacao_profissional || fields?.niche || body?.niche
+  const revenue = formData['Qual o seu faturamento mensal?'] || formData['Quanto você fatura por mês?'] || participant.faturamento || fields?.quanto_voce_fatura_por_mes || fields?.revenue || body?.faturamento
+  const net_profit = formData['Qual seu lucro líquido mensal?'] || fields?.qual_seu_lucro_liquido_mensal || fields?.net_profit
+  const photo_url = formData['Adicione uma foto sua para perfil.'] || formData['Foto de perfil'] || fields?.qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos || fields?.photo_url
+  const partner = formData['Você tem sócio?'] || fields?.voce_tem_socio || fields?.partner
+  const companion = formData['Seu acompanhante é?'] || formData['Acompanhante'] || fields?.companion
+  const external_id = participant.id || body?.participant_id || body?.external_id
+  const qr_code = participant.qr_code
+  const category = participant.category
+  const status = participant.status
+  const event_id = event.id
 
   // Extract is_opportunity from webhook payload
-  const rawOpportunity = fields?.is_opportunity ?? fields?.oportunidade ?? body?.is_opportunity ?? body?.oportunidade
+  const rawOpportunity = participant.oportunidade ?? fields?.is_opportunity ?? fields?.oportunidade ?? body?.is_opportunity ?? body?.oportunidade
   const is_opportunity = rawOpportunity === true || rawOpportunity === 'true' || rawOpportunity === 'sim' || rawOpportunity === 'Sim' || rawOpportunity === 'yes' || rawOpportunity === '1'
 
   if (!name) {
@@ -54,6 +65,10 @@ async function processarParticipante(body: any, supabase: any) {
     const { data } = await supabase.from('participants').select('id').eq('cpf', cpf).single()
     existingParticipant = data
   }
+  if (!existingParticipant && qr_code) {
+    const { data } = await supabase.from('participants').select('id').eq('qr_code', qr_code).single()
+    existingParticipant = data
+  }
   if (!existingParticipant && name) {
     const { data } = await supabase.from('participants').select('id').eq('name', name).single()
     existingParticipant = data
@@ -62,8 +77,19 @@ async function processarParticipante(body: any, supabase: any) {
   const color = getColorFromRevenue(revenue) || null
   const qualification = getQualificationFromRevenue(revenue) || null
 
-  // Extract checkin1/2/3 fields (timestamps mean checked in, null means not)
+  // Extract checkin data from checkin_days format
   const checkinData: Record<string, boolean> = {}
+  const checkinDays = body.checkin_days || {}
+  if (checkinDays.day_1 !== undefined) {
+    checkinData.checked_in_day1 = checkinDays.day_1 === 'checked_in' || checkinDays.day_1 === true
+  }
+  if (checkinDays.day_2 !== undefined) {
+    checkinData.checked_in_day2 = checkinDays.day_2 === 'checked_in' || checkinDays.day_2 === true
+  }
+  if (checkinDays.day_3 !== undefined) {
+    checkinData.checked_in_day3 = checkinDays.day_3 === 'checked_in' || checkinDays.day_3 === true
+  }
+  // Legacy format support
   if (body.checkin1 !== undefined) {
     checkinData.checked_in_day1 = body.checkin1 !== null && body.checkin1 !== false && body.checkin1 !== '' && body.checkin1 !== 0
   }
@@ -74,7 +100,7 @@ async function processarParticipante(body: any, supabase: any) {
     checkinData.checked_in_day3 = body.checkin3 !== null && body.checkin3 !== false && body.checkin3 !== '' && body.checkin3 !== 0
   }
 
-  const participantData = {
+  const participantData: Record<string, any> = {
     name,
     email: email || null,
     phone: phone || null,
@@ -86,13 +112,23 @@ async function processarParticipante(body: any, supabase: any) {
     cpf: cpf || null,
     badge_name: badge_name || null,
     partner: partner || null,
+    companion: companion || null,
     net_profit: net_profit || null,
     color,
     qualification,
     is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
+    // Save form_data as structured Q&A for display
+    form_data: Object.keys(formData).length > 0 ? formData : null,
+    // Save full payload for debugging
     webhook_data: body,
     ...checkinData,
   }
+
+  // Add optional fields if present
+  if (qr_code) participantData.qr_code = qr_code
+  if (category) participantData.category = category
+  if (status) participantData.registration_status = status
+  if (event_id) participantData.event_id = event_id
 
   if (existingParticipant) {
     const { error } = await supabase

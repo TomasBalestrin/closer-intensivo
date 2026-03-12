@@ -833,67 +833,22 @@ export default function ParticipantDetail() {
                       </Button>
                     </CardHeader>
                     <CardContent>
-                      {/* Tabela de Dados - Mostra TUDO */}
                       <div className="divide-y divide-gray-100">
-                        {/* Faturamento */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Faturamento</span>
-                          {isEditing ? (
-                            <Select
-                              value={formData.revenue}
-                              onChange={(e) => {
-                                const rev = e.target.value
-                                const autoColor = getColorFromRevenue(rev) || ''
-                                const autoQual = getQualificationFromRevenue(rev) || ''
-                                setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
-                              }}
-                              options={[
-                                { value: '', label: 'Selecione...' },
-                                ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
-                              ]}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</span>
-                          )}
-                        </div>
+                        {/* Perguntas e Respostas do Webhook (form_data) */}
+                        {(participant as any).form_data && Object.entries((participant as any).form_data).map(([pergunta, resposta]) => (
+                          <div key={pergunta} className="py-3 flex items-center justify-between">
+                            <span className="text-sm text-gray-600">{pergunta}</span>
+                            <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">
+                              {typeof resposta === 'boolean'
+                                ? (resposta ? 'Sim' : 'Não')
+                                : typeof resposta === 'string' && (resposta as string).startsWith('http')
+                                  ? <a href={resposta as string} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver arquivo</a>
+                                  : String(resposta) || '-'}
+                            </span>
+                          </div>
+                        ))}
 
-                        {/* Nicho */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Nicho</span>
-                          <span className="text-sm font-medium text-gray-900">{participant.niche || '-'}</span>
-                        </div>
-
-                        {/* CPF */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">CPF</span>
-                          {isEditing ? (
-                            <Input
-                              value={formData.cpf}
-                              onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                              placeholder="000.000.000-00"
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.cpf || '-'}</span>
-                          )}
-                        </div>
-
-                        {/* Nome no Crachá */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Nome no Crachá</span>
-                          {isEditing ? (
-                            <Input
-                              value={formData.badge_name}
-                              onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.badge_name || '-'}</span>
-                          )}
-                        </div>
-
-                        {/* Funil de Origem */}
+                        {/* Campos de sistema editáveis */}
                         <div className="py-3 flex items-center justify-between">
                           <span className="text-sm text-gray-600">Funil de Origem</span>
                           {isEditing ? (
@@ -908,7 +863,6 @@ export default function ParticipantDetail() {
                           )}
                         </div>
 
-                        {/* Vendedor/Closer que vendeu */}
                         <div className="py-3 flex items-center justify-between">
                           <span className="text-sm text-gray-600">Vendedor/Closer</span>
                           {isEditing ? (
@@ -926,7 +880,6 @@ export default function ParticipantDetail() {
                           )}
                         </div>
 
-                        {/* Mentorado que Convidou */}
                         <div className="py-3 flex items-center justify-between">
                           <span className="text-sm text-gray-600">Mentorado que Convidou</span>
                           {isEditing ? (
@@ -940,59 +893,6 @@ export default function ParticipantDetail() {
                           )}
                         </div>
 
-                        {/* Acompanhante */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Acompanhante</span>
-                          {isEditing ? (
-                            <Input
-                              value={formData.companion}
-                              onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                              className="w-48"
-                            />
-                          ) : (
-                            <div className="text-right">
-                              <span className="text-sm font-medium text-gray-900">{participant.companion || '-'}</span>
-                              {companionMatch && (
-                                <button
-                                  type="button"
-                                  onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
-                                  className="block text-xs text-blue-600 hover:underline mt-0.5"
-                                >
-                                  Ver ficha
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Lucro Líquido */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Lucro Líquido</span>
-                          {isEditing ? (
-                            <Input
-                              value={formData.net_profit}
-                              onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.net_profit || '-'}</span>
-                          )}
-                        </div>
-
-                        {/* Sócio */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Sócio</span>
-                          {isEditing ? (
-                            <Input
-                              value={formData.partner}
-                              onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.partner || '-'}</span>
-                          )}
-                        </div>
-
                         {/* QR Code - se existir */}
                         {(participant as any).qr_code && (
                           <div className="py-3 flex items-center justify-between">
@@ -1001,7 +901,6 @@ export default function ParticipantDetail() {
                           </div>
                         )}
 
-                        {/* Vezes Chamado */}
                         <div className="py-3 flex items-center justify-between">
                           <span className="text-sm text-gray-600">Vezes Chamado</span>
                           {isEditing ? (
@@ -1016,7 +915,6 @@ export default function ParticipantDetail() {
                           )}
                         </div>
 
-                        {/* Oportunidade */}
                         <div className="py-3 flex items-center justify-between">
                           <span className="text-sm text-gray-600">É Oportunidade?</span>
                           {isEditing ? (
