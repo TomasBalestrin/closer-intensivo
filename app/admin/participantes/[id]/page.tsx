@@ -50,7 +50,7 @@ import {
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel } from '@/lib/utils'
 
-type TabType = 'dados' | 'vendas' | 'disc' | 'acoes' | 'webhook'
+type TabType = 'perfil' | 'disc'
 
 export default function ParticipantDetail() {
   const params = useParams()
@@ -58,7 +58,7 @@ export default function ParticipantDetail() {
   const supabase = createClient()
   const { showToast } = useToast()
 
-  const [activeTab, setActiveTab] = useState<TabType>('dados')
+  const [activeTab, setActiveTab] = useState<TabType>('perfil')
   const [participant, setParticipant] = useState<Participant | null>(null)
   const [closers, setClosers] = useState<UserType[]>([])
   const [forms, setForms] = useState<Form[]>([])
@@ -589,11 +589,8 @@ export default function ParticipantDetail() {
   const hasPendingForms = pendingForms.length > 0
 
   const tabs = [
-    { id: 'dados' as TabType, label: 'Dados', icon: User },
-    { id: 'vendas' as TabType, label: 'Vendas', icon: ShoppingCart, count: sales.length },
+    { id: 'perfil' as TabType, label: 'Perfil', icon: User },
     { id: 'disc' as TabType, label: 'DISC', icon: Brain, badge: participant.disc_profile },
-    { id: 'acoes' as TabType, label: 'Ações', icon: Zap },
-    { id: 'webhook' as TabType, label: 'Webhook', icon: Code },
   ]
 
   return (
@@ -734,11 +731,6 @@ export default function ParticipantDetail() {
             >
               <tab.icon className="h-4 w-4" />
               <span>{tab.label}</span>
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full font-medium">
-                  {tab.count}
-                </span>
-              )}
               {tab.badge && (
                 <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-bold">
                   {tab.badge}
@@ -750,699 +742,275 @@ export default function ParticipantDetail() {
       </div>
 
       {/* Tab Content */}
-      <div className="mt-6">
-        {/* DADOS TAB */}
-        {activeTab === 'dados' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Nova Interface (Março 2026+) */}
-              {isNewInterface ? (
-                <>
-                  {/* Presença no Evento */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Presença no Evento</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2">
-                        {[1, 2, 3].map((day) => {
-                          const field = `checked_in_day${day}` as keyof Participant
-                          const isChecked = participant[field] as boolean
-                          const isSaving = checkinSaving === day
-                          return (
-                            <button
-                              key={day}
-                              onClick={() => handleToggleCheckin(day)}
-                              disabled={isSaving}
-                              className={`flex-1 flex flex-col items-center py-2 px-3 rounded-lg border transition-all ${
-                                isChecked
-                                  ? 'bg-green-50 border-green-400'
-                                  : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                              } ${isSaving ? 'opacity-60' : 'cursor-pointer'}`}
-                            >
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${
-                                isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                              }`}>
-                                {isSaving ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : isChecked ? (
-                                  <Check className="h-4 w-4" />
-                                ) : (
-                                  <span className="text-xs font-bold">D{day}</span>
-                                )}
-                              </div>
-                              <span className={`text-[10px] ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
-                                {isChecked ? 'Presente' : 'Ausente'}
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Informações do Participante */}
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-4">
-                      <CardTitle className="text-base">Informações do Participante</CardTitle>
-                      <Button
-                        variant={isEditing ? 'primary' : 'ghost'}
-                        size="sm"
-                        onClick={() => {
-                          if (isEditing) {
-                            handleSave()
-                          }
-                          setIsEditing(!isEditing)
-                        }}
-                        loading={saving}
+      <div className="mt-4">
+        {/* PERFIL TAB */}
+        {activeTab === 'perfil' && (
+          <div className="space-y-4">
+            {/* Status Strip - Presença + Closer + Chamados */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Presença */}
+              <div className="bg-white rounded-xl border p-3">
+                <p className="text-[10px] text-gray-500 uppercase font-medium mb-2">Presença</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3].map((day) => {
+                    const field = `checked_in_day${day}` as keyof Participant
+                    const isChecked = participant[field] as boolean
+                    const isSaving = checkinSaving === day
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => handleToggleCheckin(day)}
+                        disabled={isSaving}
+                        className={`flex-1 flex flex-col items-center py-1.5 rounded-lg transition-all ${
+                          isChecked
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        } ${isSaving ? 'opacity-60' : 'cursor-pointer'}`}
                       >
-                        {isEditing ? (
-                          <>
-                            <Check className="h-4 w-4 mr-1" />
-                            Salvar
-                          </>
+                        {isSaving ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : isChecked ? (
+                          <Check className="h-3 w-3" />
                         ) : (
-                          <>
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Editar
-                          </>
+                          <span className="text-[10px] font-bold">D{day}</span>
                         )}
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="divide-y divide-gray-100">
-                        {/* Perguntas e Respostas do Webhook (form_data) */}
-                        {(participant as any).form_data && Object.entries((participant as any).form_data).map(([pergunta, resposta]) => (
-                          <div key={pergunta} className="py-3 flex items-center justify-between">
-                            <span className="text-sm text-gray-600">{pergunta}</span>
-                            <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">
-                              {typeof resposta === 'boolean'
-                                ? (resposta ? 'Sim' : 'Não')
-                                : typeof resposta === 'string' && (resposta as string).startsWith('http')
-                                  ? <a href={resposta as string} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Ver arquivo</a>
-                                  : String(resposta) || '-'}
-                            </span>
-                          </div>
-                        ))}
-
-                        {/* Campos de sistema editáveis */}
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Funil de Origem</span>
-                          {isEditing ? (
-                            <Select
-                              value={formData.funnel}
-                              onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
-                              options={FUNIL_OPTIONS}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.funnel || '-'}</span>
-                          )}
-                        </div>
-
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Vendedor/Closer</span>
-                          {isEditing ? (
-                            <Select
-                              value={formData.seller_closer_id}
-                              onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
-                              options={[
-                                { value: '', label: 'Selecione...' },
-                                ...closers.map(c => ({ value: c.id, label: c.name })),
-                              ]}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</span>
-                          )}
-                        </div>
-
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Mentorado que Convidou</span>
-                          {isEditing ? (
-                            <Input
-                              value={formData.mentee_inviter}
-                              onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
-                              className="w-48"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.mentee_inviter || '-'}</span>
-                          )}
-                        </div>
-
-                        {/* QR Code - se existir */}
-                        {(participant as any).qr_code && (
-                          <div className="py-3 flex items-center justify-between">
-                            <span className="text-sm text-gray-600">QR Code</span>
-                            <span className="text-sm font-mono font-medium text-gray-900">{(participant as any).qr_code}</span>
-                          </div>
-                        )}
-
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Vezes Chamado</span>
-                          {isEditing ? (
-                            <Select
-                              value={formData.times_called.toString()}
-                              onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
-                              options={[0,1,2,3,4,5].map(n => ({ value: n.toString(), label: n.toString() }))}
-                              className="w-24"
-                            />
-                          ) : (
-                            <span className="text-sm font-medium text-gray-900">{participant.times_called || 0}</span>
-                          )}
-                        </div>
-
-                        <div className="py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-600">É Oportunidade?</span>
-                          {isEditing ? (
-                            <Checkbox
-                              id="is_opportunity"
-                              checked={formData.is_opportunity}
-                              onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
-                            />
-                          ) : (
-                            <span className={`text-sm font-medium ${participant.is_opportunity ? 'text-green-600' : 'text-gray-500'}`}>
-                              {participant.is_opportunity ? 'Sim' : 'Não'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Observações */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Observações</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <textarea
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        onBlur={handleSave}
-                        placeholder="Adicione observações sobre o participante..."
-                        rows={4}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                      />
-                    </CardContent>
-                  </Card>
-                </>
-              ) : (
-                /* Interface Antiga (Janeiro) - mantém os dois cards separados */
-                <>
-                  {/* Webhook Data */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Dados do Participante</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Faturamento:</span>
-                          <p className="font-medium">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Nicho:</span>
-                          <p className="font-medium">{participant.niche || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Email:</span>
-                          {participant.email ? (
-                            <a href={`mailto:${participant.email}`} className="text-blue-600 hover:underline">
-                              {participant.email}
-                            </a>
-                          ) : (
-                            <p className="text-gray-400">-</p>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-gray-500">WhatsApp:</span>
-                          {participant.phone ? (
-                            <a
-                              href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline flex items-center gap-1"
-                            >
-                              {participant.phone}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ) : (
-                            <p className="text-gray-400">-</p>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Instagram:</span>
-                          {participant.instagram ? (
-                            <a
-                              href={getInstagramUrl(participant.instagram) || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline flex items-center gap-1"
-                            >
-                              {participant.instagram}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ) : (
-                            <p className="text-gray-400">-</p>
-                          )}
-                        </div>
-                        {[1, 2, 3].map((day) => {
-                          const field = `checked_in_day${day}` as keyof Participant
-                          const isChecked = participant[field] as boolean
-                          const isSaving = checkinSaving === day
-                          return (
-                            <button
-                              key={day}
-                              onClick={() => handleToggleCheckin(day)}
-                              disabled={isSaving}
-                              className={`flex items-center gap-2 p-3 sm:p-2 rounded-lg border-2 transition-all text-left min-h-[48px] ${
-                                isChecked
-                                  ? 'bg-green-50 border-green-300 hover:bg-green-100 active:bg-green-200'
-                                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200'
-                              } ${isSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
-                            >
-                              <div className={`flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-full flex-shrink-0 ${
-                                isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                              }`}>
-                                {isSaving ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : isChecked ? (
-                                  <Check className="h-4 w-4" />
-                                ) : (
-                                  <span className="text-xs font-bold">D{day}</span>
-                                )}
-                              </div>
-                              <div>
-                                <p className="text-gray-500 text-xs">Check-in Dia {day}</p>
-                                <p className={`font-medium text-sm ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
-                                  {isChecked ? 'Credenciado' : 'Não'}
-                                </p>
-                              </div>
-                            </button>
-                          )
-                        })}
-                        <div>
-                          <span className="text-gray-500">CPF:</span>
-                          <p className="font-medium">{participant.cpf || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Nome no Crachá:</span>
-                          <p className="font-medium">{participant.badge_name || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Lucro Líquido:</span>
-                          <p className="font-medium">{participant.net_profit || '-'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Sócio:</span>
-                          <p className="font-medium">{participant.partner || '-'}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Manual Fields */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Campos Manuais</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Select
-                          label="Faturamento"
-                          value={formData.revenue}
-                          onChange={(e) => {
-                            const rev = e.target.value
-                            const autoColor = getColorFromRevenue(rev) || ''
-                            const autoQual = getQualificationFromRevenue(rev) || ''
-                            setFormData({ ...formData, revenue: rev, color: autoColor, qualification: autoQual })
-                          }}
-                          options={[
-                            { value: '', label: 'Selecione...' },
-                            ...FATURAMENTO_OPTIONS.map(opt => ({ value: opt.value, label: opt.label })),
-                          ]}
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Cor (automático)</label>
-                            <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getColorClass(formData.color) || 'bg-gray-100 text-gray-500'}`}>
-                              {formData.color ? FATURAMENTO_OPTIONS.find(o => o.color === formData.color)?.color?.replace('_', ' ').replace(/^\w/, c => c.toUpperCase()) || formData.color : 'Selecione faturamento'}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Qualificação (automático)</label>
-                            <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getQualificationClass(formData.qualification) || 'bg-gray-100 text-gray-500'}`}>
-                              {formData.qualification === 'alto' ? 'Alto Qualificado' : formData.qualification === 'medio' ? 'Médio Qualificado' : formData.qualification === 'baixo' ? 'Baixo Qualificado' : 'Selecione faturamento'}
-                            </div>
-                          </div>
-                        </div>
-                        <Select
-                          label="Funil de Origem"
-                          value={formData.funnel}
-                          onChange={(e) => setFormData({ ...formData, funnel: e.target.value })}
-                          options={FUNIL_OPTIONS}
-                        />
-                        <Select
-                          label="Vendedor/Convidador"
-                          value={formData.seller_closer_id}
-                          onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value, seller_closer_other: e.target.value === 'outros' ? formData.seller_closer_other : '' })}
-                          options={[
-                            { value: '', label: 'Selecione...' },
-                            ...closers.map(c => ({ value: c.id, label: c.name })),
-                            { value: 'outros', label: 'Outros' },
-                          ]}
-                        />
-                        {formData.seller_closer_id === 'outros' && (
-                          <Input
-                            label="Nome do Vendedor"
-                            value={formData.seller_closer_other}
-                            onChange={(e) => setFormData({ ...formData, seller_closer_other: e.target.value })}
-                            placeholder="Digite o nome do vendedor"
-                            required
-                          />
-                        )}
-                        <Input
-                          label="Mentorado que Convidou"
-                          value={formData.mentee_inviter}
-                          onChange={(e) => setFormData({ ...formData, mentee_inviter: e.target.value })}
-                        />
-                        <div>
-                          <Input
-                            label="Acompanhante"
-                            value={formData.companion}
-                            onChange={(e) => setFormData({ ...formData, companion: e.target.value })}
-                          />
-                          {companionMatch && (
-                            <button
-                              type="button"
-                              onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
-                              className="mt-1 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                            >
-                              <Users className="h-3 w-3" />
-                              Ver card de {companionMatch.name}
-                            </button>
-                          )}
-                        </div>
-                        <Select
-                          label="Vezes Chamado"
-                          value={formData.times_called.toString()}
-                          onChange={(e) => setFormData({ ...formData, times_called: parseInt(e.target.value) })}
-                          options={[0,1,2,3,4].map(n => ({ value: n.toString(), label: n.toString() }))}
-                        />
-                        <div className="flex items-center pt-6">
-                          <Checkbox
-                            id="is_opportunity"
-                            label="É Oportunidade"
-                            checked={formData.is_opportunity}
-                            onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })}
-                          />
-                        </div>
-                        <Input
-                          label="CPF"
-                          value={formData.cpf}
-                          onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                          placeholder="000.000.000-00"
-                        />
-                        <Input
-                          label="Nome no Crachá"
-                          value={formData.badge_name}
-                          onChange={(e) => setFormData({ ...formData, badge_name: e.target.value })}
-                        />
-                        <Input
-                          label="Lucro Líquido"
-                          value={formData.net_profit}
-                          onChange={(e) => setFormData({ ...formData, net_profit: e.target.value })}
-                          placeholder="R$ 0.000,00"
-                        />
-                        <Input
-                          label="Sócio"
-                          value={formData.partner}
-                          onChange={(e) => setFormData({ ...formData, partner: e.target.value })}
-                        />
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Observações / Notas</label>
-                          <textarea
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            placeholder="Adicione observações sobre o participante..."
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-6">
-                        <Button onClick={handleSave} loading={saving}>
-                          Salvar Alterações
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-
-              {/* Respostas do Formulário */}
-              {(participant.challenge_answer || participant.desired_change_answer) && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-purple-600" />
-                      Respostas do Formulário
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {participant.challenge_answer && (
-                      <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl">
-                        <p className="text-xs font-semibold text-purple-600 mb-2 flex items-center gap-1">
-                          <Target className="h-3 w-3" />
-                          Maior dificuldade
-                        </p>
-                        <p className="text-gray-800 text-sm leading-relaxed">{participant.challenge_answer}</p>
-                      </div>
-                    )}
-                    {participant.desired_change_answer && (
-                      <div className="p-4 bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-xl">
-                        <p className="text-xs font-semibold text-indigo-600 mb-2 flex items-center gap-1">
-                          <Lightbulb className="h-3 w-3" />
-                          O que espera do evento
-                        </p>
-                        <p className="text-gray-800 text-sm leading-relaxed">{participant.desired_change_answer}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-4">
-              {/* Closer Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Closer Responsável</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {assignedCloser ? (
-                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
-                      <Avatar src={assignedCloser.photo_url} alt={assignedCloser.name} />
-                      <div>
-                        <p className="font-semibold text-gray-900">{assignedCloser.name}</p>
-                        <p className="text-xs text-green-600">Closer atribuído</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <div className="w-12 h-12 rounded-full bg-gray-100 mx-auto mb-2 flex items-center justify-center">
-                        <UserPlus className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <p className="text-sm text-gray-500 mb-3">Nenhum closer atribuído</p>
-                    </div>
-                  )}
-                  <Button variant="secondary" className="w-full mt-3" onClick={() => setAssignCloserModal(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    {assignedCloser ? 'Alterar' : 'Atribuir'} Closer
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Resumo de Vendas */}
-              {sales.length > 0 && (
-                <Card className="border-green-200 bg-green-50/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-green-800 flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      Resumo de Vendas
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-green-700">Total de Vendas</span>
-                        <span className="font-bold text-green-800">{sales.length}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-green-700">Valor Total</span>
-                        <span className="font-bold text-green-800">
-                          {formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full mt-3 text-green-700"
-                      onClick={() => setActiveTab('vendas')}
-                    >
-                      Ver detalhes
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Arquétipos */}
-              {participant.primary_archetype && (
-                <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-purple-100/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-purple-800">Arquétipos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">{getArchetypeIcon(participant.primary_archetype)}</div>
-                      <p className="font-bold text-purple-800">{participant.primary_archetype}</p>
-                      {participant.secondary_archetype && (
-                        <p className="text-sm text-purple-600 mt-1">
-                          + {getArchetypeIcon(participant.secondary_archetype)} {participant.secondary_archetype}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* DISC Profile */}
-              {hasDiscProfile && (
-                <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-blue-100/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-blue-800 flex items-center gap-2">
-                      <Brain className="h-4 w-4" />
-                      Perfil DISC
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-xl bg-blue-600 text-white flex items-center justify-center text-3xl font-bold">
-                        {participant.disc_profile}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full mt-3 text-blue-700"
-                      onClick={() => setActiveTab('disc')}
-                    >
-                      Ver análise completa
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* VENDAS TAB */}
-        {activeTab === 'vendas' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Vendas Realizadas</h2>
-              <Button onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.closer_id || '' })); setSaleModal(true) }}>
-                <DollarSign className="h-4 w-4 mr-2" />
-                Registrar Venda
-              </Button>
-            </div>
-
-            {sales.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">Nenhuma venda registrada</p>
-                  <Button className="mt-4" onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.closer_id || '' })); setSaleModal(true) }}>
-                    Registrar Primeira Venda
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {sales.map((sale: any) => (
-                  <Card key={sale.id}>
-                    <CardContent className="py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 flex-1">
-                          <div>
-                            <span className="text-sm text-gray-500">Produto</span>
-                            <p className="font-medium">{sale.product_name}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Valor Total</span>
-                            <p className="font-medium text-green-600">{formatCurrency(sale.total_value)}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Entrada</span>
-                            <p className="font-medium">{formatCurrency(sale.entry_value)}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Negociação</span>
-                            <p className="font-medium">{sale.negotiation_type}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Closer</span>
-                            <p className="font-medium">{sale.closer?.name || '-'}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEditSale(sale)}
-                            className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                            title="Editar venda"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeletingSale(sale)}
-                            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                            title="Excluir venda"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {/* Sales Summary */}
-                <Card className="bg-green-50 border-green-200">
-                  <CardContent className="py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                      <div>
-                        <p className="text-sm text-green-600">Total Vendas</p>
-                        <p className="text-2xl font-bold text-green-700">{sales.length}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-green-600">Valor Total</p>
-                        <p className="text-2xl font-bold text-green-700">
-                          {formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-green-600">Total Entradas</p>
-                        <p className="text-2xl font-bold text-green-700">
-                          {formatCurrency(sales.reduce((sum, s) => sum + Number(s.entry_value), 0))}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
+
+              {/* Closer */}
+              <button
+                onClick={() => setAssignCloserModal(true)}
+                className="bg-white rounded-xl border p-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Closer</p>
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {assignedCloser?.name || 'Não atribuído'}
+                </p>
+              </button>
+
+              {/* Chamados */}
+              <button
+                onClick={handleMarcarChamado}
+                disabled={chamadoSaving}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  participant.chamado
+                    ? 'bg-yellow-50 border-yellow-200'
+                    : 'bg-white hover:bg-gray-50'
+                }`}
+              >
+                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Chamados</p>
+                <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
+                  {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
+                </p>
+              </button>
+            </div>
+
+            {/* Action Bar - Vender */}
+            <button
+              onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.closer_id || '' })); setSaleModal(true) }}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl font-medium transition-colors"
+            >
+              <DollarSign className="h-5 w-5" />
+              <span>Registrar Venda</span>
+            </button>
+
+            {/* Seção Contato */}
+            <div className="bg-white rounded-xl border divide-y">
+              <div className="px-4 py-3 flex items-center justify-between">
+                <span className="text-xs text-gray-500 uppercase font-medium">Contato</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (isEditing) handleSave()
+                    setIsEditing(!isEditing)
+                  }}
+                  loading={saving}
+                >
+                  {isEditing ? <><Check className="h-3 w-3 mr-1" />Salvar</> : <><Pencil className="h-3 w-3 mr-1" />Editar</>}
+                </Button>
+              </div>
+              {participant.email && (
+                <a href={`mailto:${participant.email}`} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-900">{participant.email}</span>
+                </a>
+              )}
+              {participant.phone && (
+                <a href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                  <Phone className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-gray-900">{participant.phone}</span>
+                  <ExternalLink className="h-3 w-3 text-gray-400 ml-auto" />
+                </a>
+              )}
+              {participant.instagram && (
+                <a href={getInstagramUrl(participant.instagram) || '#'} target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                  <span className="text-pink-500 text-sm font-medium">@</span>
+                  <span className="text-sm text-gray-900">{participant.instagram}</span>
+                  <ExternalLink className="h-3 w-3 text-gray-400 ml-auto" />
+                </a>
+              )}
+            </div>
+
+            {/* Seção Acompanhante */}
+            {((participant as any).tem_acompanhante || participant.companion) && (
+              <div className="bg-white rounded-xl border p-4">
+                <p className="text-xs text-gray-500 uppercase font-medium mb-2">Acompanhante</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{participant.companion || '-'}</p>
+                    {(participant as any).relacao_acompanhante && (
+                      <p className="text-sm text-gray-500">{(participant as any).relacao_acompanhante}</p>
+                    )}
+                  </div>
+                  {companionMatch && (
+                    <button
+                      onClick={() => router.push(`/admin/participantes/${companionMatch.id}`)}
+                      className="ml-auto text-sm text-blue-600 hover:underline"
+                    >
+                      Ver perfil
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Seção Negócio */}
+            <div className="bg-white rounded-xl border divide-y">
+              <div className="px-4 py-3">
+                <span className="text-xs text-gray-500 uppercase font-medium">Negócio</span>
+              </div>
+              <div className="px-4 py-3 flex justify-between">
+                <span className="text-sm text-gray-500">Área de Atuação</span>
+                <span className="text-sm font-medium text-gray-900">{participant.niche || '-'}</span>
+              </div>
+              <div className="px-4 py-3 flex justify-between">
+                <span className="text-sm text-gray-500">Faturamento</span>
+                <span className="text-sm font-medium text-gray-900">{normalizeRevenue(participant.revenue) || participant.revenue || '-'}</span>
+              </div>
+              <div className="px-4 py-3 flex justify-between">
+                <span className="text-sm text-gray-500">Funil de Origem</span>
+                {isEditing ? (
+                  <Select value={formData.funnel} onChange={(e) => setFormData({ ...formData, funnel: e.target.value })} options={FUNIL_OPTIONS} className="w-40" />
+                ) : (
+                  <span className="text-sm font-medium text-gray-900">{participant.funnel || '-'}</span>
+                )}
+              </div>
+              <div className="px-4 py-3 flex justify-between">
+                <span className="text-sm text-gray-500">Vendedor</span>
+                {isEditing ? (
+                  <Select
+                    value={formData.seller_closer_id}
+                    onChange={(e) => setFormData({ ...formData, seller_closer_id: e.target.value })}
+                    options={[{ value: '', label: 'Selecione...' }, ...closers.map(c => ({ value: c.id, label: c.name }))]}
+                    className="w-40"
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-gray-900">{closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</span>
+                )}
+              </div>
+              <div className="px-4 py-3 flex justify-between">
+                <span className="text-sm text-gray-500">É Oportunidade?</span>
+                {isEditing ? (
+                  <Checkbox id="is_opportunity" checked={formData.is_opportunity} onChange={(e) => setFormData({ ...formData, is_opportunity: e.target.checked })} />
+                ) : (
+                  <span className={`text-sm font-medium ${participant.is_opportunity ? 'text-green-600' : 'text-gray-500'}`}>
+                    {participant.is_opportunity ? 'Sim' : 'Não'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Respostas do Formulário */}
+            {(participant.challenge_answer || participant.desired_change_answer) && (
+              <div className="bg-white rounded-xl border divide-y">
+                <div className="px-4 py-3">
+                  <span className="text-xs text-gray-500 uppercase font-medium">Respostas do Formulário</span>
+                </div>
+                {participant.challenge_answer && (
+                  <div className="px-4 py-3">
+                    <p className="text-xs text-purple-600 font-medium mb-1">Maior dificuldade</p>
+                    <p className="text-sm text-gray-900">{participant.challenge_answer}</p>
+                  </div>
+                )}
+                {participant.desired_change_answer && (
+                  <div className="px-4 py-3">
+                    <p className="text-xs text-indigo-600 font-medium mb-1">O que espera do evento</p>
+                    <p className="text-sm text-gray-900">{participant.desired_change_answer}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Observações */}
+            <div className="bg-white rounded-xl border p-4">
+              <p className="text-xs text-gray-500 uppercase font-medium mb-2">Observações</p>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onBlur={handleSave}
+                placeholder="Adicione observações sobre o participante..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+            </div>
+
+            {/* Vendas */}
+            <div className="bg-white rounded-xl border divide-y">
+              <div className="px-4 py-3 flex items-center justify-between">
+                <span className="text-xs text-gray-500 uppercase font-medium">Vendas ({sales.length})</span>
+                {sales.length > 0 && (
+                  <span className="text-sm font-bold text-green-600">
+                    {formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}
+                  </span>
+                )}
+              </div>
+              {sales.length === 0 ? (
+                <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                  Nenhuma venda registrada
+                </div>
+              ) : (
+                sales.map((sale: any) => (
+                  <div key={sale.id} className="px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{sale.product_name}</p>
+                      <p className="text-xs text-gray-500">{sale.closer?.name || '-'} • {sale.negotiation_type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-green-600">{formatCurrency(sale.total_value)}</span>
+                      <button onClick={() => handleEditSale(sale)} className="p-1 text-gray-400 hover:text-blue-600">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button onClick={() => setDeletingSale(sale)} className="p-1 text-gray-400 hover:text-red-600">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* DISC Preview */}
+            {hasDiscProfile && (
+              <button
+                onClick={() => setActiveTab('disc')}
+                className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-4 flex items-center gap-4 hover:from-blue-100 hover:to-indigo-100 transition-colors"
+              >
+                <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
+                  {participant.disc_profile}
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-sm font-medium text-blue-800">Perfil DISC: {participant.disc_profile === 'D' ? 'Dominância' : participant.disc_profile === 'I' ? 'Influência' : participant.disc_profile === 'S' ? 'Estabilidade' : participant.disc_profile === 'C' ? 'Conformidade' : participant.disc_profile}</p>
+                  <p className="text-xs text-blue-600">Toque para ver análise completa</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-blue-400" />
+              </button>
             )}
           </div>
         )}
@@ -1896,175 +1464,6 @@ export default function ParticipantDetail() {
           </div>
         )}
 
-        {/* AÇÕES TAB */}
-        {activeTab === 'acoes' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Formulário DISC</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button className="w-full" variant="secondary" onClick={handleGenerateForm} loading={formLoading}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Gerar Novo Formulário
-                </Button>
-
-                {forms.length > 0 && (
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-gray-500 mb-3">Formulários existentes:</p>
-                    <div className="space-y-3">
-                      {forms.map((form: any) => {
-                        // Check if form is actually answered (has answers with content)
-                        const hasAnswers = form.answers && Object.keys(form.answers).length > 0
-                        const isCompleted = form.completed_at && hasAnswers
-
-                        return (
-                          <div key={form.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Badge variant={isCompleted ? 'success' : 'warning'}>
-                                {isCompleted ? 'Respondido' : 'Aguardando resposta'}
-                              </Badge>
-                              <div className="flex gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => copyFormLink(form)} title="Copiar link">
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <a href={`/form/${getFormCode(form)}`} target="_blank" rel="noopener noreferrer">
-                                  <Button variant="ghost" size="sm" title="Abrir formulário">
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Button>
-                                </a>
-                              </div>
-                            </div>
-                            {/* Always show form link */}
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                readOnly
-                                value={typeof window !== 'undefined' ? `${window.location.origin}/form/${getFormCode(form)}` : `/form/${getFormCode(form)}`}
-                                className="flex-1 text-xs p-2 bg-white border rounded text-gray-600 font-mono"
-                                onClick={(e) => (e.target as HTMLInputElement).select()}
-                              />
-                              <Button size="sm" onClick={() => copyFormLink(form)}>
-                                Copiar
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Closer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {assignedCloser ? (
-                  <div className="flex items-center gap-3 mb-4">
-                    <Avatar src={assignedCloser.photo_url} alt={assignedCloser.name} size="lg" />
-                    <div>
-                      <p className="font-medium">{assignedCloser.name}</p>
-                      <p className="text-sm text-gray-500">{assignedCloser.email}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 mb-4">Nenhum closer atribuído</p>
-                )}
-                <Button className="w-full" variant="secondary" onClick={() => setAssignCloserModal(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  {assignedCloser ? 'Alterar' : 'Atribuir'} Closer
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Vendas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center mb-4">
-                  <p className="text-3xl font-bold text-green-600">{sales.length}</p>
-                  <p className="text-sm text-gray-500">vendas registradas</p>
-                </div>
-                <Button className="w-full" onClick={() => setSaleModal(true)}>
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Registrar Venda
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Links Rápidos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {participant.instagram && (
-                  <a
-                    href={getInstagramUrl(participant.instagram) || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 text-blue-600"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Instagram: {participant.instagram}
-                  </a>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* WEBHOOK TAB */}
-        {activeTab === 'webhook' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
-                Dados do Webhook
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {participant.webhook_data ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-500">
-                    Payload original recebido via webhook. Use para verificar quais campos estão sendo enviados.
-                  </p>
-                  <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-[600px]">
-                    <pre className="text-sm text-green-400 font-mono whitespace-pre-wrap">
-                      {JSON.stringify(participant.webhook_data, null, 2)}
-                    </pre>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <h4 className="font-medium text-amber-800 mb-2">Campos esperados pelo sistema:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-amber-700">
-                      <div><strong>Nome:</strong> nome, name, nome_completo</div>
-                      <div><strong>Email:</strong> email, e_mail</div>
-                      <div><strong>Telefone:</strong> phone, whatsapp, telefone</div>
-                      <div><strong>Instagram:</strong> instagram, insta</div>
-                      <div><strong>CPF:</strong> cpf, documento</div>
-                      <div><strong>Nicho:</strong> nicho, area_atuacao, setor</div>
-                      <div><strong>Faturamento:</strong> faturamento, revenue</div>
-                      <div><strong>Lucro:</strong> lucro_liquido, net_profit</div>
-                      <div><strong>Crachá:</strong> badge_name, nome_para_cracha</div>
-                      <div><strong>Sócio:</strong> socio, partner</div>
-                      <div><strong>Funil:</strong> funnel, funil, origem</div>
-                      <div><strong>Foto:</strong> photo_url, foto</div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Code className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Nenhum dado de webhook disponível.</p>
-                  <p className="text-sm mt-1">Este participante pode ter sido cadastrado manualmente.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Modals */}
