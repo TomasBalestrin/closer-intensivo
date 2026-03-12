@@ -760,11 +760,11 @@ export default function ParticipantDetail() {
                 <>
                   {/* Presença no Evento */}
                   <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Presença no Evento</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Presença no Evento</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         {[1, 2, 3].map((day) => {
                           const field = `checked_in_day${day}` as keyof Participant
                           const isChecked = participant[field] as boolean
@@ -774,27 +774,24 @@ export default function ParticipantDetail() {
                               key={day}
                               onClick={() => handleToggleCheckin(day)}
                               disabled={isSaving}
-                              className={`flex-1 flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
+                              className={`flex-1 flex flex-col items-center py-2 px-3 rounded-lg border transition-all ${
                                 isChecked
                                   ? 'bg-green-50 border-green-400'
                                   : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                               } ${isSaving ? 'opacity-60' : 'cursor-pointer'}`}
                             >
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${
                                 isChecked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
                               }`}>
                                 {isSaving ? (
-                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                  <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : isChecked ? (
-                                  <Check className="h-5 w-5" />
+                                  <Check className="h-4 w-4" />
                                 ) : (
-                                  <span className="font-bold">D{day}</span>
+                                  <span className="text-xs font-bold">D{day}</span>
                                 )}
                               </div>
-                              <span className={`text-sm font-medium ${isChecked ? 'text-green-700' : 'text-gray-500'}`}>
-                                Dia {day}
-                              </span>
-                              <span className={`text-xs ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
+                              <span className={`text-[10px] ${isChecked ? 'text-green-600' : 'text-gray-400'}`}>
                                 {isChecked ? 'Presente' : 'Ausente'}
                               </span>
                             </button>
