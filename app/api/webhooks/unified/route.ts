@@ -37,6 +37,9 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   instagram: ['instagram', 'insta', 'qual_seu_instagram', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram'],
   partner: ['voce_tem_socio', 'socio', 'tem_socio'],
   net_profit: ['lucro_liquido', 'qual_seu_lucro_liquido_mensal', 'lucro'],
+  tem_acompanhante: ['voce_vai_com_acompanhante', 'tem_acompanhante', 'vai_com_acompanhante', 'acompanhante'],
+  relacao_acompanhante: ['seu_acompanhante_e', 'relacao_acompanhante', 'tipo_acompanhante', 'quem_e_acompanhante'],
+  companion: ['qual_o_nome_e_sobrenome_do_seu_acompanhante', 'nome_acompanhante', 'nome_do_acompanhante', 'acompanhante_nome'],
 }
 
 // Extract value from form_data using flexible key matching
@@ -141,6 +144,16 @@ export async function POST(request: Request) {
     const partner = extractFromFormData(formData, 'partner')
     const netProfit = extractFromFormData(formData, 'net_profit')
 
+    // Extract companion fields
+    const temAcompanhanteRaw = extractFromFormData(formData, 'tem_acompanhante')
+    const temAcompanhante = temAcompanhanteRaw === true ||
+                            temAcompanhanteRaw === 'SIM' ||
+                            temAcompanhanteRaw === 'sim' ||
+                            temAcompanhanteRaw === 'Sim' ||
+                            temAcompanhanteRaw === 'true'
+    const relacaoAcompanhante = extractFromFormData(formData, 'relacao_acompanhante')
+    const companion = extractFromFormData(formData, 'companion')
+
     // Extract additional fields from participant object
     const closer = participant.closer
     const category = participant.category || participant.setor
@@ -212,6 +225,9 @@ export async function POST(request: Request) {
       instagram,
       partner,
       net_profit: netProfit,
+      tem_acompanhante: temAcompanhante,
+      relacao_acompanhante: relacaoAcompanhante,
+      companion,
       color,
       qualification,
       funnel: participant.funnel_origin || null,
