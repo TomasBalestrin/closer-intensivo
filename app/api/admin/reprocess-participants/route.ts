@@ -216,6 +216,11 @@ function extractFieldsFromUnifiedFormat(webhookData: any): Record<string, any> {
   const participant = webhookData.participant
   const formData = participant.form_data || {}
 
+  // Save original form_data (perguntas/respostas do webhook)
+  if (Object.keys(formData).length > 0) {
+    extracted.form_data = formData
+  }
+
   // Direct fields from participant object
   if (participant.qr_code) extracted.qr_code = participant.qr_code
   if (participant.category) extracted.category = participant.category
