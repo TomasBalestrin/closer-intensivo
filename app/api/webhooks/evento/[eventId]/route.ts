@@ -160,18 +160,22 @@ export async function POST(
     // Check if participant exists (within this event)
     let existingParticipant = null
 
-    if (externalId) {
+    // 1. By CPF (most reliable - present in all forms)
+    if (cpf) {
+      const { data } = await scopedQuery().eq('cpf', cpf).single()
+      existingParticipant = data
+    }
+    // 2. By external_id
+    if (!existingParticipant && externalId) {
       const { data } = await scopedQuery().eq('external_id', externalId).single()
       existingParticipant = data
     }
+    // 3. By email
     if (!existingParticipant && email) {
       const { data } = await scopedQuery().eq('email', email).single()
       existingParticipant = data
     }
-    if (!existingParticipant && cpf) {
-      const { data } = await scopedQuery().eq('cpf', cpf).single()
-      existingParticipant = data
-    }
+    // 4. By name (last resort)
     if (!existingParticipant && name) {
       const { data } = await scopedQuery().eq('name', name).single()
       existingParticipant = data
@@ -209,18 +213,27 @@ export async function POST(
       form_data: Object.keys(formData).length > 0 ? formData : null,
     }
 
-    // Remove null/undefined values for updates
+    // Fields that come from form_data — replace completely on update (include nulls to clear old values)
+    const FORM_DERIVED_FIELDS = new Set([
+      'cpf', 'phone', 'badge_name', 'niche', 'revenue',
+      'photo_url', 'challenge_answer', 'desired_change_answer', 'instagram',
+      'partner', 'net_profit', 'tem_acompanhante', 'relacao_acompanhante',
+      'companion', 'form_data', 'color', 'qualification',
+    ])
+
     const cleanData = (data: Record<string, any>, isUpdate: boolean) => {
       const result: Record<string, any> = {}
       for (const [key, value] of Object.entries(data)) {
-        if (isUpdate && value === null) continue
         if (value === undefined) continue
+        // On update: only skip nulls for structural fields (not form-derived)
+        if (isUpdate && value === null && !FORM_DERIVED_FIELDS.has(key)) continue
         result[key] = value
       }
       return result
     }
 
     if (existingParticipant) {
+      // Update existing participant — form fields are replaced, structural fields are merged
       const updateData = cleanData(participantData, true)
 
       const { error: updateError } = await supabase

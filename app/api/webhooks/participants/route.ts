@@ -347,21 +347,21 @@ export async function POST(request: Request) {
       return query
     }
 
-    // 1. By external_id
-    if (externalId) {
+    // 1. By CPF (most reliable - present in all forms)
+    if (extracted.cpf) {
+      const { data } = await scopedQuery().eq('cpf', extracted.cpf).single()
+      existingParticipant = data
+    }
+
+    // 2. By external_id
+    if (!existingParticipant && externalId) {
       const { data } = await scopedQuery().eq('external_id', externalId).single()
       existingParticipant = data
     }
 
-    // 2. By email
+    // 3. By email
     if (!existingParticipant && extracted.email) {
       const { data } = await scopedQuery().eq('email', extracted.email).single()
-      existingParticipant = data
-    }
-
-    // 3. By CPF
-    if (!existingParticipant && extracted.cpf) {
-      const { data } = await scopedQuery().eq('cpf', extracted.cpf).single()
       existingParticipant = data
     }
 
@@ -413,12 +413,20 @@ export async function POST(request: Request) {
       participantData.tem_acompanhante = tem_acompanhante
     }
 
-    // Remove null values for updates (don't overwrite existing data with null)
+    // Fields that come from form_data — replace completely on update (include nulls to clear old values)
+    const FORM_DERIVED_FIELDS = new Set([
+      'cpf', 'phone', 'badge_name', 'niche', 'revenue',
+      'photo_url', 'challenge_answer', 'desired_change_answer', 'instagram',
+      'partner', 'net_profit', 'tem_acompanhante', 'relacao_acompanhante',
+      'companion', 'form_data', 'color', 'qualification',
+    ])
+
     const cleanData = (data: Record<string, any>, isUpdate: boolean) => {
       const result: Record<string, any> = {}
       for (const [key, value] of Object.entries(data)) {
-        if (isUpdate && value === null) continue // skip nulls on update
         if (value === undefined) continue
+        // On update: only skip nulls for structural fields (not form-derived)
+        if (isUpdate && value === null && !FORM_DERIVED_FIELDS.has(key)) continue
         result[key] = value
       }
       return result
