@@ -206,6 +206,7 @@ export async function POST(
       checked_in_day2: checkedInDay2,
       checked_in_day3: checkedInDay3,
       webhook_data: payload,
+      form_data: Object.keys(formData).length > 0 ? formData : null,
     }
 
     // Remove null/undefined values for updates
