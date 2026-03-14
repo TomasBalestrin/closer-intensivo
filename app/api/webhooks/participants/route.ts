@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getColorFromRevenue, getQualificationFromRevenue } from '@/lib/utils'
+import { logWebhook, updateWebhookLog, getClientIP, extractHeaders } from '@/lib/webhooks/logger'
 
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -214,10 +215,28 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
 
 export async function POST(request: Request) {
   const supabase = getSupabase()
+  const startTime = Date.now()
+  let logId: string | null = null
+
   try {
     // Extract event_id from query parameters
     const url = new URL(request.url)
     const eventId = url.searchParams.get('event_id')
+
+    const payload = await request.json()
+
+    // Log inicial do webhook com request completo
+    logId = await logWebhook({
+      direcao: 'inbound',
+      evento: 'participantes.webhook',
+      url: request.url,
+      metodo: 'POST',
+      requestHeaders: extractHeaders(request),
+      requestBody: payload,
+      status: 'success', // será atualizado se houver erro
+      ipOrigem: getClientIP(request),
+      entidadeTipo: 'participante',
+    })
 
     // Validate event_id if provided
     if (eventId) {
@@ -228,25 +247,18 @@ export async function POST(request: Request) {
         .single()
 
       if (eventError || !eventData) {
-        return NextResponse.json(
-          { error: 'Evento não encontrado. Verifique o event_id na URL.', event_id: eventId },
-          { status: 400 }
-        )
+        const errorResponse = { error: 'Evento não encontrado. Verifique o event_id na URL.', event_id: eventId }
+        if (logId) {
+          await updateWebhookLog(logId, {
+            responseStatus: 400,
+            responseBody: JSON.stringify(errorResponse),
+            duracaoMs: Date.now() - startTime,
+            status: 'error',
+            erroMensagem: 'Evento não encontrado',
+          })
+        }
+        return NextResponse.json(errorResponse, { status: 400 })
       }
-    }
-
-    const payload = await request.json()
-
-    // Log the webhook
-    const { data: logData, error: logError } = await supabase
-      .from('webhooks_log')
-      .insert({ payload, processed: false })
-      .select('id')
-      .single()
-
-    const logId = logData?.id
-    if (logError) {
-      console.error('Error logging webhook:', logError)
     }
 
     // Flatten the entire payload for flexible field matching
@@ -304,14 +316,21 @@ export async function POST(request: Request) {
     // Name is the only required field
     const name = extracted.name
     if (!name) {
-      return NextResponse.json(
-        {
-          error: 'Nome não encontrado no payload. Envie um campo com o nome do participante.',
-          hint: 'Campos aceitos: nome_completo, nome, name, full_name, etc.',
-          receivedKeys: Object.keys(flat).slice(0, 30),
-        },
-        { status: 400 }
-      )
+      const errorResponse = {
+        error: 'Nome não encontrado no payload. Envie um campo com o nome do participante.',
+        hint: 'Campos aceitos: nome_completo, nome, name, full_name, etc.',
+        receivedKeys: Object.keys(flat).slice(0, 30),
+      }
+      if (logId) {
+        await updateWebhookLog(logId, {
+          responseStatus: 400,
+          responseBody: JSON.stringify(errorResponse),
+          duracaoMs: Date.now() - startTime,
+          status: 'error',
+          erroMensagem: 'Nome não encontrado no payload',
+        })
+      }
+      return NextResponse.json(errorResponse, { status: 400 })
     }
 
     // Calculate color and qualification from revenue
@@ -475,52 +494,89 @@ export async function POST(request: Request) {
 
       if (updateError) {
         console.error('Error updating participant:', updateError)
-        return NextResponse.json(
-          { error: 'Erro ao atualizar participante', details: (updateError as any).message || String(updateError) },
-          { status: 500 }
-        )
+        const errorResponse = { error: 'Erro ao atualizar participante', details: (updateError as any).message || String(updateError) }
+        if (logId) {
+          await updateWebhookLog(logId, {
+            responseStatus: 500,
+            responseBody: JSON.stringify(errorResponse),
+            duracaoMs: Date.now() - startTime,
+            status: 'error',
+            erroMensagem: (updateError as any).message || String(updateError),
+          })
+        }
+        return NextResponse.json(errorResponse, { status: 500 })
       }
 
-      if (logId) {
-        await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
-      }
-
-      return NextResponse.json({
+      const successResponse = {
         success: true,
         action: 'updated',
         participantId: existingParticipant.id,
         name,
         fieldsExtracted: Object.keys(extracted),
-      })
+      }
+
+      if (logId) {
+        await updateWebhookLog(logId, {
+          responseStatus: 200,
+          responseBody: JSON.stringify(successResponse),
+          duracaoMs: Date.now() - startTime,
+          status: 'success',
+          entidadeId: existingParticipant.id,
+        })
+      }
+
+      return NextResponse.json(successResponse)
     } else {
       const { error: insertError, data: newParticipant } = await upsertParticipant()
 
       if (insertError || !newParticipant) {
         console.error('Error creating participant:', insertError)
-        return NextResponse.json(
-          { error: 'Erro ao criar participante', details: (insertError as any)?.message || String(insertError) },
-          { status: 500 }
-        )
+        const errorResponse = { error: 'Erro ao criar participante', details: (insertError as any)?.message || String(insertError) }
+        if (logId) {
+          await updateWebhookLog(logId, {
+            responseStatus: 500,
+            responseBody: JSON.stringify(errorResponse),
+            duracaoMs: Date.now() - startTime,
+            status: 'error',
+            erroMensagem: (insertError as any)?.message || String(insertError),
+          })
+        }
+        return NextResponse.json(errorResponse, { status: 500 })
       }
 
-      if (logId) {
-        await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
-      }
-
-      return NextResponse.json({
+      const successResponse = {
         success: true,
         action: 'created',
         participantId: newParticipant.id,
         name,
         fieldsExtracted: Object.keys(extracted),
-      })
+      }
+
+      if (logId) {
+        await updateWebhookLog(logId, {
+          responseStatus: 201,
+          responseBody: JSON.stringify(successResponse),
+          duracaoMs: Date.now() - startTime,
+          status: 'success',
+          entidadeId: newParticipant.id,
+        })
+      }
+
+      return NextResponse.json(successResponse, { status: 201 })
     }
   } catch (error: any) {
     console.error('Webhook error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    const errorResponse = { error: error.message || 'Internal server error' }
+    if (logId) {
+      await updateWebhookLog(logId, {
+        responseStatus: 500,
+        responseBody: JSON.stringify(errorResponse),
+        duracaoMs: Date.now() - startTime,
+        status: 'error',
+        erroMensagem: error.message || 'Internal server error',
+      })
+    }
+    return NextResponse.json(errorResponse, { status: 500 })
   }
 }
 

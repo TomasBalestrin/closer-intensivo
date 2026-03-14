@@ -8,7 +8,8 @@ import { Participant, Sale, User } from '@/lib/types'
 import { TopClosers } from '@/components/shared/top-closers'
 import { CloserRankingTable } from '@/components/shared/closer-ranking-table'
 import { useEvent } from '@/lib/hooks/use-event'
-import { Users, Target, Calendar, TrendingUp, Percent, DollarSign, CreditCard } from 'lucide-react'
+import { Users, Target, Calendar, TrendingUp, Percent, DollarSign, CreditCard, Webhook } from 'lucide-react'
+import { WebhookLogsModal } from '@/components/admin/WebhookLogsModal'
 
 type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
 
@@ -19,6 +20,7 @@ export default function AdminDashboard() {
   const { activeEvent, isLoading: eventLoading } = useEvent()
   const [dayFilter, setDayFilter] = useState<DayFilter>('todos')
   const [loading, setLoading] = useState(true)
+  const [webhookLogsOpen, setWebhookLogsOpen] = useState(false)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [sales, setSales] = useState<(Sale & { closer: User })[]>([])
   const [closers, setClosers] = useState<User[]>([])
@@ -221,9 +223,20 @@ export default function AdminDashboard() {
           <p className="text-gray-500 mt-1">Visão geral do evento e performance de vendas</p>
         </div>
 
-        {/* Day Filter Tabs */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          <Calendar className="h-4 w-4 text-gray-500 ml-2" />
+        <div className="flex items-center gap-3">
+          {/* Webhook Logs Button */}
+          <button
+            onClick={() => setWebhookLogsOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors"
+            title="Logs de Webhooks"
+          >
+            <Webhook className="h-4 w-4" />
+            <span className="hidden sm:inline">Webhooks</span>
+          </button>
+
+          {/* Day Filter Tabs */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <Calendar className="h-4 w-4 text-gray-500 ml-2" />
           {[
             { key: 'todos', label: 'Todos' },
             { key: 'dia1', label: 'Dia 1' },
@@ -242,6 +255,7 @@ export default function AdminDashboard() {
               {label}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -385,6 +399,13 @@ export default function AdminDashboard() {
 
       {/* Ranking Geral */}
       <CloserRankingTable closers={allClosersRanked} />
+
+      {/* Webhook Logs Modal */}
+      <WebhookLogsModal
+        isOpen={webhookLogsOpen}
+        onClose={() => setWebhookLogsOpen(false)}
+        eventId={activeEvent?.id}
+      />
     </div>
   )
 }
