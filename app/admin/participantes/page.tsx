@@ -137,7 +137,7 @@ export default function AdminParticipantes() {
         p.niche?.toLowerCase().includes(searchLower) ||
         p.instagram?.toLowerCase().includes(searchLower)
       const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-      const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? !p.seller_closer_id : p.seller_closer_id === sellerFilter)
+      const matchesSeller = !sellerFilter || (sellerFilter === 'unassigned' ? (!p.seller_closer_id && !p.seller_closer_name && !p.seller_closer?.name) : p.seller_closer_id === sellerFilter)
       const matchesAssignedCloser = !assignedCloserFilter || (assignedCloserFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === assignedCloserFilter)
       const matchesOpportunity = opportunityFilter === '' ||
         (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
