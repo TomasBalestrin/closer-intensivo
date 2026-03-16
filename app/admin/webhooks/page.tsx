@@ -87,45 +87,48 @@ export default function WebhooksPage() {
   const fetchLogs = async () => {
     setLoadingLogs(true)
     try {
-      const { data, error } = await supabase
-        .from('webhook_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200)
-
-      if (error) {
-        console.error('Erro ao buscar logs:', error)
-        // Fallback para tabela antiga
-        const { data: oldData } = await supabase
+      // Buscar de ambas as tabelas
+      const [newLogsResult, oldLogsResult] = await Promise.all([
+        supabase
+          .from('webhook_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase
           .from('webhooks_log')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(200)
+      ])
 
-        // Converter formato antigo para novo
-        if (oldData) {
-          setLogs(oldData.map((log: any) => ({
-            id: log.id,
-            created_at: log.created_at,
-            direcao: 'inbound',
-            evento: 'participantes.webhook',
-            url: '-',
-            metodo: 'POST',
-            request_headers: {},
-            request_body: log.payload,
-            response_status: log.processed ? 200 : null,
-            response_body: null,
-            duracao_ms: null,
-            status: log.processed ? 'success' : 'error',
-            erro_mensagem: null,
-            entidade_tipo: 'participante',
-            entidade_id: null,
-            ip_origem: null,
-          })))
-        }
-      } else {
-        setLogs(data || [])
-      }
+      const newLogs: WebhookLog[] = newLogsResult.data || []
+
+      // Converter formato antigo para novo
+      const oldLogs: WebhookLog[] = (oldLogsResult.data || []).map((log: any) => ({
+        id: log.id,
+        created_at: log.created_at,
+        direcao: 'inbound' as const,
+        evento: 'participantes.webhook',
+        url: '-',
+        metodo: 'POST',
+        request_headers: {},
+        request_body: log.payload,
+        response_status: log.processed ? 200 : null,
+        response_body: null,
+        duracao_ms: null,
+        status: log.processed ? 'success' : 'error' as const,
+        erro_mensagem: null,
+        entidade_tipo: 'participante',
+        entidade_id: null,
+        ip_origem: null,
+      }))
+
+      // Combinar e ordenar por data
+      const allLogs = [...newLogs, ...oldLogs]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 200)
+
+      setLogs(allLogs)
     } catch (err) {
       console.error('Erro ao buscar logs:', err)
     } finally {
