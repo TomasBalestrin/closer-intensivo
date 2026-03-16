@@ -117,8 +117,6 @@ async function processarParticipante(body: any, supabase: any) {
     color,
     qualification,
     is_opportunity: rawOpportunity !== undefined ? is_opportunity : undefined,
-    // Save form_data as structured Q&A for display
-    form_data: Object.keys(formData).length > 0 ? formData : null,
     // Save full payload for debugging
     webhook_data: body,
     ...checkinData,

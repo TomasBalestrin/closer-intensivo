@@ -240,7 +240,6 @@ export async function POST(request: Request) {
       checked_in_day2: checkedInDay2,
       checked_in_day3: checkedInDay3,
       webhook_data: payload,
-      form_data: Object.keys(formData).length > 0 ? formData : null, // Salvar perguntas/respostas originais
     }
 
     // Fields that come from form_data — replace completely on update (include nulls to clear old values)
