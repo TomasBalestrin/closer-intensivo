@@ -211,6 +211,7 @@ export interface Database {
           funnel: string | null
           funil_origem_id: string | null
           seller_closer_id: string | null
+          seller_closer_name: string | null
           mentee_inviter: string | null
           companion: string | null
           is_opportunity: boolean
@@ -279,6 +280,7 @@ export interface Database {
           funnel?: string | null
           funil_origem_id?: string | null
           seller_closer_id?: string | null
+          seller_closer_name?: string | null
           mentee_inviter?: string | null
           companion?: string | null
           is_opportunity?: boolean
@@ -340,6 +342,7 @@ export interface Database {
           funnel?: string | null
           funil_origem_id?: string | null
           seller_closer_id?: string | null
+          seller_closer_name?: string | null
           mentee_inviter?: string | null
           companion?: string | null
           is_opportunity?: boolean

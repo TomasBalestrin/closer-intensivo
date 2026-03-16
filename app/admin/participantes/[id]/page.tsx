@@ -912,7 +912,7 @@ export default function ParticipantDetail() {
                     className="w-40"
                   />
                 ) : (
-                  <span className="text-sm font-medium text-gray-900">{closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</span>
+                  <span className="text-sm font-medium text-gray-900">{participant.seller_closer_name || closers.find(c => c.id === participant.seller_closer_id)?.name || '-'}</span>
                 )}
               </div>
               <div className="px-4 py-3 flex justify-between">
