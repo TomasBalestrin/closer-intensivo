@@ -23,8 +23,21 @@ function normalizeKey(key: string): string {
   return removeAccents(key.toLowerCase()).replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
 }
 
+// Try to parse a string as JSON, return null if it fails
+function tryParseJSON(str: string): any {
+  if (typeof str !== 'string') return null
+  const trimmed = str.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return null
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return null
+  }
+}
+
 // Flatten any nested JSON into a flat key-value map
 // Handles nested objects AND arrays of {label, value} / {field, answer} pairs
+// Also handles JSON strings inside fields like context_blob, envelope, data, etc.
 function flattenPayload(obj: any, prefix = ''): Record<string, any> {
   const result: Record<string, any> = {}
   if (!obj || typeof obj !== 'object') return result
@@ -56,6 +69,18 @@ function flattenPayload(obj: any, prefix = ''): Record<string, any> {
     if (value !== null && value !== undefined && typeof value === 'object') {
       // Recurse into nested objects and arrays
       Object.assign(result, flattenPayload(value, fullKey))
+    } else if (typeof value === 'string') {
+      // Check if this is a JSON string (common for context_blob, envelope, data, payload, etc.)
+      const parsed = tryParseJSON(value)
+      if (parsed && typeof parsed === 'object') {
+        // It's a JSON string - flatten it too
+        Object.assign(result, flattenPayload(parsed, fullKey))
+      }
+      // Always store the original value too
+      result[fullKey] = value
+      if (normKey) {
+        result[normKey] = value
+      }
     } else {
       result[fullKey] = value
       if (normKey) {
@@ -168,7 +193,14 @@ const TEM_ACOMPANHANTE_ALIASES = [
 // Aliases for external ID
 const EXTERNAL_ID_ALIASES = [
   'participant_id', 'external_id', 'id_externo', 'form_id', 'submission_id',
-  'lead_id', 'id',
+  'lead_id', 'id', 'contact_id', 'subscriber_id', 'user_id',
+]
+
+// Keys that might contain serialized JSON data (envelope patterns)
+const ENVELOPE_KEYS = [
+  'context_blob', 'context', 'envelope', 'data', 'payload', 'body',
+  'form_data', 'formdata', 'fields', 'answers', 'responses', 'metadata',
+  'participant_data', 'lead_data', 'contact_data', 'custom_fields',
 ]
 
 function cleanInstagram(value: string | undefined | null): string | null {
@@ -261,8 +293,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // Pre-process: check for known envelope keys that might contain serialized JSON
+    let processedPayload = { ...payload }
+    for (const envKey of ENVELOPE_KEYS) {
+      if (processedPayload[envKey] && typeof processedPayload[envKey] === 'string') {
+        const parsed = tryParseJSON(processedPayload[envKey])
+        if (parsed) {
+          // Merge parsed data into payload at root level too
+          if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+            processedPayload = { ...processedPayload, ...parsed }
+          }
+          processedPayload[`${envKey}_parsed`] = parsed
+        }
+      }
+    }
+
     // Flatten the entire payload for flexible field matching
-    const flat = flattenPayload(payload)
+    const flat = flattenPayload(processedPayload)
 
     // Extract all participant fields using aliases
     const extracted: Record<string, any> = {}
