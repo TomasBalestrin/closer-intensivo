@@ -1155,6 +1155,65 @@ export default function CloserParticipantDetail() {
             </CardContent>
           </Card>
 
+          {/* Dados do Credenciamento - All form Q&A from webhook */}
+          {(() => {
+            const rawFormData = (participant as any).form_data
+              || (participant.webhook_data as any)?.participant?.form_data
+              || (participant.webhook_data as any)?.fields
+              || null
+
+            if (!rawFormData || typeof rawFormData !== 'object' || Object.keys(rawFormData).length === 0) return null
+
+            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+
+            const skipKeys = new Set([
+              'nome', 'name', 'nome_completo', 'email', 'telefone', 'phone', 'whatsapp', 'celular',
+              'instagram', 'insta', 'cpf', 'cnpj', 'documento',
+            ])
+
+            const entries = Object.entries(rawFormData).filter(([key, value]) => {
+              if (value === null || value === undefined || value === '') return false
+              const nk = norm(key)
+              return !skipKeys.has(nk) && ![...skipKeys].some(sk => nk.includes(sk) && nk.length < sk.length + 15)
+            })
+
+            if (entries.length === 0) return null
+
+            const isUrl = (v: string) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))
+
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    Dados do Credenciamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="divide-y">
+                    {entries.map(([question, answer], idx) => (
+                      <div key={idx} className="py-3 first:pt-0 last:pb-0">
+                        <p className="text-xs text-gray-500 font-medium mb-1">{question}</p>
+                        {isUrl(String(answer)) ? (
+                          <a
+                            href={String(answer)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline break-all"
+                          >
+                            {String(answer).length > 60 ? String(answer).substring(0, 60) + '...' : String(answer)}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-medium text-gray-900 break-words">{String(answer)}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
+
           {/* Respostas do Webhook */}
           {(participant.challenge_answer || participant.desired_change_answer) && (
             <Card>

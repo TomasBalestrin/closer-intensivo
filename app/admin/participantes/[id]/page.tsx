@@ -927,6 +927,61 @@ export default function ParticipantDetail() {
               </div>
             </div>
 
+            {/* Dados do Credenciamento - All form Q&A from webhook */}
+            {(() => {
+              // Get form_data from participant, or fallback to webhook_data
+              const rawFormData = (participant as any).form_data
+                || (participant.webhook_data as any)?.participant?.form_data
+                || (participant.webhook_data as any)?.fields
+                || null
+
+              if (!rawFormData || typeof rawFormData !== 'object' || Object.keys(rawFormData).length === 0) return null
+
+              // Normalize key for comparison
+              const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+
+              // Keys already displayed in other sections - skip these
+              const skipKeys = new Set([
+                'nome', 'name', 'nome_completo', 'email', 'telefone', 'phone', 'whatsapp', 'celular',
+                'instagram', 'insta', 'cpf', 'cnpj', 'documento',
+              ])
+
+              const entries = Object.entries(rawFormData).filter(([key, value]) => {
+                if (value === null || value === undefined || value === '') return false
+                const nk = norm(key)
+                return !skipKeys.has(nk) && ![...skipKeys].some(sk => nk.includes(sk) && nk.length < sk.length + 15)
+              })
+
+              if (entries.length === 0) return null
+
+              const isUrl = (v: string) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))
+
+              return (
+                <div className="bg-white rounded-xl border divide-y">
+                  <div className="px-4 py-3">
+                    <span className="text-xs text-gray-500 uppercase font-medium">Dados do Credenciamento</span>
+                  </div>
+                  {entries.map(([question, answer], idx) => (
+                    <div key={idx} className="px-4 py-3">
+                      <p className="text-xs text-gray-500 font-medium mb-1">{question}</p>
+                      {isUrl(String(answer)) ? (
+                        <a
+                          href={String(answer)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline break-all"
+                        >
+                          {String(answer).length > 60 ? String(answer).substring(0, 60) + '...' : String(answer)}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium text-gray-900 break-words">{String(answer)}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
             {/* Respostas do Formulário */}
             {(participant.challenge_answer || participant.desired_change_answer) && (
               <div className="bg-white rounded-xl border divide-y">
