@@ -148,6 +148,7 @@ async function processarParticipante(body: any, supabase: any) {
   if (status) participantData.registration_status = status
   if (event_id) participantData.event_id = event_id
   if (sellerCloserId) participantData.seller_closer_id = sellerCloserId
+  if (sellerName) participantData.seller_closer_name = sellerName
 
   if (existingParticipant) {
     const { error } = await supabase
