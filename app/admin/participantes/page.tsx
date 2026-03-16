@@ -571,6 +571,11 @@ export default function AdminParticipantes() {
                             Faturamento: {participant.revenue}
                           </p>
                         )}
+                        {(participant.seller_closer?.name || participant.seller_closer_name) && (
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            Vendedor: {participant.seller_closer?.name || participant.seller_closer_name}
+                          </p>
+                        )}
                         {participant.niche && (
                           <span
                             className={`inline-block mt-2 px-2.5 py-1 text-xs font-medium rounded-full ${getColorClass(
