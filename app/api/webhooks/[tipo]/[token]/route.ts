@@ -38,6 +38,12 @@ async function processarParticipante(body: any, supabase: any) {
   const partner = formData['Você tem sócio?'] || fields?.voce_tem_socio || fields?.partner
   const companion = formData['Seu acompanhante é?'] || formData['Acompanhante'] || fields?.companion
   const external_id = participant.id || body?.participant_id || body?.external_id
+
+  // Extract seller/vendedor info (could come as name or ID)
+  const sellerName = formData['Vendedor'] || formData['vendedor'] || formData['Closer'] || formData['closer'] ||
+                     fields?.vendedor || fields?.seller || fields?.closer ||
+                     participant.vendedor || participant.seller || participant.closer ||
+                     body?.vendedor || body?.seller || body?.closer
   const qr_code = participant.qr_code
   const category = participant.category
   const status = participant.status
@@ -76,6 +82,20 @@ async function processarParticipante(body: any, supabase: any) {
 
   const color = getColorFromRevenue(revenue) || null
   const qualification = getQualificationFromRevenue(revenue) || null
+
+  // Try to find seller/closer by name if provided
+  let sellerCloserId: string | null = null
+  if (sellerName) {
+    const { data: closerUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'closer')
+      .ilike('name', `%${sellerName}%`)
+      .single()
+    if (closerUser) {
+      sellerCloserId = closerUser.id
+    }
+  }
 
   // Extract checkin data from checkin_days format
   const checkinData: Record<string, boolean> = {}
@@ -127,6 +147,7 @@ async function processarParticipante(body: any, supabase: any) {
   if (category) participantData.category = category
   if (status) participantData.registration_status = status
   if (event_id) participantData.event_id = event_id
+  if (sellerCloserId) participantData.seller_closer_id = sellerCloserId
 
   if (existingParticipant) {
     const { error } = await supabase
