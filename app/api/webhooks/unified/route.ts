@@ -170,13 +170,16 @@ export async function POST(request: Request) {
     const qualification = getQualificationFromRevenue(revenue) || null
 
     // Determine if opportunity based on oportunidade field
-    // "Acompanhante" = not opportunity, otherwise check value
-    const oportunidadeValue = participant.oportunidade?.toLowerCase() || ''
-    const isOpportunity = oportunidadeValue !== 'acompanhante' &&
-                          oportunidadeValue !== 'nao' &&
-                          oportunidadeValue !== 'não' &&
-                          oportunidadeValue !== 'false' &&
-                          oportunidadeValue !== ''
+    // Only explicit positive values count as opportunity
+    const oportunidadeValue = participant.oportunidade
+    const isOpportunity = oportunidadeValue === true ||
+                          oportunidadeValue === 'true' ||
+                          oportunidadeValue === 'sim' ||
+                          oportunidadeValue === 'Sim' ||
+                          oportunidadeValue === 'SIM' ||
+                          oportunidadeValue === 'yes' ||
+                          oportunidadeValue === 'Yes' ||
+                          oportunidadeValue === '1'
 
     // Build scoped query for deduplication within event
     const scopedQuery = () => supabase.from('participants').select('id').eq('event_id', eventId)
