@@ -59,7 +59,8 @@ function extractFromFormData(formData: Record<string, any>, targetField: string)
 
 function parseCheckinStatus(status: string | null | undefined): boolean {
   if (!status) return false
-  return status.toLowerCase() === 'checked_in'
+  const normalized = status.toLowerCase().replace(/[_\s-]/g, '')
+  return normalized === 'checkedin' || normalized === 'checkin'
 }
 
 function cleanInstagram(value: string | undefined | null): string | null {
@@ -137,10 +138,11 @@ export async function POST(
     const qrCode = participant.qr_code || participant.qrcode || payload.qr_code
     // status removido - conflita com constraint do banco
 
-    // Parse checkin days
-    const checkedInDay1 = parseCheckinStatus(checkinDays.day_1)
-    const checkedInDay2 = parseCheckinStatus(checkinDays.day_2)
-    const checkedInDay3 = parseCheckinStatus(checkinDays.day_3)
+    // Parse checkin days - only set to true, never overwrite with false
+    // If status is "checked_in", set to true; otherwise, leave as undefined (won't overwrite existing value)
+    const checkedInDay1 = parseCheckinStatus(checkinDays.day_1) ? true : undefined
+    const checkedInDay2 = parseCheckinStatus(checkinDays.day_2) ? true : undefined
+    const checkedInDay3 = parseCheckinStatus(checkinDays.day_3) ? true : undefined
 
     // Calculate color and qualification from revenue
     const color = getColorFromRevenue(revenue) || null
