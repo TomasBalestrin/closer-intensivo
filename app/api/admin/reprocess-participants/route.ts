@@ -139,6 +139,20 @@ const TEM_ACOMPANHANTE_ALIASES = [
   'has_companion', 'com_acompanhante', 'acompanhante_sim_nao',
 ]
 
+const OPORTUNIDADE_ALIASES = [
+  'oportunidade', 'is_opportunity', 'opportunity', 'eh_oportunidade',
+]
+
+// Check if value is explicitly a positive opportunity indicator
+function isOpportunityValue(value: any): boolean {
+  if (value === true) return true
+  if (typeof value === 'string') {
+    const v = value.toLowerCase().trim()
+    return ['true', 'sim', 'yes', '1'].includes(v)
+  }
+  return value === 1
+}
+
 function cleanInstagram(value: string | undefined | null): string | null {
   if (!value || typeof value !== 'string') return null
   return value.replace(/^@/, '').trim() || null
@@ -196,6 +210,12 @@ function extractFieldsFromWebhookData(webhookData: any): Record<string, any> {
     extracted.tem_acompanhante = isTruthy(rawTemAcompanhante)
   }
 
+  // Extract is_opportunity - only explicit positive values
+  const rawOportunidade = findValue(flat, OPORTUNIDADE_ALIASES)
+  if (rawOportunidade !== null) {
+    extracted.is_opportunity = isOpportunityValue(rawOportunidade)
+  }
+
   // Recalculate color and qualification from revenue
   if (extracted.revenue) {
     const color = getColorFromRevenue(extracted.revenue)
@@ -225,6 +245,11 @@ function extractFieldsFromUnifiedFormat(webhookData: any): Record<string, any> {
   if (participant.setor) extracted.niche = participant.setor
   if (participant.faturamento) extracted.revenue = participant.faturamento
   if (participant.funnel_origin) extracted.funnel = participant.funnel_origin
+
+  // Extract is_opportunity - only explicit positive values
+  if (participant.oportunidade !== undefined) {
+    extracted.is_opportunity = isOpportunityValue(participant.oportunidade)
+  }
 
   // Extract from form_data using normalized key matching
   const formFlat = flattenPayload(formData)
@@ -394,6 +419,7 @@ export async function GET() {
       'companion (nome do acompanhante)',
       'relacao_acompanhante (tipo: sócio, esposa, etc)',
       'tem_acompanhante (boolean)',
+      'is_opportunity (boolean - só true/sim/yes/1 são considerados oportunidade)',
       'qr_code',
       'category (categoria do ingresso)',
       'cpf',
