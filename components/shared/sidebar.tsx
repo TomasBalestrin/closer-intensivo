@@ -102,7 +102,7 @@ export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
           isCollapsed ? 'w-16' : 'w-64'
         )}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
             {!isCollapsed ? (
@@ -143,7 +143,7 @@ export function Sidebar({ user, onLogout, onExitEvent }: SidebarProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-thin">
+          <nav className="px-2 py-4 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname === item.href
               return (
