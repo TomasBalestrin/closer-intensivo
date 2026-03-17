@@ -148,18 +148,20 @@ export default function AdminDashboard() {
   }, [filteredParticipants, opportunities, filteredSales])
 
   // Qualification stats - memoized
+  // Usa filteredParticipants para incluir vendas de participantes mesmo que não sejam oportunidades
   const qualificationStats = useMemo(() => {
-    const altoQualified = opportunities.filter(p => p.qualification === 'alto')
-    const medioQualified = opportunities.filter(p => p.qualification === 'medio')
-    const baixoQualified = opportunities.filter(p => p.qualification === 'baixo')
+    const altoQualified = filteredParticipants.filter(p => p.qualification === 'alto')
+    const medioQualified = filteredParticipants.filter(p => p.qualification === 'medio')
+    const baixoQualified = filteredParticipants.filter(p => p.qualification === 'baixo')
 
     const getSalesByQualification = (qualification: string) => {
-      const ids = new Set(opportunities.filter(p => p.qualification === qualification).map(p => p.id))
+      const ids = new Set(filteredParticipants.filter(p => p.qualification === qualification).map(p => p.id))
       return filteredSales.filter(s => ids.has(s.participant_id))
     }
 
-    // Calculate max opportunities per day for each qualification
-    const getMaxPerDay = (opps: typeof opportunities) => {
+    // Calculate max per day for each qualification (usando oportunidades para taxa de conversão)
+    const getMaxPerDay = (qualification: string) => {
+      const opps = opportunities.filter(p => p.qualification === qualification)
       const d1 = opps.filter(p => p.checked_in_day1).length
       const d2 = opps.filter(p => p.checked_in_day2).length
       const d3 = opps.filter(p => p.checked_in_day3).length
@@ -170,16 +172,16 @@ export default function AdminDashboard() {
     const medioSales = getSalesByQualification('medio')
     const baixoSales = getSalesByQualification('baixo')
 
-    const altoMaxPerDay = getMaxPerDay(altoQualified)
-    const medioMaxPerDay = getMaxPerDay(medioQualified)
-    const baixoMaxPerDay = getMaxPerDay(baixoQualified)
+    const altoMaxPerDay = getMaxPerDay('alto')
+    const medioMaxPerDay = getMaxPerDay('medio')
+    const baixoMaxPerDay = getMaxPerDay('baixo')
 
     return {
       altoQualified, medioQualified, baixoQualified,
       altoSales, medioSales, baixoSales,
       altoMaxPerDay, medioMaxPerDay, baixoMaxPerDay
     }
-  }, [opportunities, filteredSales])
+  }, [filteredParticipants, opportunities, filteredSales])
 
   const calcConversion = (salesCount: number, maxPerDay: number) => maxPerDay === 0 ? 0 : salesCount / maxPerDay
 
