@@ -68,7 +68,8 @@ function extractFromFormData(formData: Record<string, any>, targetField: string)
 // Parse checkin status - "checked_in" = true, anything else = false
 function parseCheckinStatus(status: string | null | undefined): boolean {
   if (!status) return false
-  return status.toLowerCase() === 'checked_in'
+  const normalized = status.toLowerCase().replace(/[_\s-]/g, '')
+  return normalized === 'checkedin' || normalized === 'checkin'
 }
 
 // Clean instagram handle

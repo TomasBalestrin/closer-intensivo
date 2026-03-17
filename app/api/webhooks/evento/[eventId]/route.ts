@@ -59,7 +59,8 @@ function extractFromFormData(formData: Record<string, any>, targetField: string)
 
 function parseCheckinStatus(status: string | null | undefined): boolean {
   if (!status) return false
-  return status.toLowerCase() === 'checked_in'
+  const normalized = status.toLowerCase().replace(/[_\s-]/g, '')
+  return normalized === 'checkedin' || normalized === 'checkin'
 }
 
 function cleanInstagram(value: string | undefined | null): string | null {
