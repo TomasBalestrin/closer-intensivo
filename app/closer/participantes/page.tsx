@@ -16,6 +16,30 @@ import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 const CACHE_KEY = 'closer-participantes-cache'
 const SCROLL_KEY = 'closer-participantes-scroll'
 
+const COMPANION_KEYS = [
+  'companion', 'acompanhante', 'nome_acompanhante', 'nome_do_acompanhante',
+  'qual_o_nome_e_sobrenome_do_seu_acompanhante', 'acompanhante_nome',
+]
+
+function normalizeKey(key: string): string {
+  return key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+}
+
+function findCompanionName(data: any): string | null {
+  if (!data || typeof data !== 'object') return null
+  for (const [key, value] of Object.entries(data)) {
+    if (value && typeof value === 'string') {
+      const norm = normalizeKey(key)
+      if (COMPANION_KEYS.includes(norm)) return value
+    }
+    if (value && typeof value === 'object') {
+      const found = findCompanionName(value)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 function getCachedParticipants(): any[] | null {
   try {
     const cached = sessionStorage.getItem(CACHE_KEY)
@@ -314,14 +338,7 @@ export default function CloserParticipantes() {
             </div>
             {/* Table rows */}
             {visibleParticipants.map((participant: any) => {
-              const companionName = participant.companion
-                || participant.webhook_data?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
-                || participant.webhook_data?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante
-                || participant.webhook_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
-                || participant.webhook_data?.companion
-                || participant.webhook_data?.acompanhante
-                || participant.webhook_data?.nome_acompanhante
-                || null
+              const companionName = participant.companion || findCompanionName(participant.webhook_data)
               return (
               <div
                 key={participant.id}
@@ -403,14 +420,7 @@ export default function CloserParticipantes() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleParticipants.map((participant: any) => {
               const cardStatus = getParticipantCardStatus(participant, participant.hasSale)
-              const companionName = participant.companion
-                || participant.webhook_data?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
-                || participant.webhook_data?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante
-                || participant.webhook_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
-                || participant.webhook_data?.companion
-                || participant.webhook_data?.acompanhante
-                || participant.webhook_data?.nome_acompanhante
-                || null
+              const companionName = participant.companion || findCompanionName(participant.webhook_data)
               return (
               <Card
                 key={participant.id}
