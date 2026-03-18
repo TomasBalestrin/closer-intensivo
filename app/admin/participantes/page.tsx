@@ -132,26 +132,46 @@ export default function AdminParticipantes() {
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
-    // Get closers - filter by event if selected
+    // Get closers - merge all users with role 'closer' + user_events closers (same as closers module)
     let closersData: User[] = []
     if (activeEvent?.id) {
-      // First get user_ids from user_events for this event with role 'closer'
+      // Get closers from user_events for this event
       const { data: userEventsData } = await supabase
         .from('user_events')
         .select('user_id')
         .eq('event_id', activeEvent.id)
         .eq('role', 'closer')
 
-      if (userEventsData && userEventsData.length > 0) {
-        const userIds = userEventsData.map((ue: any) => ue.user_id)
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('id, name, email, photo_url, role')
-          .in('id', userIds)
-        closersData = (usersData || []) as User[]
+      const eventCloserIds = new Set((userEventsData || []).map((ue: any) => ue.user_id))
+
+      // Also get all users with role 'closer' from users table
+      const { data: allClosersData } = await supabase
+        .from('users')
+        .select('id, name, email, photo_url, role')
+        .eq('role', 'closer')
+
+      // Merge: all users with role closer + any from user_events not already included
+      const closersMap = new Map<string, User>()
+      for (const c of (allClosersData || []) as User[]) {
+        closersMap.set(c.id, c)
       }
+
+      if (eventCloserIds.size > 0) {
+        const missingIds = [...eventCloserIds].filter(id => !closersMap.has(id))
+        if (missingIds.length > 0) {
+          const { data: extraClosers } = await supabase
+            .from('users')
+            .select('id, name, email, photo_url, role')
+            .in('id', missingIds)
+          for (const c of (extraClosers || []) as User[]) {
+            closersMap.set(c.id, c)
+          }
+        }
+      }
+
+      closersData = Array.from(closersMap.values())
     } else {
-      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      const { data } = await supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer')
       closersData = (data || []) as User[]
     }
 
