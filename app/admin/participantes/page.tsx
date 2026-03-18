@@ -132,26 +132,46 @@ export default function AdminParticipantes() {
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
-    // Get closers - filter by event if selected
+    // Get closers - merge all users with role 'closer' + user_events closers (same as closers module)
     let closersData: User[] = []
     if (activeEvent?.id) {
-      // First get user_ids from user_events for this event with role 'closer'
+      // Get closers from user_events for this event
       const { data: userEventsData } = await supabase
         .from('user_events')
         .select('user_id')
         .eq('event_id', activeEvent.id)
         .eq('role', 'closer')
 
-      if (userEventsData && userEventsData.length > 0) {
-        const userIds = userEventsData.map((ue: any) => ue.user_id)
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('id, name, email, photo_url, role')
-          .in('id', userIds)
-        closersData = (usersData || []) as User[]
+      const eventCloserIds = new Set((userEventsData || []).map((ue: any) => ue.user_id))
+
+      // Also get all users with role 'closer' from users table
+      const { data: allClosersData } = await supabase
+        .from('users')
+        .select('id, name, email, photo_url, role')
+        .eq('role', 'closer')
+
+      // Merge: all users with role closer + any from user_events not already included
+      const closersMap = new Map<string, User>()
+      for (const c of (allClosersData || []) as User[]) {
+        closersMap.set(c.id, c)
       }
+
+      if (eventCloserIds.size > 0) {
+        const missingIds = [...eventCloserIds].filter(id => !closersMap.has(id))
+        if (missingIds.length > 0) {
+          const { data: extraClosers } = await supabase
+            .from('users')
+            .select('id, name, email, photo_url, role')
+            .in('id', missingIds)
+          for (const c of (extraClosers || []) as User[]) {
+            closersMap.set(c.id, c)
+          }
+        }
+      }
+
+      closersData = Array.from(closersMap.values())
     } else {
-      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      const { data } = await supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer')
       closersData = (data || []) as User[]
     }
 
@@ -734,14 +754,13 @@ export default function AdminParticipantes() {
               /* List View */
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
                 {/* Table header */}
-                <div className="hidden sm:grid sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_40px_40px] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="hidden sm:grid sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div></div>
                   <div>Foto</div>
                   <div>Nome</div>
                   <div>Faturamento</div>
                   <div>Funil</div>
                   <div>Acompanhante</div>
-                  <div className="text-center">Atribuir</div>
                   <div>Closer</div>
                 </div>
                 {/* Table rows */}
@@ -751,7 +770,7 @@ export default function AdminParticipantes() {
                   return (
                   <div
                     key={participant.id}
-                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_40px_40px] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => router.push(`/admin/participantes/${participant.id}`)}
                   >
                     {/* Checkbox */}
@@ -805,32 +824,70 @@ export default function AdminParticipantes() {
                     <div className="hidden sm:block">
                       <span className="text-sm text-gray-700 truncate block">{companionName || '—'}</span>
                     </div>
-                    {/* Assign closer button */}
-                    <div className="flex items-center justify-center">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSingleAssignParticipantId(participant.id)
-                          setSingleAssignCloserId(participant.seller_closer_id || '')
-                        }}
-                        className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation"
-                        title="Atribuir closer"
-                      >
-                        <UserPlus className="h-5 w-5 text-blue-600" />
-                      </button>
-                    </div>
-                    {/* Closer photo */}
-                    <div className="hidden sm:flex items-center justify-center">
+                    {/* Closer */}
+                    <div className="hidden sm:flex items-center">
                       {closerAssigned ? (
-                        <Avatar
-                          src={closerAssigned.photo_url}
-                          alt={closerAssigned.name}
-                          size="sm"
-                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSingleAssignParticipantId(participant.id)
+                            setSingleAssignCloserId(participant.seller_closer_id || '')
+                          }}
+                          className="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation"
+                          title="Trocar closer"
+                        >
+                          <Avatar
+                            src={closerAssigned.photo_url}
+                            alt={closerAssigned.name}
+                            size="sm"
+                          />
+                          <span className="text-xs text-gray-700 truncate max-w-[80px]">{closerAssigned.name}</span>
+                        </button>
                       ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                          <span className="text-gray-400 text-xs">—</span>
-                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSingleAssignParticipantId(participant.id)
+                            setSingleAssignCloserId('')
+                          }}
+                          className="flex items-center gap-1 rounded-lg px-1 py-1 hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation text-blue-600"
+                          title="Atribuir closer"
+                        >
+                          <UserPlus className="h-5 w-5" />
+                          <span className="text-xs">Atribuir</span>
+                        </button>
+                      )}
+                    </div>
+                    {/* Mobile: assign closer */}
+                    <div className="sm:hidden flex items-center justify-end">
+                      {closerAssigned ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSingleAssignParticipantId(participant.id)
+                            setSingleAssignCloserId(participant.seller_closer_id || '')
+                          }}
+                          className="flex items-center gap-1 rounded-lg px-1 py-1"
+                          title="Trocar closer"
+                        >
+                          <Avatar
+                            src={closerAssigned.photo_url}
+                            alt={closerAssigned.name}
+                            size="sm"
+                          />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSingleAssignParticipantId(participant.id)
+                            setSingleAssignCloserId('')
+                          }}
+                          className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation"
+                          title="Atribuir closer"
+                        >
+                          <UserPlus className="h-5 w-5 text-blue-600" />
+                        </button>
                       )}
                     </div>
                   </div>

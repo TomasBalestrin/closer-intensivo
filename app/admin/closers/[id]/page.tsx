@@ -19,6 +19,7 @@ import { StatsCard } from '@/components/shared'
 import { ArrowLeft, X } from 'lucide-react'
 import { User, Participant, Sale } from '@/lib/types'
 import { formatCurrency, formatPercentage, getColorClass } from '@/lib/utils'
+import { useEvent } from '@/lib/hooks/use-event'
 
 interface SaleWithParticipant extends Sale {
   participant?: Participant
@@ -28,6 +29,7 @@ export default function CloserDetail() {
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
+  const { activeEvent, isLoading: eventLoading } = useEvent()
 
   const [closer, setCloser] = useState<User | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -39,16 +41,27 @@ export default function CloserDetail() {
   const [opportunityFilter, setOpportunityFilter] = useState('')
 
   useEffect(() => {
-    fetchData()
-  }, [params.id])
+    if (!eventLoading) {
+      fetchData()
+    }
+  }, [params.id, activeEvent?.id, eventLoading])
 
   const fetchData = async () => {
     setLoading(true)
 
+    // Build queries with event filter
+    let participantsQuery = supabase.from('participants').select('*').or(`seller_closer_id.eq.${params.id},closer_id.eq.${params.id}`)
+    let salesQuery = supabase.from('sales').select('*, participant:participants(id, name, niche, email)').eq('closer_id', params.id).is('deleted_at', null)
+
+    if (activeEvent?.id) {
+      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    }
+
     const [closerRes, participantsRes, salesRes] = await Promise.all([
       supabase.from('users').select('*').eq('id', params.id).single(),
-      supabase.from('participants').select('*').eq('closer_id', params.id),
-      supabase.from('sales').select('*, participant:participants(id, name, niche, email)').eq('closer_id', params.id).is('deleted_at', null),
+      participantsQuery,
+      salesQuery,
     ])
 
     setCloser(closerRes.data)
@@ -87,9 +100,9 @@ export default function CloserDetail() {
   // Use max opportunities per day for conversion rate calculation
   const maxOpportunitiesPerDay = Math.max(opportunitiesDay1, opportunitiesDay2, opportunitiesDay3)
 
-  const altoQualified = opportunities.filter(p => p.qualification === 'alto').length
-  const medioQualified = opportunities.filter(p => p.qualification === 'medio').length
-  const baixoQualified = opportunities.filter(p => p.qualification === 'baixo').length
+  const altoQualified = participants.filter(p => p.qualification === 'alto').length
+  const medioQualified = participants.filter(p => p.qualification === 'medio').length
+  const baixoQualified = participants.filter(p => p.qualification === 'baixo').length
 
   const totalSalesValue = sales.reduce((sum, s) => sum + Number(s.total_value), 0)
   const totalEntryValue = sales.reduce((sum, s) => sum + Number(s.entry_value), 0)
