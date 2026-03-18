@@ -108,6 +108,8 @@ export default function CloserParticipantes() {
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const [visibleCount, setVisibleCount] = useState(30)
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 50
 
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true)
@@ -213,6 +215,18 @@ export default function CloserParticipantes() {
   }, [participants, debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
+
+  // Pagination for list view
+  const totalPages = Math.max(1, Math.ceil(filteredParticipants.length / PAGE_SIZE))
+  const paginatedParticipants = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredParticipants.slice(start, start + PAGE_SIZE)
+  }, [filteredParticipants, currentPage])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   return (
     <PullToRefresh onRefresh={() => fetchData(false)}>
@@ -373,7 +387,7 @@ export default function CloserParticipantes() {
               <div className="text-center">Chamado</div>
             </div>
             {/* Table rows */}
-            {visibleParticipants.map((participant: any) => {
+            {paginatedParticipants.map((participant: any) => {
               const companionName = participant.companion || findCompanionName(participant.webhook_data)
               return (
               <div
@@ -450,6 +464,69 @@ export default function CloserParticipantes() {
                 </div>
               </div>
             )})}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <p className="text-sm text-gray-600">
+                  {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredParticipants.length)} de {filteredParticipants.length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'<<'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'<'}
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                    .reduce<(number | string)[]>((acc, p, i, arr) => {
+                      if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...')
+                      acc.push(p)
+                      return acc
+                    }, [])
+                    .map((p, i) =>
+                      typeof p === 'string' ? (
+                        <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">...</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`px-2 py-1 text-xs rounded border ${
+                            currentPage === p
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 bg-white hover:bg-gray-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  <button
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'>'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'>>'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Cards View */
