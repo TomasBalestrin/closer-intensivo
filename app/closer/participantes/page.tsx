@@ -279,6 +279,14 @@ export default function CloserParticipantes() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleParticipants.map((participant: any) => {
               const cardStatus = getParticipantCardStatus(participant, participant.hasSale)
+              const companionName = participant.companion
+                || participant.webhook_data?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.companion
+                || participant.webhook_data?.acompanhante
+                || participant.webhook_data?.nome_acompanhante
+                || null
               return (
               <Card
                 key={participant.id}
@@ -313,6 +321,11 @@ export default function CloserParticipantes() {
                         </span>
                       )}
                     </div>
+                    {companionName && (
+                      <p className="text-sm text-gray-600">
+                        Acompanhante: <span className="font-medium">{companionName}</span>
+                      </p>
+                    )}
                     {participant.revenue && (
                       <p className="text-sm text-gray-500">
                         Faturamento: {participant.revenue}
