@@ -670,10 +670,10 @@ export default function AdminParticipantes() {
               </div>
               ) : (
               /* List View */
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
                 {/* Table header */}
-                <div className="hidden sm:grid sm:grid-cols-[auto_48px_1fr_150px_150px_120px_44px_48px] gap-3 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="w-[44px]"></div>
+                <div className="hidden sm:grid sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_40px_40px] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div></div>
                   <div>Foto</div>
                   <div>Nome</div>
                   <div>Faturamento</div>
@@ -685,10 +685,19 @@ export default function AdminParticipantes() {
                 {/* Table rows */}
                 {visibleParticipants.map((participant) => {
                   const closerAssigned = closers.find(c => c.id === participant.seller_closer_id)
+                  // Extract companion: try direct field, then webhook_data
+                  const companionName = participant.companion
+                    || ((participant.webhook_data as any)?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante)
+                    || ((participant.webhook_data as any)?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante)
+                    || ((participant.webhook_data as any)?.qual_o_nome_e_sobrenome_do_seu_acompanhante)
+                    || ((participant.webhook_data as any)?.companion)
+                    || ((participant.webhook_data as any)?.acompanhante)
+                    || ((participant.webhook_data as any)?.nome_acompanhante)
+                    || null
                   return (
                   <div
                     key={participant.id}
-                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[auto_48px_1fr_150px_150px_120px_44px_48px] gap-3 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_40px_40px] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => router.push(`/admin/participantes/${participant.id}`)}
                   >
                     {/* Checkbox */}
@@ -731,16 +740,16 @@ export default function AdminParticipantes() {
                       </div>
                     </div>
                     {/* Revenue */}
-                    <div className="hidden sm:block">
-                      <span className="text-sm text-gray-700">{participant.revenue || '—'}</span>
+                    <div className="hidden sm:block min-w-0">
+                      <span className="text-sm text-gray-700 truncate block">{participant.revenue || '—'}</span>
                     </div>
                     {/* Funnel */}
-                    <div className="hidden sm:block">
-                      <span className="text-sm text-gray-700">{participant.funnel || '—'}</span>
+                    <div className="hidden sm:block min-w-0">
+                      <span className="text-sm text-gray-700 truncate block">{participant.funnel || '—'}</span>
                     </div>
                     {/* Companion */}
                     <div className="hidden sm:block">
-                      <span className="text-sm text-gray-700">{participant.companion || '—'}</span>
+                      <span className="text-sm text-gray-700 truncate block">{companionName || '—'}</span>
                     </div>
                     {/* Assign closer button */}
                     <div className="flex items-center justify-center">
