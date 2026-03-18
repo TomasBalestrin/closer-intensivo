@@ -16,21 +16,57 @@ import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 const CACHE_KEY = 'closer-participantes-cache'
 const SCROLL_KEY = 'closer-participantes-scroll'
 
-const COMPANION_KEYS = [
-  'companion', 'acompanhante', 'nome_acompanhante', 'nome_do_acompanhante',
-  'qual_o_nome_e_sobrenome_do_seu_acompanhante', 'acompanhante_nome',
-]
+function normalizeText(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
 
-function normalizeKey(key: string): string {
-  return key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+// Matches any key/question that asks for the companion's name
+// e.g. "Qual o nome do seu acompanhante?", "Nome e sobrenome do acompanhante",
+// "nome_acompanhante", "companion_name", "acompanhante", etc.
+function isCompanionKey(key: string): boolean {
+  const norm = normalizeText(key)
+  // Must mention "acompanhante" or "companion"
+  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
+  // If it also mentions name-related words, it's definitely the name field
+  if (/nome|name|sobrenome|completo/.test(norm)) return true
+  // If the key is short (likely a field id like "acompanhante" or "companion"), accept it
+  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
+  // If it's a question asking "qual" (which one), accept it
+  if (norm.includes('qual')) return true
+  return false
+}
+
+// Exclude keys that ask yes/no about having a companion or about the relationship
+function isCompanionMetaKey(key: string): boolean {
+  const norm = normalizeText(key)
+  // "voce vai com acompanhante?" / "tem acompanhante?" / "seu acompanhante e (esposa, socio...)"
+  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
+  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
+  return false
 }
 
 function findCompanionName(data: any): string | null {
   if (!data || typeof data !== 'object') return null
+
+  // Handle arrays (common pattern: [{label: "...", value: "..."}, ...])
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (item && typeof item === 'object') {
+        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
+        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
+        if (label && typeof value === 'string' && value.trim()) {
+          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
+        }
+      }
+      const found = findCompanionName(item)
+      if (found) return found
+    }
+    return null
+  }
+
   for (const [key, value] of Object.entries(data)) {
-    if (value && typeof value === 'string') {
-      const norm = normalizeKey(key)
-      if (COMPANION_KEYS.includes(norm)) return value
+    if (value && typeof value === 'string' && value.trim()) {
+      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return value.trim()
     }
     if (value && typeof value === 'object') {
       const found = findCompanionName(value)
@@ -72,6 +108,8 @@ export default function CloserParticipantes() {
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const [visibleCount, setVisibleCount] = useState(30)
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 50
 
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true)
@@ -177,6 +215,18 @@ export default function CloserParticipantes() {
   }, [participants, debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
+
+  // Pagination for list view
+  const totalPages = Math.max(1, Math.ceil(filteredParticipants.length / PAGE_SIZE))
+  const paginatedParticipants = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredParticipants.slice(start, start + PAGE_SIZE)
+  }, [filteredParticipants, currentPage])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   return (
     <PullToRefresh onRefresh={() => fetchData(false)}>
@@ -337,7 +387,7 @@ export default function CloserParticipantes() {
               <div className="text-center">Chamado</div>
             </div>
             {/* Table rows */}
-            {visibleParticipants.map((participant: any) => {
+            {paginatedParticipants.map((participant: any) => {
               const companionName = participant.companion || findCompanionName(participant.webhook_data)
               return (
               <div
@@ -414,6 +464,69 @@ export default function CloserParticipantes() {
                 </div>
               </div>
             )})}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <p className="text-sm text-gray-600">
+                  {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredParticipants.length)} de {filteredParticipants.length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'<<'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'<'}
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                    .reduce<(number | string)[]>((acc, p, i, arr) => {
+                      if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...')
+                      acc.push(p)
+                      return acc
+                    }, [])
+                    .map((p, i) =>
+                      typeof p === 'string' ? (
+                        <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">...</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`px-2 py-1 text-xs rounded border ${
+                            currentPage === p
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 bg-white hover:bg-gray-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  <button
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'>'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'>>'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Cards View */
