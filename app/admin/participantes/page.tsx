@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
-import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2 } from 'lucide-react'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2, LayoutGrid, List, UserPlus } from 'lucide-react'
 import { Participant, User, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue, cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
@@ -59,6 +59,10 @@ export default function AdminParticipantes() {
   const [assigning, setAssigning] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards')
+  const [singleAssignParticipantId, setSingleAssignParticipantId] = useState<string | null>(null)
+  const [singleAssignCloserId, setSingleAssignCloserId] = useState('')
+  const [singleAssigning, setSingleAssigning] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -298,6 +302,27 @@ export default function AdminParticipantes() {
     }
   }
 
+  // Single assign closer (from list view)
+  const handleSingleAssign = async () => {
+    if (!singleAssignCloserId || !singleAssignParticipantId) return
+    setSingleAssigning(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({ seller_closer_id: singleAssignCloserId })
+        .eq('id', singleAssignParticipantId)
+      if (error) throw error
+      setSingleAssignParticipantId(null)
+      setSingleAssignCloserId('')
+      fetchData()
+    } catch (error) {
+      console.error('Error assigning closer:', error)
+      alert('Erro ao atribuir closer')
+    } finally {
+      setSingleAssigning(false)
+    }
+  }
+
   // Toggle selection
   const toggleSelectAll = () => {
     if (selectedParticipants.length === filteredParticipants.length) {
@@ -322,6 +347,28 @@ export default function AdminParticipantes() {
             <h1 className="text-2xl font-bold text-gray-900">Participantes</h1>
             <div className="flex items-center gap-2">
               <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={cn(
+                    'p-2 rounded-md transition-colors',
+                    viewMode === 'cards' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  )}
+                  title="Visualizar como cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    'p-2 rounded-md transition-colors',
+                    viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  )}
+                  title="Visualizar como lista"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
               <Button variant="secondary" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-2" />
                 Exportar CSV
@@ -481,44 +528,45 @@ export default function AdminParticipantes() {
             <ParticipantGridSkeleton count={6} />
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {/* Selection header - mobile optimized */}
-                <div className="flex items-center gap-3 col-span-full mb-1 p-3 -mx-1 sm:mx-0 bg-gray-50/80 rounded-lg">
-                  <button
-                    onClick={toggleSelectAll as any}
-                    className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg active:bg-gray-200 transition-colors touch-manipulation"
-                  >
-                    {selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0 ? (
-                      <CheckSquare className="h-6 w-6 text-blue-600" />
-                    ) : (
-                      <Square className="h-6 w-6 text-gray-400" />
-                    )}
-                  </button>
-                  <span className="text-sm text-gray-600 flex-1">
-                    {selectedParticipants.length > 0 ? `${selectedParticipants.length} selecionado(s)` : 'Selecionar'}
-                  </span>
-                  {selectedParticipants.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => setShowAssignModal(true)}
-                        className="min-h-[44px]"
-                      >
-                        Atribuir Vendedor
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setShowDeleteModal(true)}
-                        className="min-h-[44px]"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Excluir
-                      </Button>
-                    </div>
+              {/* Selection header - mobile optimized */}
+              <div className="flex items-center gap-3 mb-1 p-3 -mx-1 sm:mx-0 bg-gray-50/80 rounded-lg">
+                <button
+                  onClick={toggleSelectAll as any}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg active:bg-gray-200 transition-colors touch-manipulation"
+                >
+                  {selectedParticipants.length === filteredParticipants.length && filteredParticipants.length > 0 ? (
+                    <CheckSquare className="h-6 w-6 text-blue-600" />
+                  ) : (
+                    <Square className="h-6 w-6 text-gray-400" />
                   )}
-                </div>
+                </button>
+                <span className="text-sm text-gray-600 flex-1">
+                  {selectedParticipants.length > 0 ? `${selectedParticipants.length} selecionado(s)` : 'Selecionar'}
+                </span>
+                {selectedParticipants.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAssignModal(true)}
+                      className="min-h-[44px]"
+                    >
+                      Atribuir Vendedor
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="min-h-[44px]"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Excluir
+                    </Button>
+                  </div>
+                )}
+              </div>
 
+              {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {visibleParticipants.map((participant) => {
                   const cardStatus = getParticipantCardStatus(participant as Participant, participant.hasSale ?? false)
                   return (
@@ -620,6 +668,118 @@ export default function AdminParticipantes() {
                   </Card>
                 )})}
               </div>
+              ) : (
+              /* List View */
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {/* Table header */}
+                <div className="hidden sm:grid sm:grid-cols-[auto_48px_1fr_150px_150px_120px_44px_48px] gap-3 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="w-[44px]"></div>
+                  <div>Foto</div>
+                  <div>Nome</div>
+                  <div>Faturamento</div>
+                  <div>Funil</div>
+                  <div>Acompanhante</div>
+                  <div className="text-center">Atribuir</div>
+                  <div>Closer</div>
+                </div>
+                {/* Table rows */}
+                {visibleParticipants.map((participant) => {
+                  const closerAssigned = closers.find(c => c.id === participant.seller_closer_id)
+                  return (
+                  <div
+                    key={participant.id}
+                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[auto_48px_1fr_150px_150px_120px_44px_48px] gap-3 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/admin/participantes/${participant.id}`)}
+                  >
+                    {/* Checkbox */}
+                    <div className="hidden sm:flex">
+                      <button
+                        onClick={(e) => toggleSelect(participant.id, e)}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg active:bg-gray-100 transition-colors touch-manipulation"
+                      >
+                        {selectedParticipants.includes(participant.id) ? (
+                          <CheckSquare className="h-5 w-5 text-blue-600" />
+                        ) : (
+                          <Square className="h-5 w-5 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                    {/* Photo */}
+                    <div className="hidden sm:block">
+                      <Avatar
+                        src={participant.photo_url}
+                        alt={participant.name}
+                        size="md"
+                      />
+                    </div>
+                    {/* Name (mobile: full row with photo) */}
+                    <div className="flex items-center gap-3 sm:block min-w-0">
+                      <div className="sm:hidden">
+                        <Avatar
+                          src={participant.photo_url}
+                          alt={participant.name}
+                          size="md"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate text-sm">{participant.name}</p>
+                        {/* Mobile: show extra info below name */}
+                        <div className="sm:hidden text-xs text-gray-500 mt-0.5 space-y-0.5">
+                          {participant.revenue && <p>Faturamento: {participant.revenue}</p>}
+                          {participant.funnel && <p>Funil: {participant.funnel}</p>}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Revenue */}
+                    <div className="hidden sm:block">
+                      <span className="text-sm text-gray-700">{participant.revenue || '—'}</span>
+                    </div>
+                    {/* Funnel */}
+                    <div className="hidden sm:block">
+                      <span className="text-sm text-gray-700">{participant.funnel || '—'}</span>
+                    </div>
+                    {/* Companion */}
+                    <div className="hidden sm:block">
+                      <span className="text-sm text-gray-700">{participant.companion || '—'}</span>
+                    </div>
+                    {/* Assign closer button */}
+                    <div className="flex items-center justify-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSingleAssignParticipantId(participant.id)
+                          setSingleAssignCloserId(participant.seller_closer_id || '')
+                        }}
+                        className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation"
+                        title="Atribuir closer"
+                      >
+                        <UserPlus className="h-5 w-5 text-blue-600" />
+                      </button>
+                    </div>
+                    {/* Closer photo */}
+                    <div className="hidden sm:flex items-center justify-center">
+                      {closerAssigned ? (
+                        <Avatar
+                          src={closerAssigned.photo_url}
+                          alt={closerAssigned.name}
+                          size="sm"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                          <span className="text-gray-400 text-xs">—</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )})}
+                {visibleParticipants.length === 0 && (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum participante encontrado</p>
+                  </div>
+                )}
+              </div>
+              )}
 
               {visibleCount < filteredParticipants.length && (
                 <div className="col-span-full flex justify-center pt-4">
@@ -733,6 +893,36 @@ export default function AdminParticipantes() {
             </Button>
             <Button onClick={handleBulkAssign} disabled={assigning || !assignCloserId}>
               {assigning ? 'Atribuindo...' : 'Atribuir'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Single Assign Closer Modal (from list view) */}
+      <Modal
+        isOpen={!!singleAssignParticipantId}
+        onClose={() => { setSingleAssignParticipantId(null); setSingleAssignCloserId('') }}
+        title="Atribuir Closer"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Selecione o closer para atribuir a este participante:
+          </p>
+          <Select
+            label="Closer"
+            value={singleAssignCloserId}
+            onChange={(e) => setSingleAssignCloserId(e.target.value)}
+            options={[
+              { value: '', label: 'Selecione um closer' },
+              ...closers.map(c => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => { setSingleAssignParticipantId(null); setSingleAssignCloserId('') }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSingleAssign} disabled={singleAssigning || !singleAssignCloserId}>
+              {singleAssigning ? 'Atribuindo...' : 'Atribuir'}
             </Button>
           </div>
         </div>
