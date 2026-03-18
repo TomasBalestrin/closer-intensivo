@@ -42,24 +42,45 @@ export default function AdminClosers() {
     let participantsQuery = supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3')
     let salesQuery = supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null)
 
-    // Get closers - filter by event if selected
+    // Get ALL users with role 'closer' (from users table and user_events table)
     let closersData: User[] = []
     if (activeEvent?.id) {
-      // First get user_ids from user_events for this event with role 'closer'
+      // Get closers from user_events for this event
       const { data: userEventsData } = await supabase
         .from('user_events')
         .select('user_id')
         .eq('event_id', activeEvent.id)
         .eq('role', 'closer')
 
-      if (userEventsData && userEventsData.length > 0) {
-        const userIds = userEventsData.map((ue: any) => ue.user_id)
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('id, name, email, photo_url, role')
-          .in('id', userIds)
-        closersData = (usersData || []) as User[]
+      const eventCloserIds = new Set((userEventsData || []).map((ue: any) => ue.user_id))
+
+      // Also get all users with role 'closer' from users table
+      const { data: allClosersData } = await supabase
+        .from('users')
+        .select('id, name, email, photo_url, role')
+        .eq('role', 'closer')
+
+      // Merge: all users with role closer + any from user_events not already included
+      const closersMap = new Map<string, User>()
+      for (const c of (allClosersData || []) as User[]) {
+        closersMap.set(c.id, c)
       }
+
+      // If there are user_events closers whose users.role isn't 'closer', include them too
+      if (eventCloserIds.size > 0) {
+        const missingIds = [...eventCloserIds].filter(id => !closersMap.has(id))
+        if (missingIds.length > 0) {
+          const { data: extraClosers } = await supabase
+            .from('users')
+            .select('id, name, email, photo_url, role')
+            .in('id', missingIds)
+          for (const c of (extraClosers || []) as User[]) {
+            closersMap.set(c.id, c)
+          }
+        }
+      }
+
+      closersData = Array.from(closersMap.values())
       participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     } else {
