@@ -16,21 +16,57 @@ import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 const CACHE_KEY = 'closer-participantes-cache'
 const SCROLL_KEY = 'closer-participantes-scroll'
 
-const COMPANION_KEYS = [
-  'companion', 'acompanhante', 'nome_acompanhante', 'nome_do_acompanhante',
-  'qual_o_nome_e_sobrenome_do_seu_acompanhante', 'acompanhante_nome',
-]
+function normalizeText(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
 
-function normalizeKey(key: string): string {
-  return key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+// Matches any key/question that asks for the companion's name
+// e.g. "Qual o nome do seu acompanhante?", "Nome e sobrenome do acompanhante",
+// "nome_acompanhante", "companion_name", "acompanhante", etc.
+function isCompanionKey(key: string): boolean {
+  const norm = normalizeText(key)
+  // Must mention "acompanhante" or "companion"
+  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
+  // If it also mentions name-related words, it's definitely the name field
+  if (/nome|name|sobrenome|completo/.test(norm)) return true
+  // If the key is short (likely a field id like "acompanhante" or "companion"), accept it
+  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
+  // If it's a question asking "qual" (which one), accept it
+  if (norm.includes('qual')) return true
+  return false
+}
+
+// Exclude keys that ask yes/no about having a companion or about the relationship
+function isCompanionMetaKey(key: string): boolean {
+  const norm = normalizeText(key)
+  // "voce vai com acompanhante?" / "tem acompanhante?" / "seu acompanhante e (esposa, socio...)"
+  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
+  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
+  return false
 }
 
 function findCompanionName(data: any): string | null {
   if (!data || typeof data !== 'object') return null
+
+  // Handle arrays (common pattern: [{label: "...", value: "..."}, ...])
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (item && typeof item === 'object') {
+        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
+        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
+        if (label && typeof value === 'string' && value.trim()) {
+          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
+        }
+      }
+      const found = findCompanionName(item)
+      if (found) return found
+    }
+    return null
+  }
+
   for (const [key, value] of Object.entries(data)) {
-    if (value && typeof value === 'string') {
-      const norm = normalizeKey(key)
-      if (COMPANION_KEYS.includes(norm)) return value
+    if (value && typeof value === 'string' && value.trim()) {
+      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return value.trim()
     }
     if (value && typeof value === 'object') {
       const found = findCompanionName(value)
