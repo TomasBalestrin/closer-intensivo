@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge } from '@/components/ui'
-import { Search, Filter, ExternalLink, Phone } from 'lucide-react'
+import { Search, Filter, ExternalLink, Phone, LayoutGrid, List } from 'lucide-react'
 import { Participant, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getColorFromRevenue, getInstagramUrl } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -46,6 +46,7 @@ export default function CloserParticipantes() {
   const [discRespondidoFilter, setDiscRespondidoFilter] = useState('')
   const [chamadoFilter, setChamadoFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const [visibleCount, setVisibleCount] = useState(30)
 
   const fetchData = useCallback(async (isBackground = false) => {
@@ -158,7 +159,31 @@ export default function CloserParticipantes() {
       <div className="space-y-6 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Meus Participantes</h1>
-          <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'p-2 rounded-md transition-colors',
+                  viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                )}
+                title="Visualizar como lista"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={cn(
+                  'p-2 rounded-md transition-colors',
+                  viewMode === 'cards' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                )}
+                title="Visualizar como cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+            <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+          </div>
         </div>
 
         {/* Search and Filters - Sticky on scroll */}
@@ -272,13 +297,120 @@ export default function CloserParticipantes() {
           )}
         </div>
 
-        {/* Participants Grid */}
+        {/* Participants */}
         {loading ? (
           <ParticipantGridSkeleton count={6} />
+        ) : viewMode === 'list' ? (
+          /* List View */
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
+            {/* Table header */}
+            <div className="hidden sm:grid sm:grid-cols-[40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(120px,1fr)_minmax(80px,0.8fr)_minmax(60px,0.5fr)] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div>Foto</div>
+              <div>Nome</div>
+              <div>Faturamento</div>
+              <div>Acompanhante</div>
+              <div>Check-in</div>
+              <div className="text-center">Chamado</div>
+            </div>
+            {/* Table rows */}
+            {visibleParticipants.map((participant: any) => {
+              const companionName = participant.companion
+                || participant.webhook_data?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.companion
+                || participant.webhook_data?.acompanhante
+                || participant.webhook_data?.nome_acompanhante
+                || null
+              return (
+              <div
+                key={participant.id}
+                className="grid grid-cols-[1fr_auto] sm:grid-cols-[40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(120px,1fr)_minmax(80px,0.8fr)_minmax(60px,0.5fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => handleNavigate(participant.id)}
+              >
+                {/* Photo */}
+                <div className="hidden sm:block">
+                  <Avatar
+                    src={participant.photo_url}
+                    alt={participant.name}
+                    size="md"
+                  />
+                </div>
+                {/* Name (mobile: full row with photo) */}
+                <div className="flex items-center gap-3 sm:block min-w-0">
+                  <div className="sm:hidden">
+                    <Avatar
+                      src={participant.photo_url}
+                      alt={participant.name}
+                      size="md"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900 truncate text-sm">{participant.name}</p>
+                      {participant.is_opportunity && (
+                        <Badge variant="success">Oport.</Badge>
+                      )}
+                      {participant.hasSale && (
+                        <Badge variant="success">Vendido</Badge>
+                      )}
+                    </div>
+                    {(participant.color || getColorFromRevenue(participant.revenue)) && (
+                      <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full mt-0.5 ${getColorClass(participant.color || getColorFromRevenue(participant.revenue))}`}>
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'rosa' && 'Rosa'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'preto' && 'Preto'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'azul_claro' && 'Azul Claro'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'verde' && 'Verde'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'dourado' && 'Dourado'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'laranja' && 'Laranja'}
+                      </span>
+                    )}
+                    {/* Mobile: show extra info below name */}
+                    <div className="sm:hidden text-xs text-gray-500 mt-0.5 space-y-0.5">
+                      {participant.revenue && <p>Faturamento: {participant.revenue}</p>}
+                      {companionName && <p>Acomp.: {companionName}</p>}
+                    </div>
+                  </div>
+                </div>
+                {/* Revenue */}
+                <div className="hidden sm:block min-w-0">
+                  <span className="text-sm text-gray-700 truncate block">{participant.revenue || '—'}</span>
+                </div>
+                {/* Companion */}
+                <div className="hidden sm:block min-w-0">
+                  <span className="text-sm text-gray-700 truncate block">{companionName || '—'}</span>
+                </div>
+                {/* Check-in */}
+                <div className="hidden sm:block">
+                  <span className="text-xs text-gray-600">
+                    {[
+                      participant.checked_in_day1 && 'D1',
+                      participant.checked_in_day2 && 'D2',
+                      participant.checked_in_day3 && 'D3',
+                    ].filter(Boolean).join(', ') || 'Nenhum'}
+                  </span>
+                </div>
+                {/* Times called */}
+                <div className="flex items-center justify-center gap-1">
+                  <Phone className="h-3 w-3 text-gray-400" />
+                  <span className="text-sm text-gray-600">{participant.times_called || 0}x</span>
+                </div>
+              </div>
+            )})}
+          </div>
         ) : (
+          /* Cards View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleParticipants.map((participant: any) => {
               const cardStatus = getParticipantCardStatus(participant, participant.hasSale)
+              const companionName = participant.companion
+                || participant.webhook_data?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante
+                || participant.webhook_data?.companion
+                || participant.webhook_data?.acompanhante
+                || participant.webhook_data?.nome_acompanhante
+                || null
               return (
               <Card
                 key={participant.id}
@@ -313,6 +445,11 @@ export default function CloserParticipantes() {
                         </span>
                       )}
                     </div>
+                    {companionName && (
+                      <p className="text-sm text-gray-600">
+                        Acompanhante: <span className="font-medium">{companionName}</span>
+                      </p>
+                    )}
                     {participant.revenue && (
                       <p className="text-sm text-gray-500">
                         Faturamento: {participant.revenue}
