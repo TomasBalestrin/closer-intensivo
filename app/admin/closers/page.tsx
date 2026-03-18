@@ -220,25 +220,17 @@ export default function AdminClosers() {
               </div>
             </div>
 
-            {(closer.qualAlto > 0 || closer.qualMedio > 0 || closer.qualBaixo > 0) && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {closer.qualAlto > 0 && (
-                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
-                    Alto: {closer.qualAlto}
-                  </span>
-                )}
-                {closer.qualMedio > 0 && (
-                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
-                    Médio: {closer.qualMedio}
-                  </span>
-                )}
-                {closer.qualBaixo > 0 && (
-                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
-                    Baixo: {closer.qualBaixo}
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
+                Alto: {closer.qualAlto}
+              </span>
+              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
+                Médio: {closer.qualMedio}
+              </span>
+              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
+                Baixo: {closer.qualBaixo}
+              </span>
+            </div>
 
             <div className="mt-4 pt-4 border-t text-sm">
               <p className="text-gray-500">Valor de Entrada</p>
