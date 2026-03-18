@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, Avatar, Loading, Button } from '@/components/ui'
 import { User, Sale, Participant } from '@/lib/types'
-import { formatCurrency, formatPercentage, exportToCSV } from '@/lib/utils'
+import { formatCurrency, formatPercentage, exportToCSV, getQualificationClass } from '@/lib/utils'
 import { useEvent } from '@/lib/hooks/use-event'
 import { Download } from 'lucide-react'
 
@@ -16,6 +16,9 @@ interface CloserWithStats extends User {
   conversionRate: number
   totalSalesValue: number
   totalEntryValue: number
+  qualAlto: number
+  qualMedio: number
+  qualBaixo: number
 }
 
 export default function AdminClosers() {
@@ -39,7 +42,7 @@ export default function AdminClosers() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3')
+    let participantsQuery = supabase.from('participants').select('id, closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification')
     let salesQuery = supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null)
 
     // Get ALL users with role 'closer' (from users table and user_events table)
@@ -145,6 +148,9 @@ export default function AdminClosers() {
         conversionRate,
         totalSalesValue: closerSales.reduce((sum, s) => sum + Number(s.total_value), 0),
         totalEntryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value), 0),
+        qualAlto: assignedParticipants.filter(p => (p as any).qualification === 'alto').length,
+        qualMedio: assignedParticipants.filter(p => (p as any).qualification === 'medio').length,
+        qualBaixo: assignedParticipants.filter(p => (p as any).qualification === 'baixo').length,
       }
     })
   }, [rawClosers, rawParticipants, rawSales])
@@ -213,6 +219,26 @@ export default function AdminClosers() {
                 <p className="font-semibold">{formatCurrency(closer.totalSalesValue)}</p>
               </div>
             </div>
+
+            {(closer.qualAlto > 0 || closer.qualMedio > 0 || closer.qualBaixo > 0) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {closer.qualAlto > 0 && (
+                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
+                    Alto: {closer.qualAlto}
+                  </span>
+                )}
+                {closer.qualMedio > 0 && (
+                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
+                    Médio: {closer.qualMedio}
+                  </span>
+                )}
+                {closer.qualBaixo > 0 && (
+                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
+                    Baixo: {closer.qualBaixo}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="mt-4 pt-4 border-t text-sm">
               <p className="text-gray-500">Valor de Entrada</p>
