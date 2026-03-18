@@ -12,6 +12,54 @@ import { useEvent } from '@/lib/hooks/use-event'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 
+function normalizeText(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+function isCompanionKey(key: string): boolean {
+  const norm = normalizeText(key)
+  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
+  if (/nome|name|sobrenome|completo/.test(norm)) return true
+  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
+  if (norm.includes('qual')) return true
+  return false
+}
+
+function isCompanionMetaKey(key: string): boolean {
+  const norm = normalizeText(key)
+  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
+  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
+  return false
+}
+
+function findCompanionName(data: any): string | null {
+  if (!data || typeof data !== 'object') return null
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (item && typeof item === 'object') {
+        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
+        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
+        if (label && typeof value === 'string' && value.trim()) {
+          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
+        }
+      }
+      const found = findCompanionName(item)
+      if (found) return found
+    }
+    return null
+  }
+  for (const [key, value] of Object.entries(data)) {
+    if (value && typeof value === 'string' && (value as string).trim()) {
+      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return (value as string).trim()
+    }
+    if (value && typeof value === 'object') {
+      const found = findCompanionName(value)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
@@ -59,7 +107,7 @@ export default function AdminParticipantes() {
   const [assigning, setAssigning] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards')
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('list')
   const [singleAssignParticipantId, setSingleAssignParticipantId] = useState<string | null>(null)
   const [singleAssignCloserId, setSingleAssignCloserId] = useState('')
   const [singleAssigning, setSingleAssigning] = useState(false)
@@ -165,6 +213,20 @@ export default function AdminParticipantes() {
   }, [participants, debouncedSearch, funnelFilter, sellerFilter, assignedCloserFilter, opportunityFilter, saleFilter, colorFilter, checkinFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
+
+  // Pagination for list view
+  const PAGE_SIZE = 50
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(filteredParticipants.length / PAGE_SIZE))
+  const paginatedParticipants = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredParticipants.slice(start, start + PAGE_SIZE)
+  }, [filteredParticipants, currentPage])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, funnelFilter, sellerFilter, assignedCloserFilter, opportunityFilter, saleFilter, colorFilter, checkinFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
   const hasActiveFilters = funnelFilter || sellerFilter || assignedCloserFilter || opportunityFilter || saleFilter || colorFilter || checkinFilter || qualificationFilter || discRespondidoFilter || chamadoFilter
 
@@ -683,17 +745,9 @@ export default function AdminParticipantes() {
                   <div>Closer</div>
                 </div>
                 {/* Table rows */}
-                {visibleParticipants.map((participant) => {
+                {paginatedParticipants.map((participant) => {
                   const closerAssigned = closers.find(c => c.id === participant.seller_closer_id)
-                  // Extract companion: try direct field, then webhook_data
-                  const companionName = participant.companion
-                    || ((participant.webhook_data as any)?.participant?.form_data?.qual_o_nome_e_sobrenome_do_seu_acompanhante)
-                    || ((participant.webhook_data as any)?.fields?.qual_o_nome_e_sobrenome_do_seu_acompanhante)
-                    || ((participant.webhook_data as any)?.qual_o_nome_e_sobrenome_do_seu_acompanhante)
-                    || ((participant.webhook_data as any)?.companion)
-                    || ((participant.webhook_data as any)?.acompanhante)
-                    || ((participant.webhook_data as any)?.nome_acompanhante)
-                    || null
+                  const companionName = participant.companion || findCompanionName(participant.webhook_data)
                   return (
                   <div
                     key={participant.id}
@@ -781,16 +835,79 @@ export default function AdminParticipantes() {
                     </div>
                   </div>
                 )})}
-                {visibleParticipants.length === 0 && (
+                {paginatedParticipants.length === 0 && (
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">Nenhum participante encontrado</p>
                   </div>
                 )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                    <p className="text-sm text-gray-600">
+                      {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredParticipants.length)} de {filteredParticipants.length}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {'<<'}
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {'<'}
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                        .reduce<(number | string)[]>((acc, p, i, arr) => {
+                          if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...')
+                          acc.push(p)
+                          return acc
+                        }, [])
+                        .map((p, i) =>
+                          typeof p === 'string' ? (
+                            <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">...</span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => setCurrentPage(p)}
+                              className={`px-2 py-1 text-xs rounded border ${
+                                currentPage === p
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'border-gray-300 bg-white hover:bg-gray-100'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        )}
+                      <button
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {'>'}
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {'>>'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               )}
 
-              {visibleCount < filteredParticipants.length && (
+              {viewMode === 'cards' && visibleCount < filteredParticipants.length && (
                 <div className="col-span-full flex justify-center pt-4">
                   <Button
                     variant="secondary"
