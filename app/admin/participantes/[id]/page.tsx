@@ -271,7 +271,7 @@ export default function ParticipantDetail() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ closer_id: closerId })
+        .update({ assigned_closer_id: closerId })
         .eq('id', params.id)
 
       if (error) throw error
@@ -325,7 +325,7 @@ export default function ParticipantDetail() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Usuário não autenticado')
 
-      const closerIdForSale = saleData.closer_id || participant?.closer_id || user.id
+      const closerIdForSale = saleData.closer_id || participant?.assigned_closer_id || user.id
 
       // Get closer name
       const { data: closerData } = await supabase
@@ -370,7 +370,7 @@ export default function ParticipantDetail() {
       negotiation_type: sale.negotiation_type || '',
       dia_evento: sale.dia_evento?.toString() || '',
       observacoes: sale.observacoes || '',
-      closer_id: sale.closer_id || participant?.closer_id || '',
+      closer_id: sale.closer_id || participant?.assigned_closer_id || '',
     })
     setSaleModal(true)
   }
@@ -585,7 +585,7 @@ export default function ParticipantDetail() {
     )
   }
 
-  const assignedCloser = closers.find(c => c.id === participant.closer_id)
+  const assignedCloser = closers.find(c => c.id === participant.assigned_closer_id)
   const hasFormCompleted = participant.form_completed_at != null
   const hasDiscProfile = participant.disc_profile != null
   // Check if form is truly completed (has completed_at AND has actual answers)
@@ -816,7 +816,7 @@ export default function ParticipantDetail() {
 
             {/* Action Bar - Vender */}
             <button
-              onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.closer_id || '' })); setSaleModal(true) }}
+              onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.assigned_closer_id || '' })); setSaleModal(true) }}
               className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl font-medium transition-colors"
             >
               <DollarSign className="h-5 w-5" />
@@ -1483,7 +1483,7 @@ export default function ParticipantDetail() {
             >
               <Avatar src={closer.photo_url} alt={closer.name} />
               <span className="font-medium">{closer.name}</span>
-              {closer.id === participant.closer_id && <Badge variant="success" className="ml-auto">Atual</Badge>}
+              {closer.id === participant.assigned_closer_id && <Badge variant="success" className="ml-auto">Atual</Badge>}
             </button>
           ))}
         </div>

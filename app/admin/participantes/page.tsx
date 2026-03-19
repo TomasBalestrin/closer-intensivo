@@ -284,7 +284,7 @@ export default function AdminParticipantes() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ seller_closer_id: assignCloserId })
+        .update({ assigned_closer_id: assignCloserId })
         .in('id', selectedParticipants)
 
       if (error) throw error
