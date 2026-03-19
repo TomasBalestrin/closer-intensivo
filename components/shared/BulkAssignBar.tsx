@@ -45,7 +45,7 @@ export function BulkAssignBar({ selectedIds, onClear, onSuccess }: BulkAssignBar
       // Update all selected participants with the new closer
       const { error } = await supabase
         .from('participants')
-        .update({ closer_id: selectedCloser })
+        .update({ assigned_closer_id: selectedCloser })
         .in('id', selectedIds)
 
       if (error) throw error
