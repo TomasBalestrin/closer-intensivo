@@ -33,41 +33,29 @@ export default function TopClosersRealtime() {
     fetchRankings()
   }, [fetchRankings])
 
-  // Realtime subscription com debounce - filtered by active event
+  // Realtime subscription com debounce
   useEffect(() => {
-    const channelName = activeEvent?.id
-      ? `sales-realtime-closer-${activeEvent.id}`
-      : 'sales-realtime-closer-all'
-
-    const subscriptionConfig: {
-      event: '*'
-      schema: 'public'
-      table: 'sales'
-      filter?: string
-    } = {
-      event: '*',
-      schema: 'public',
-      table: 'sales',
-    }
-
-    // Filter by event_id if an active event is selected
-    if (activeEvent?.id) {
-      subscriptionConfig.filter = `event_id=eq.${activeEvent.id}`
-    }
-
     const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', subscriptionConfig, () => {
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(fetchRankings, 1000)
-      })
+      .channel('sales-realtime-closer')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sales',
+        },
+        () => {
+          if (debounceRef.current) clearTimeout(debounceRef.current)
+          debounceRef.current = setTimeout(fetchRankings, 1000)
+        }
+      )
       .subscribe()
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       supabase.removeChannel(channel)
     }
-  }, [fetchRankings, activeEvent?.id])
+  }, [fetchRankings])
 
   if (loading) {
     return (
