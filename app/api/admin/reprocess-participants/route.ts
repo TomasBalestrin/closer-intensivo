@@ -148,7 +148,8 @@ function isOpportunityValue(value: any): boolean {
   if (value === true) return true
   if (typeof value === 'string') {
     const v = value.toLowerCase().trim()
-    return ['true', 'sim', 'yes', '1'].includes(v)
+    // "Oportunidade" is sent as the value when the participant IS an opportunity
+    return ['true', 'sim', 'yes', '1', 'oportunidade', 'opportunity'].includes(v)
   }
   return value === 1
 }
