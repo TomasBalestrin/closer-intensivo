@@ -27,7 +27,6 @@ import {
   getColorFromRevenue,
   getQualificationFromRevenue,
   FATURAMENTO_OPTIONS,
-  FUNIL_OPTIONS,
   normalizeRevenue,
 } from '@/lib/utils'
 
@@ -165,6 +164,12 @@ export default function AdminRelatorios() {
       return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp
     })
   }, [participants, checkinFilter, colorFilter, funnelFilter, closerFilter, opportunityFilter])
+
+  // Dynamic funnel options from actual participant data
+  const funnels = useMemo(() =>
+    [...new Set(participants.map(p => p.funnel).filter(Boolean))].sort(),
+    [participants]
+  )
 
   const hasActiveFilters = checkinFilter || colorFilter || funnelFilter || closerFilter || opportunityFilter
 
@@ -451,7 +456,7 @@ export default function AdminRelatorios() {
                 onChange={(e) => setFunnelFilter(e.target.value)}
                 options={[
                   { value: '', label: 'Todos os funis' },
-                  ...FUNIL_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })),
+                  ...funnels.map(f => ({ value: f!, label: f! })),
                 ]}
               />
               <Select
