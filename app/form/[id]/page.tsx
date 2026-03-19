@@ -254,6 +254,11 @@ const discQuestions = [
 // Perguntas abertas
 const openQuestions = [
   {
+    id: 'instagram',
+    question: 'Qual é o seu Instagram?',
+    placeholder: '@seu.usuario'
+  },
+  {
     id: 'challenge',
     question: 'Qual é o maior desafio que você está enfrentando agora?',
     placeholder: 'Conte-nos sobre seu principal desafio atual no seu negócio ou vida pessoal...'
@@ -263,11 +268,6 @@ const openQuestions = [
     question: 'Se pudesse mudar uma coisa na sua situação atual, o que seria?',
     placeholder: 'Descreva a mudança que você mais deseja ver acontecer...'
   },
-  {
-    id: 'instagram',
-    question: 'Qual é o seu Instagram?',
-    placeholder: '@seu.usuario'
-  }
 ]
 
 // Totals
@@ -418,8 +418,26 @@ export default function FormPage() {
     setTimeout(() => handleNext(), 400)
   }
 
+  const savePartial = (fieldId: string, value: string) => {
+    if (!participant?.id || !value) return
+    const body: Record<string, any> = { participantId: participant.id }
+    if (fieldId === 'instagram') body.instagram = value
+    if (fieldId === 'challenge') body.challengeAnswer = value
+    if (fieldId === 'desired_change') body.desiredChangeAnswer = value
+    fetch('/api/forms/save-partial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {})
+  }
+
   const handleNext = () => {
     if (currentQuestion < TOTAL_QUESTIONS - 1) {
+      // Save open question answers partially when moving to next
+      const qData = getCurrentQuestionData()
+      if (qData.type === 'open' && openAnswers[qData.data.id]) {
+        savePartial(qData.data.id, openAnswers[qData.data.id])
+      }
       setIsTransitioning(true)
       setTimeout(() => {
         setCurrentQuestion(currentQuestion + 1)
@@ -721,14 +739,8 @@ export default function FormPage() {
             </h1>
 
             {/* Subtitle */}
-            <p className="mt-5 text-white/50 text-lg md:text-xl">
-              Transforme seu potencial em resultados extraordinários
-            </p>
-
-            {/* Description */}
-            <p className="mt-8 text-white/40 text-base leading-relaxed max-w-md mx-auto">
-              Você está prestes a dar o primeiro passo rumo à alta performance.
-              Responda as perguntas a seguir para iniciar sua jornada.
+            <p className="mt-5 text-white/50 text-lg md:text-xl leading-relaxed max-w-md mx-auto">
+              Descubra seus arquétipos para aplicação de uma metodologia dentro do Intensivo da Alta Performance
             </p>
 
             {/* Greeting Card */}
@@ -744,7 +756,7 @@ export default function FormPage() {
               onClick={() => setShowIntro(false)}
               className="mt-8 w-full max-w-md mx-auto bg-white text-[#0a1628] font-semibold text-lg py-4 px-8 rounded-full hover:bg-white/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-white/10"
             >
-              Iniciar Minha Jornada
+              Descobrir meus Arquétipos
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>
