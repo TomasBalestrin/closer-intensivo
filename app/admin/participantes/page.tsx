@@ -776,7 +776,7 @@ export default function AdminParticipantes() {
                   return (
                   <div
                     key={participant.id}
-                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${participant.hasSale ? 'bg-green-50 border-l-4 border-l-green-500' : ''}`}
                     onClick={() => router.push(`/admin/participantes/${participant.id}`)}
                   >
                     {/* Checkbox */}
@@ -810,7 +810,12 @@ export default function AdminParticipantes() {
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate text-sm">{participant.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900 truncate text-sm">{participant.name}</p>
+                          {participant.hasSale && (
+                            <Badge variant="success">Vendido</Badge>
+                          )}
+                        </div>
                         {/* Mobile: show extra info below name */}
                         <div className="sm:hidden text-xs text-gray-500 mt-0.5 space-y-0.5">
                           {participant.revenue && <p>Faturamento: {participant.revenue}</p>}
