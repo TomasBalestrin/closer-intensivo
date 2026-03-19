@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button, Card } from '@/components/ui'
 import { Search, Trash2, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'
+import { useEvent } from '@/lib/hooks/use-event'
 
 interface ParticipantInfo {
   id: string
@@ -70,6 +71,7 @@ function hasMoreData(p: ParticipantInfo): number {
 }
 
 export default function DuplicatasPage() {
+  const { activeEvent, isLoading: eventLoading } = useEvent()
   const [result, setResult] = useState<CheckResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState<Set<string>>(new Set())
@@ -79,8 +81,10 @@ export default function DuplicatasPage() {
   const checkDuplicates = async () => {
     setLoading(true)
     setError(null)
+    setDeletedIds(new Set())
     try {
-      const res = await fetch('/api/admin/check-duplicates')
+      const params = activeEvent ? `?event_id=${activeEvent.id}` : ''
+      const res = await fetch(`/api/admin/check-duplicates${params}`)
       if (!res.ok) throw new Error('Erro ao verificar duplicatas')
       const data = await res.json()
       setResult(data)
@@ -113,7 +117,6 @@ export default function DuplicatasPage() {
   }
 
   const deleteAllExtras = async (group: DuplicateGroup) => {
-    // Keep the participant with most data, delete the rest
     const sorted = [...group.participants].sort((a, b) => hasMoreData(b) - hasMoreData(a))
     const toDelete = sorted.slice(1).map(p => p.id).filter(id => !deletedIds.has(id))
     if (toDelete.length === 0) return
@@ -148,21 +151,43 @@ export default function DuplicatasPage() {
     }
   }
 
-  // Filter out groups where all extras have been deleted
   const activeGroups = result?.groups.filter(g => {
     const remaining = g.participants.filter(p => !deletedIds.has(p.id))
     return remaining.length > 1
   }) || []
 
+  if (eventLoading) {
+    return (
+      <div className="p-4 md:p-6 max-w-5xl mx-auto">
+        <div className="flex items-center gap-2 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Carregando...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-2">Verificar Duplicatas</h1>
-      <p className="text-gray-500 mb-6">Identifique e remova participantes duplicados por email, CPF ou nome.</p>
+      <p className="text-gray-500 mb-4">Identifique e remova participantes duplicados por email, CPF ou nome.</p>
 
-      <Button onClick={checkDuplicates} disabled={loading} className="mb-6">
-        {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-        {loading ? 'Verificando...' : 'Verificar Duplicatas'}
-      </Button>
+      {activeEvent ? (
+        <div className="mb-6 inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
+          <span className="font-medium">Evento:</span> {activeEvent.nome_evento}
+        </div>
+      ) : (
+        <div className="mb-6 inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+          Nenhum evento selecionado. Selecione um evento primeiro.
+        </div>
+      )}
+
+      <div className="mb-6">
+        <Button onClick={checkDuplicates} disabled={loading || !activeEvent}>
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+          {loading ? 'Verificando...' : 'Verificar Duplicatas'}
+        </Button>
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6">
@@ -202,7 +227,6 @@ export default function DuplicatasPage() {
                 const sorted = [...group.participants]
                   .filter(p => !deletedIds.has(p.id))
                   .sort((a, b) => hasMoreData(b) - hasMoreData(a))
-                const best = sorted[0]
 
                 return (
                   <Card key={i} className="p-4">
