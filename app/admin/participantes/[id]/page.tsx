@@ -120,9 +120,8 @@ export default function ParticipantDetail() {
   const fetchData = async () => {
     setLoading(true)
 
-    const [participantRes, closersRes, formsRes, salesRes] = await Promise.all([
+    const [participantRes, formsRes, salesRes] = await Promise.all([
       supabase.from('participants').select('*, event:events(id, data_inicio)').eq('id', params.id).single(),
-      supabase.from('users').select('*').eq('role', 'closer'),
       supabase.from('disc_forms').select('*').eq('participant_id', params.id),
       supabase.from('sales').select('*, closer:users(*)').eq('participant_id', params.id).is('deleted_at', null),
     ])
@@ -187,7 +186,26 @@ export default function ParticipantDetail() {
       })
     }
 
-    setClosers(closersRes.data || [])
+    // Fetch closers filtered by participant's event
+    const participantEventId = participantRes.data?.event_id
+    let closersData: UserType[] = []
+    if (participantEventId) {
+      const { data: userEventsData } = await supabase
+        .from('user_events')
+        .select('user_id')
+        .eq('event_id', participantEventId)
+        .eq('role', 'closer')
+      if (userEventsData && userEventsData.length > 0) {
+        const userIds = userEventsData.map((ue: any) => ue.user_id)
+        const { data } = await supabase.from('users').select('*').in('id', userIds)
+        closersData = (data || []) as UserType[]
+      }
+    } else {
+      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      closersData = (data || []) as UserType[]
+    }
+
+    setClosers(closersData)
     setForms(formsRes.data || [])
     setSales(salesRes.data || [])
 
