@@ -19,6 +19,9 @@ interface CloserWithStats extends User {
   qualAlto: number
   qualMedio: number
   qualBaixo: number
+  partAlto: number
+  partMedio: number
+  partBaixo: number
 }
 
 export default function AdminClosers() {
@@ -129,9 +132,12 @@ export default function AdminClosers() {
         conversionRate,
         totalSalesValue: closerSales.reduce((sum, s) => sum + Number(s.total_value), 0),
         totalEntryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value), 0),
-        qualAlto: assignedParticipants.filter(p => (p as any).qualification === 'alto').length,
-        qualMedio: assignedParticipants.filter(p => (p as any).qualification === 'medio').length,
-        qualBaixo: assignedParticipants.filter(p => (p as any).qualification === 'baixo').length,
+        qualAlto: opportunities.filter(p => (p as any).qualification === 'alto').length,
+        qualMedio: opportunities.filter(p => (p as any).qualification === 'medio').length,
+        qualBaixo: opportunities.filter(p => (p as any).qualification === 'baixo').length,
+        partAlto: assignedParticipants.filter(p => (p as any).qualification === 'alto').length,
+        partMedio: assignedParticipants.filter(p => (p as any).qualification === 'medio').length,
+        partBaixo: assignedParticipants.filter(p => (p as any).qualification === 'baixo').length,
       }
     })
   }, [rawClosers, rawParticipants, rawSales])
@@ -201,16 +207,34 @@ export default function AdminClosers() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
-                Alto: {closer.qualAlto}
-              </span>
-              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
-                Médio: {closer.qualMedio}
-              </span>
-              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
-                Baixo: {closer.qualBaixo}
-              </span>
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 mb-1">Oportunidades por qualificação</p>
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
+                  Alto: {closer.qualAlto}
+                </span>
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
+                  Médio: {closer.qualMedio}
+                </span>
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
+                  Baixo: {closer.qualBaixo}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 mb-1">Participantes atribuídos por qualificação</p>
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
+                  Alto: {closer.partAlto}
+                </span>
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
+                  Médio: {closer.partMedio}
+                </span>
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
+                  Baixo: {closer.partBaixo}
+                </span>
+              </div>
             </div>
 
             <div className="mt-4 pt-4 border-t text-sm">
