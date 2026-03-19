@@ -336,12 +336,14 @@ export default function ParticipantDetail() {
         closer_id: closerIdForSale,
         closer_nome: closerData?.name || null,
         product_name: saleData.product_name,
+        amount: parseFloat(saleData.total_value),
         total_value: parseFloat(saleData.total_value),
         entry_value: parseFloat(saleData.entry_value),
         valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
         dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
         observacoes: saleData.observacoes || null,
+        event_id: participant?.event_id || null,
       })
 
       if (error) throw error
