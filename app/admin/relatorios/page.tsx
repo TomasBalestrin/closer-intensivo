@@ -19,7 +19,9 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
+  FileDown,
 } from 'lucide-react'
+import { PdfReportModal } from './_components/pdf-report-modal'
 import { User } from '@/lib/types'
 import { useEvent } from '@/lib/hooks/use-event'
 import {
@@ -72,6 +74,9 @@ export default function AdminRelatorios() {
   const [aiResult, setAiResult] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [showAiSection, setShowAiSection] = useState(true)
+
+  // PDF Report Modal
+  const [showPdfModal, setShowPdfModal] = useState(false)
 
   // Collapsible sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -406,7 +411,17 @@ export default function AdminRelatorios() {
             </span>
           )}
         </div>
-        <span className="text-sm text-gray-500">{filtered.length} participantes {hasActiveFilters ? '(filtrados)' : ''}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{filtered.length} participantes {hasActiveFilters ? '(filtrados)' : ''}</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowPdfModal(true)}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Relatório PDF
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -872,6 +887,14 @@ export default function AdminRelatorios() {
           </CardContent>
         </Card>
       )}
+
+      {/* PDF Report Modal */}
+      <PdfReportModal
+        isOpen={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        participants={filtered as any}
+        eventName={activeEvent?.nome_evento || 'Evento'}
+      />
     </div>
   )
 }
