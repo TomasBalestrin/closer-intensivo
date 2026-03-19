@@ -235,9 +235,8 @@ function extractFieldsFromWebhookData(webhookData: any): Record<string, any> {
     extracted.tem_acompanhante = isTruthy(rawTemAcompanhante)
   }
 
-  // Extract is_opportunity - EXACT match only (no substring matching)
-  // Using findValueExact to avoid false positives from fields containing "oportunidade"
-  const rawOportunidade = findValueExact(flat, OPORTUNIDADE_ALIASES)
+  // Extract is_opportunity - only explicit positive values
+  const rawOportunidade = findValue(flat, OPORTUNIDADE_ALIASES)
   if (rawOportunidade !== null) {
     extracted.is_opportunity = isOpportunityValue(rawOportunidade)
   }
