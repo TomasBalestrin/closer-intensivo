@@ -107,6 +107,8 @@ export default function ParticipantDetail() {
   const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [chamadoSaving, setChamadoSaving] = useState(false)
+  const [editingChamados, setEditingChamados] = useState(false)
+  const [chamadosInput, setChamadosInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [eventData, setEventData] = useState<{ id: string; data_inicio: string } | null>(null)
 
@@ -497,6 +499,25 @@ export default function ParticipantDetail() {
     }
   }
 
+  const handleSaveChamados = async (value: number) => {
+    setChamadoSaving(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({ times_called: value })
+        .eq('id', params.id)
+
+      if (error) throw error
+      showToast('Chamados atualizado!', 'success')
+      setEditingChamados(false)
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao atualizar chamados', 'error')
+    } finally {
+      setChamadoSaving(false)
+    }
+  }
+
   const handleDeleteParticipant = async () => {
     setDeleting(true)
     try {
@@ -814,20 +835,58 @@ export default function ParticipantDetail() {
               </button>
 
               {/* Chamados */}
-              <button
-                onClick={handleMarcarChamado}
-                disabled={chamadoSaving}
+              <div
                 className={`rounded-xl border p-3 text-left transition-colors ${
                   participant.chamado
                     ? 'bg-yellow-50 border-yellow-200'
-                    : 'bg-white hover:bg-gray-50'
+                    : 'bg-white'
                 }`}
               >
-                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Chamados</p>
-                <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
-                  {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
-                </p>
-              </button>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium">Chamados</p>
+                  {!editingChamados && (
+                    <button
+                      onClick={() => { setChamadosInput(String(participant.times_called || 0)); setEditingChamados(true) }}
+                      className="p-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                {editingChamados ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={chamadosInput}
+                      onChange={(e) => setChamadosInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveChamados(parseInt(chamadosInput) || 0)
+                        if (e.key === 'Escape') setEditingChamados(false)
+                      }}
+                      autoFocus
+                      className="w-12 text-sm font-medium text-gray-900 border border-gray-300 rounded px-1.5 py-0.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      onClick={() => handleSaveChamados(parseInt(chamadosInput) || 0)}
+                      disabled={chamadoSaving}
+                      className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
+                    >
+                      {chamadoSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => setEditingChamados(false)}
+                      className="p-1 text-gray-400 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
+                    {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Action Bar - Vender */}
