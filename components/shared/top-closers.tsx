@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Avatar } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { Trophy } from 'lucide-react'
@@ -15,7 +16,7 @@ interface TopClosersProps {
   closers: TopCloserData[]
 }
 
-export function TopClosers({ closers }: TopClosersProps) {
+export const TopClosers = memo(function TopClosers({ closers }: TopClosersProps) {
   return (
     <section>
       <div className="flex items-center gap-2 mb-4">
@@ -78,4 +79,4 @@ export function TopClosers({ closers }: TopClosersProps) {
       </div>
     </section>
   )
-}
+})

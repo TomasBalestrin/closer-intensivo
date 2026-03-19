@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Avatar } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { BarChart3 } from 'lucide-react'
@@ -7,7 +8,7 @@ interface CloserRankingTableProps {
   closers: TopCloserData[]
 }
 
-export function CloserRankingTable({ closers }: CloserRankingTableProps) {
+export const CloserRankingTable = memo(function CloserRankingTable({ closers }: CloserRankingTableProps) {
   if (closers.length === 0) return null
 
   return (
@@ -123,4 +124,4 @@ export function CloserRankingTable({ closers }: CloserRankingTableProps) {
       </div>
     </section>
   )
-}
+})
