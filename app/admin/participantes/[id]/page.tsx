@@ -229,6 +229,7 @@ export default function ParticipantDetail() {
 
       if (error) throw error
       showToast('Participante atualizado com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao salvar', 'error')
@@ -251,6 +252,7 @@ export default function ParticipantDetail() {
       if (error) throw error
 
       setParticipant({ ...participant, [field]: !currentValue })
+      sessionStorage.setItem('participants-data-changed', 'true')
       showToast(
         !currentValue
           ? `Check-in Dia ${day} marcado com sucesso`
@@ -274,6 +276,7 @@ export default function ParticipantDetail() {
 
       if (error) throw error
       showToast('Closer atribuído com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
       setAssignCloserModal(false)
       fetchData()
     } catch (error: any) {
@@ -346,6 +349,7 @@ export default function ParticipantDetail() {
 
       if (error) throw error
       showToast('Venda registrada com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
       setSaleModal(false)
       setSaleData({ product_name: '', total_value: '', entry_value: '', valor_proxima_semana: '', negotiation_type: '', dia_evento: '', observacoes: '', closer_id: '' })
       fetchData()
@@ -403,6 +407,7 @@ export default function ParticipantDetail() {
 
       if (error) throw error
       showToast('Venda atualizada com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
       setSaleModal(false)
       setEditingSale(null)
       setSaleData({ product_name: '', total_value: '', entry_value: '', valor_proxima_semana: '', negotiation_type: '', dia_evento: '', observacoes: '', closer_id: '' })
@@ -434,6 +439,7 @@ export default function ParticipantDetail() {
 
       if (error) throw error
       showToast('Venda removida com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
       setDeletingSale(null)
       fetchData()
     } catch (error: any) {

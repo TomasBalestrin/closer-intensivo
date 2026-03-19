@@ -128,6 +128,33 @@ export default function AdminParticipantes() {
     }
   }, [fetchData, eventLoading])
 
+  // Refetch when returning from detail page with changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && sessionStorage.getItem('participants-data-changed')) {
+        sessionStorage.removeItem('participants-data-changed')
+        fetchData()
+      }
+    }
+    const handleFocus = () => {
+      if (sessionStorage.getItem('participants-data-changed')) {
+        sessionStorage.removeItem('participants-data-changed')
+        fetchData()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    // Also check on mount (back navigation)
+    if (sessionStorage.getItem('participants-data-changed')) {
+      sessionStorage.removeItem('participants-data-changed')
+      fetchData()
+    }
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [fetchData])
+
   const filteredParticipants = useMemo(() => {
     const searchLower = debouncedSearch.toLowerCase()
     return participants.filter((p: any) => {
