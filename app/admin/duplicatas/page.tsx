@@ -216,7 +216,7 @@ export default function DuplicatasPage() {
                       </div>
                       <Button
                         size="sm"
-                        variant="destructive"
+                        variant="danger"
                         onClick={() => deleteAllExtras(group)}
                         disabled={deleting.size > 0}
                       >
