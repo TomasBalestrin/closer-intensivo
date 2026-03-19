@@ -32,7 +32,8 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   photo_url: ['adicione_uma_foto_sua_para_perfil', 'foto', 'foto_perfil', 'photo', 'qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos'],
   challenge_answer: ['qual_a_maior_dificuldade_no_seu_negocio', 'maior_dificuldade', 'dificuldade', 'desafio', 'qual_sua_maior_dificuldade_no_seu_negocio_hoje'],
   desired_change_answer: ['o_que_voce_pretende_aprender_no_intensivo', 'o_que_busca', 'objetivo', 'expectativa', 'o_que_pretende_aprender_no_intensivo_da_alta_performance'],
-  instagram: ['instagram', 'insta', 'qual_seu_instagram', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram'],
+  instagram: ['instagram', 'insta', 'qual_seu_instagram', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram', 'seu_instagram', 'qual_e_o_seu_instagram', 'informe_seu_instagram', 'digite_seu_instagram', 'instagram_pessoal'],
+  seller_closer_name: ['closer', 'vendedor', 'consultor', 'atendente', 'responsavel', 'closer_indicado', 'indicado', 'indicacao', 'quem_indicou', 'indicado_por', 'convidado_por', 'indicador', 'seller', 'representante'],
   partner: ['voce_tem_socio', 'socio', 'tem_socio'],
   net_profit: ['lucro_liquido', 'qual_seu_lucro_liquido_mensal', 'lucro'],
 }
@@ -66,6 +67,26 @@ function parseCheckinStatus(status: string | null | undefined): boolean {
 function cleanInstagram(value: string | undefined | null): string | null {
   if (!value || typeof value !== 'string') return null
   return value.replace(/^@/, '').trim() || null
+}
+
+// Look up closer user by name and return their UUID
+async function lookupCloserByName(
+  supabase: any,
+  sellerName: string | null
+): Promise<string | null> {
+  if (!sellerName || typeof sellerName !== 'string') return null
+
+  const trimmedName = sellerName.trim()
+  if (!trimmedName) return null
+
+  const { data: closerUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('role', 'closer')
+    .ilike('name', `%${trimmedName}%`)
+    .single()
+
+  return closerUser?.id || null
 }
 
 export async function POST(
@@ -133,10 +154,16 @@ export async function POST(
     const netProfit = extractFromFormData(formData, 'net_profit')
 
     // Extract additional fields from participant object
-    const closer = participant.closer || payload.closer
+    const sellerCloserName = participant.closer || payload.closer || extractFromFormData(formData, 'seller_closer_name') || null
     const category = participant.category || participant.setor || payload.category
     const qrCode = participant.qr_code || participant.qrcode || payload.qr_code
     // status removido - conflita com constraint do banco
+
+    // Look up seller_closer_id from name
+    let sellerCloserId: string | null = null
+    if (sellerCloserName) {
+      sellerCloserId = await lookupCloserByName(supabase, sellerCloserName)
+    }
 
     // Parse checkin days - only set to true, never overwrite with false
     // If status is "checked_in", set to true; otherwise, leave as undefined (won't overwrite existing value)
@@ -203,7 +230,8 @@ export async function POST(
       color,
       qualification,
       funnel: participant.funnel_origin || payload.funnel_origin || null,
-      closer,
+      seller_closer_name: sellerCloserName,
+      seller_closer_id: sellerCloserId,
       category,
       qr_code: qrCode,
       // status removido - conflita com constraint do banco
