@@ -12,7 +12,7 @@ interface EventContextType {
   clearActiveEvent: () => void
   isLoading: boolean
   events: Event[]
-  refreshEvents: () => Promise<void>
+  refreshEvents: () => Promise<Event[]>
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined)
