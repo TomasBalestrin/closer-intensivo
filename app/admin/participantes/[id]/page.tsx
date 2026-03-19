@@ -48,7 +48,7 @@ import {
   Code,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, formatCurrencyInput, parseCurrency } from '@/lib/utils'
 
 type TabType = 'perfil' | 'disc'
 
@@ -336,12 +336,14 @@ export default function ParticipantDetail() {
         closer_id: closerIdForSale,
         closer_nome: closerData?.name || null,
         product_name: saleData.product_name,
-        total_value: parseFloat(saleData.total_value),
-        entry_value: parseFloat(saleData.entry_value),
-        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
+        amount: parseCurrency(saleData.total_value),
+        total_value: parseCurrency(saleData.total_value),
+        entry_value: parseCurrency(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseCurrency(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
         dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
         observacoes: saleData.observacoes || null,
+        event_id: participant?.event_id || null,
       })
 
       if (error) throw error
@@ -360,9 +362,9 @@ export default function ParticipantDetail() {
     setEditingSale(sale)
     setSaleData({
       product_name: sale.product_name || '',
-      total_value: sale.total_value?.toString() || '',
-      entry_value: sale.entry_value?.toString() || '',
-      valor_proxima_semana: sale.valor_proxima_semana?.toString() || '',
+      total_value: sale.total_value ? formatCurrency(Number(sale.total_value)) : '',
+      entry_value: sale.entry_value ? formatCurrency(Number(sale.entry_value)) : '',
+      valor_proxima_semana: sale.valor_proxima_semana ? formatCurrency(Number(sale.valor_proxima_semana)) : '',
       negotiation_type: sale.negotiation_type || '',
       dia_evento: sale.dia_evento?.toString() || '',
       observacoes: sale.observacoes || '',
@@ -379,9 +381,10 @@ export default function ParticipantDetail() {
     try {
       const updateData: any = {
         product_name: saleData.product_name,
-        total_value: parseFloat(saleData.total_value),
-        entry_value: parseFloat(saleData.entry_value),
-        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
+        amount: parseCurrency(saleData.total_value),
+        total_value: parseCurrency(saleData.total_value),
+        entry_value: parseCurrency(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseCurrency(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
         dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
         observacoes: saleData.observacoes || null,
@@ -1551,9 +1554,9 @@ export default function ParticipantDetail() {
             required
           />
           <Input label="Produto Vendido" value={saleData.product_name} onChange={(e) => setSaleData({ ...saleData, product_name: e.target.value })} required />
-          <Input label="Valor Total (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
-          <Input label="Valor Entrada (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
-          <Input label="Valor Próxima Semana (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.valor_proxima_semana} onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: e.target.value })} />
+          <Input label="Valor Total (R$)" type="text" inputMode="numeric" placeholder="R$ 0,00" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: formatCurrencyInput(e.target.value) })} required />
+          <Input label="Valor Entrada (R$)" type="text" inputMode="numeric" placeholder="R$ 0,00" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: formatCurrencyInput(e.target.value) })} required />
+          <Input label="Valor Próxima Semana (R$)" type="text" inputMode="numeric" placeholder="R$ 0,00" value={saleData.valor_proxima_semana} onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: formatCurrencyInput(e.target.value) })} />
           <Input label="Negociação" value={saleData.negotiation_type} onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })} required />
           <Select
             label="Dia do Evento"

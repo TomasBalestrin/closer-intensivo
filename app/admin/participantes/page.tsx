@@ -232,6 +232,12 @@ export default function AdminParticipantes() {
     })
   }, [participants, debouncedSearch, funnelFilter, sellerFilter, assignedCloserFilter, opportunityFilter, saleFilter, colorFilter, checkinFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
 
+  // Dynamic funnel options from actual participant data
+  const funnels = useMemo(() =>
+    [...new Set(participants.map(p => p.funnel).filter(Boolean))].sort(),
+    [participants]
+  )
+
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
 
   // Pagination for list view
@@ -492,7 +498,7 @@ export default function AdminParticipantes() {
                     onChange={(e) => setFunnelFilter(e.target.value)}
                     options={[
                       { value: '', label: 'Todos os funis' },
-                      ...FUNIL_OPTIONS.filter(o => o.value !== '').map(o => ({ value: o.value, label: o.label })),
+                      ...funnels.map(f => ({ value: f!, label: f! })),
                     ]}
                   />
                   <Select
