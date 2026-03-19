@@ -10,7 +10,6 @@ import {
   addCompactCover,
   addSectionHeader,
   addSubsectionTitle,
-  addWrappedText,
   addPageNumbers,
   getMargin,
   getContentWidth,
