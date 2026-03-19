@@ -1624,7 +1624,7 @@ export default function ParticipantDetail() {
                           </>
                         )}
                       </div>
-                      <Badge variant={sale.negotiation_type === 'fechamento' ? 'success' : 'secondary'}>
+                      <Badge variant={sale.negotiation_type === 'fechamento' ? 'success' : 'default'}>
                         {sale.negotiation_type === 'fechamento' ? 'Fechamento' : sale.negotiation_type === 'negociacao' ? 'Negociação' : sale.negotiation_type}
                       </Badge>
                     </div>
