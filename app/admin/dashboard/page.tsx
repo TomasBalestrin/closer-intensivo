@@ -13,10 +13,8 @@ import { WebhookLogsModal } from '@/components/admin/WebhookLogsModal'
 
 type DayFilter = 'todos' | 'dia1' | 'dia2' | 'dia3'
 
-// Create supabase client outside component to avoid re-creation
-const supabase = createClient()
-
 export default function AdminDashboard() {
+  const supabase = createClient()
   const { activeEvent, isLoading: eventLoading } = useEvent()
   const [dayFilter, setDayFilter] = useState<DayFilter>('todos')
   const [loading, setLoading] = useState(true)
