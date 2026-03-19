@@ -250,6 +250,58 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
   return null
 }
 
+// Look up funil_origem by name/slug and return its UUID
+async function lookupFunilOrigemId(
+  supabase: any,
+  funnelName: string | null,
+  eventId: string | null
+): Promise<string | null> {
+  if (!funnelName || typeof funnelName !== 'string' || !eventId) return null
+
+  const trimmed = funnelName.trim()
+  if (!trimmed) return null
+
+  // Try exact match on nome first
+  const { data: byName } = await supabase
+    .from('funis_origem')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('ativo', true)
+    .ilike('nome', trimmed)
+    .single()
+
+  if (byName?.id) return byName.id
+
+  // Try slug match
+  const slug = trimmed
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  const { data: bySlug } = await supabase
+    .from('funis_origem')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('ativo', true)
+    .eq('slug', slug)
+    .single()
+
+  if (bySlug?.id) return bySlug.id
+
+  // Try partial match on nome
+  const { data: byPartial } = await supabase
+    .from('funis_origem')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('ativo', true)
+    .ilike('nome', `%${trimmed}%`)
+    .single()
+
+  return byPartial?.id || null
+}
+
 // Look up closer user by name and return their UUID
 async function lookupCloserByName(
   supabase: any,
@@ -417,6 +469,9 @@ export async function POST(request: Request) {
       sellerCloserId = await lookupCloserByName(supabase, sellerCloserName)
     }
 
+    // Look up funil_origem_id from funnel name
+    const funilOrigemId = await lookupFunilOrigemId(supabase, extracted.funnel, eventId)
+
     // Check if participant already exists (scoped by event_id if provided)
     let existingParticipant = null
 
@@ -475,6 +530,7 @@ export async function POST(request: Request) {
       category: extracted.category || null,
       seller_closer_name: sellerCloserName,
       seller_closer_id: sellerCloserId,
+      funil_origem_id: funilOrigemId,
       color,
       qualification,
       webhook_data: payload,

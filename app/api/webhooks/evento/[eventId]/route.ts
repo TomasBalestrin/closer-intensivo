@@ -36,6 +36,7 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   seller_closer_name: ['closer', 'vendedor', 'consultor', 'atendente', 'responsavel', 'closer_indicado', 'indicado', 'indicacao', 'quem_indicou', 'indicado_por', 'convidado_por', 'indicador', 'seller', 'representante'],
   partner: ['voce_tem_socio', 'socio', 'tem_socio'],
   net_profit: ['lucro_liquido', 'qual_seu_lucro_liquido_mensal', 'lucro'],
+  oportunidade: ['oportunidade', 'is_opportunity', 'opportunity', 'e_oportunidade', 'eh_oportunidade', 'oport'],
 }
 
 function extractFromFormData(formData: Record<string, any>, targetField: string): any {
@@ -176,7 +177,9 @@ export async function POST(
     const qualification = getQualificationFromRevenue(revenue) || null
 
     // Determine if opportunity - only explicit positive values count
-    const oportunidadeValue = (participant.oportunidade || payload.oportunidade || '').toString().toLowerCase().trim()
+    // Uses ?? to preserve falsy values (false, 0), falls back to form_data search
+    const rawOportunidade = participant.oportunidade ?? payload.oportunidade ?? extractFromFormData(formData, 'oportunidade')
+    const oportunidadeValue = (rawOportunidade || '').toString().toLowerCase().trim()
     const isOpportunity = oportunidadeValue === 'true' ||
                           oportunidadeValue === 'sim' ||
                           oportunidadeValue === 'yes' ||
