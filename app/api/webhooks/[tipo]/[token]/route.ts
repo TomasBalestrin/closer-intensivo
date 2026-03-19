@@ -97,6 +97,22 @@ async function processarParticipante(body: any, supabase: any) {
     }
   }
 
+  // Auto-assign closer if seller_closer is available for this event
+  let assignedCloserId: string | null = null
+  if (sellerCloserId && event_id) {
+    const { data: userEventEntry } = await supabase
+      .from('user_events')
+      .select('user_id')
+      .eq('user_id', sellerCloserId)
+      .eq('event_id', event_id)
+      .eq('role', 'closer')
+      .single()
+
+    if (userEventEntry) {
+      assignedCloserId = sellerCloserId
+    }
+  }
+
   // Extract checkin data from checkin_days format
   const checkinData: Record<string, boolean> = {}
   const checkinDays = body.checkin_days || {}
@@ -149,6 +165,23 @@ async function processarParticipante(body: any, supabase: any) {
   if (event_id) participantData.event_id = event_id
   if (sellerCloserId) participantData.seller_closer_id = sellerCloserId
   if (sellerName) participantData.seller_closer_name = sellerName
+
+  if (existingParticipant) {
+    // Check if participant already has an assigned_closer_id (don't overwrite manual assignments)
+    const { data: currentParticipant } = await supabase
+      .from('participants')
+      .select('assigned_closer_id')
+      .eq('id', existingParticipant.id)
+      .single()
+
+    // Only auto-assign if currently unassigned
+    if (!currentParticipant?.assigned_closer_id && assignedCloserId) {
+      participantData.assigned_closer_id = assignedCloserId
+    }
+  } else {
+    // For new participants, auto-assign if closer is available for the event
+    if (assignedCloserId) participantData.assigned_closer_id = assignedCloserId
+  }
 
   if (existingParticipant) {
     // Form-derived fields: replace completely (include nulls to clear old values)
