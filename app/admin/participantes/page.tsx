@@ -164,9 +164,28 @@ export default function AdminParticipantes() {
 
     // Use Set for O(1) lookup instead of .some() O(n)
     const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
+
+    // Build lookup for seller closers and assigned closers
+    const sellerCloserIds = [...new Set(participantsRes.data?.map(p => p.seller_closer_id).filter(Boolean))]
+    const assignedCloserIds = [...new Set(participantsRes.data?.map(p => p.assigned_closer_id).filter(Boolean))]
+    const allCloserIds = [...new Set([...sellerCloserIds, ...assignedCloserIds])]
+
+    let closerLookup: Record<string, User> = {}
+    if (allCloserIds.length > 0) {
+      const { data: closerUsers } = await supabase
+        .from('users')
+        .select('id, name, email, photo_url, role')
+        .in('id', allCloserIds)
+      if (closerUsers) {
+        closerLookup = Object.fromEntries(closerUsers.map(c => [c.id, c as User]))
+      }
+    }
+
     const participantsWithSales = participantsRes.data?.map(p => ({
       ...p,
       hasSale: salesSet.has(p.id),
+      seller_closer: p.seller_closer_id ? closerLookup[p.seller_closer_id] : null,
+      assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
     })) || []
 
     setParticipants(participantsWithSales)
@@ -412,9 +431,10 @@ export default function AdminParticipantes() {
       setSingleAssignParticipantId(null)
       setSingleAssignCloserId('')
       fetchData()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error assigning closer:', error)
-      alert('Erro ao atribuir closer')
+      const errorMsg = error?.message || error?.details || 'Erro desconhecido'
+      alert(`Erro ao atribuir closer: ${errorMsg}`)
     } finally {
       setSingleAssigning(false)
     }
@@ -769,13 +789,15 @@ export default function AdminParticipantes() {
               /* List View */
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
                 {/* Table header */}
-                <div className="hidden sm:grid sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="hidden sm:grid sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(90px,1fr)_minmax(70px,0.8fr)_minmax(100px,1fr)_minmax(80px,0.8fr)_minmax(80px,0.8fr)_minmax(100px,1fr)] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div></div>
                   <div>Foto</div>
                   <div>Nome</div>
                   <div>Faturamento</div>
                   <div>Funil</div>
                   <div>Acompanhante</div>
+                  <div>Indicou</div>
+                  <div>Oportunidade</div>
                   <div>Closer</div>
                 </div>
                 {/* Table rows */}
@@ -785,7 +807,7 @@ export default function AdminParticipantes() {
                   return (
                   <div
                     key={participant.id}
-                    className={`grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(120px,1fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${participant.hasSale ? 'bg-green-50 border-l-4 border-l-green-500' : ''}`}
+                    className={`grid grid-cols-[1fr_auto] sm:grid-cols-[44px_40px_minmax(140px,1.5fr)_minmax(90px,1fr)_minmax(70px,0.8fr)_minmax(100px,1fr)_minmax(80px,0.8fr)_minmax(80px,0.8fr)_minmax(100px,1fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${participant.hasSale ? 'bg-green-50 border-l-4 border-l-green-500' : ''}`}
                     onClick={() => router.push(`/admin/participantes/${participant.id}`)}
                   >
                     {/* Checkbox */}
@@ -843,6 +865,20 @@ export default function AdminParticipantes() {
                     {/* Companion */}
                     <div className="hidden sm:block">
                       <span className="text-sm text-gray-700 truncate block">{companionName || '—'}</span>
+                    </div>
+                    {/* Seller/Indicou */}
+                    <div className="hidden sm:block min-w-0">
+                      <span className="text-sm text-gray-700 truncate block" title={participant.seller_closer_name || ''}>
+                        {participant.seller_closer_name || participant.seller_closer?.name || '—'}
+                      </span>
+                    </div>
+                    {/* Oportunidade */}
+                    <div className="hidden sm:block">
+                      {participant.is_opportunity ? (
+                        <Badge variant="success">Sim</Badge>
+                      ) : (
+                        <span className="text-sm text-gray-400">Não</span>
+                      )}
                     </div>
                     {/* Closer */}
                     <div className="hidden sm:flex items-center">
