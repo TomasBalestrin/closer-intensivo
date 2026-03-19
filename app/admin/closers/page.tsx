@@ -213,6 +213,11 @@ export default function AdminClosers() {
               </span>
             </div>
 
+            <div className="mt-3 text-sm">
+              <p className="text-gray-500">Participantes Atribuídos</p>
+              <p className="font-semibold text-lg">{closer.participantsCount}</p>
+            </div>
+
             <div className="mt-4 pt-4 border-t text-sm">
               <p className="text-gray-500">Valor de Entrada</p>
               <p className="font-semibold text-lg">{formatCurrency(closer.totalEntryValue)}</p>
