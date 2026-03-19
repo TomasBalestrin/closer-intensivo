@@ -50,7 +50,7 @@ export default function CloserDetail() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('*').or(`seller_closer_id.eq.${params.id},closer_id.eq.${params.id}`)
+    let participantsQuery = supabase.from('participants').select('*').or(`seller_closer_id.eq.${params.id},assigned_closer_id.eq.${params.id}`)
     let salesQuery = supabase.from('sales').select('*, participant:participants(id, name, niche, email)').eq('closer_id', params.id).is('deleted_at', null)
 
     if (activeEvent?.id) {

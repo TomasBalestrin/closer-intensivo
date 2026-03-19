@@ -106,7 +106,7 @@ export default function CloserParticipantDetail() {
         .from('participants')
         .select('*')
         .eq('id', params.id)
-        .eq('closer_id', user.id)
+        .eq('assigned_closer_id', user.id)
         .single(),
       supabase
         .from('users')
@@ -177,7 +177,7 @@ export default function CloserParticipantDetail() {
     const { data: allParts } = await supabase
       .from('participants')
       .select('id, name')
-      .eq('closer_id', user.id)
+      .eq('assigned_closer_id', user.id)
     setAllParticipants(allParts || [])
 
     setLoading(false)

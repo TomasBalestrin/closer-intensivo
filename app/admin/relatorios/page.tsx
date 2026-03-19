@@ -46,6 +46,7 @@ type Participant = {
   checked_in_day2: boolean
   checked_in_day3: boolean
   closer_id: string | null
+  assigned_closer_id: string | null
   challenge_answer: string | null
   desired_change_answer: string | null
   times_called: number
@@ -163,7 +164,7 @@ export default function AdminRelatorios() {
          checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
       const matchesColor = !colorFilter || pColor === colorFilter
       const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-      const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? !p.closer_id : p.closer_id === closerFilter)
+      const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === closerFilter)
       const matchesOpp = opportunityFilter === '' ||
         (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
       return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp
@@ -257,7 +258,7 @@ export default function AdminRelatorios() {
       closerMap[c.id] = { name: c.name, total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     })
     filtered.forEach(p => {
-      const key = p.closer_id || 'unassigned'
+      const key = p.assigned_closer_id || 'unassigned'
       if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
       closerMap[key].total++
       if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) closerMap[key].checkedIn++

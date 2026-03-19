@@ -33,7 +33,7 @@ export default function AdminDashboard() {
       console.log('Dashboard fetchData - activeEvent:', activeEvent?.id, activeEvent?.nome_evento)
 
       // Build queries with event filter
-      let participantsQuery = supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, closer_id')
+      let participantsQuery = supabase.from('participants').select('id, name, email, niche, revenue, color, qualification, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, assigned_closer_id')
       let salesQuery = supabase.from('sales').select('*, closer:users(id, name, photo_url)').is('deleted_at', null)
 
       // Filter by active event if selected

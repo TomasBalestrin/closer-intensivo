@@ -32,7 +32,7 @@ export default function CloserDashboard() {
       let participantsQuery = supabase
         .from('participants')
         .select('*')
-        .eq('closer_id', user.id)
+        .eq('assigned_closer_id', user.id)
 
       let salesQuery = supabase
         .from('sales')

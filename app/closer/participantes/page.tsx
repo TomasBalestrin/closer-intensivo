@@ -121,7 +121,7 @@ export default function CloserParticipantes() {
     let participantsQuery = supabase
       .from('participants')
       .select('*')
-      .eq('closer_id', user.id)
+      .eq('assigned_closer_id', user.id)
       .order('created_at', { ascending: false })
 
     let salesQuery = supabase

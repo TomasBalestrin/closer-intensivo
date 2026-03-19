@@ -216,6 +216,7 @@ export interface Database {
           companion: string | null
           is_opportunity: boolean
           closer_id: string | null
+          assigned_closer_id: string | null
           times_called: number
           checked_in_day1: boolean
           checked_in_day2: boolean
@@ -285,6 +286,7 @@ export interface Database {
           companion?: string | null
           is_opportunity?: boolean
           closer_id?: string | null
+          assigned_closer_id?: string | null
           times_called?: number
           checked_in_day1?: boolean
           checked_in_day2?: boolean
@@ -347,6 +349,7 @@ export interface Database {
           companion?: string | null
           is_opportunity?: boolean
           closer_id?: string | null
+          assigned_closer_id?: string | null
           times_called?: number
           checked_in_day1?: boolean
           checked_in_day2?: boolean
