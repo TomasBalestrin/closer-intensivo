@@ -118,7 +118,7 @@ export default function AdminParticipantes() {
     // Build queries with event filter
     let participantsQuery = supabase
       .from('participants')
-      .select('*, seller_closer:users!participants_seller_closer_id_fkey(id, name, email, photo_url)')
+      .select('*, seller_closer:users!participants_seller_closer_id_fkey(id, name, email, photo_url), assigned_closer:users!participants_assigned_closer_id_fkey(id, name, email, photo_url)')
       .order('created_at', { ascending: false })
 
     let salesQuery = supabase
@@ -405,7 +405,7 @@ export default function AdminParticipantes() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ seller_closer_id: singleAssignCloserId === 'nenhum' ? null : singleAssignCloserId })
+        .update({ assigned_closer_id: singleAssignCloserId === 'nenhum' ? null : singleAssignCloserId })
         .eq('id', singleAssignParticipantId)
       if (error) throw error
       setSingleAssignParticipantId(null)
@@ -779,7 +779,7 @@ export default function AdminParticipantes() {
                 </div>
                 {/* Table rows */}
                 {paginatedParticipants.map((participant) => {
-                  const closerAssigned = closers.find(c => c.id === participant.seller_closer_id)
+                  const closerAssigned = (participant as any).assigned_closer || closers.find(c => c.id === participant.assigned_closer_id)
                   const companionName = participant.companion || findCompanionName(participant.webhook_data)
                   return (
                   <div
@@ -850,7 +850,7 @@ export default function AdminParticipantes() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSingleAssignParticipantId(participant.id)
-                            setSingleAssignCloserId(participant.seller_closer_id || '')
+                            setSingleAssignCloserId(participant.assigned_closer_id || '')
                           }}
                           className="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation"
                           title="Trocar closer"
@@ -884,7 +884,7 @@ export default function AdminParticipantes() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setSingleAssignParticipantId(participant.id)
-                            setSingleAssignCloserId(participant.seller_closer_id || '')
+                            setSingleAssignCloserId(participant.assigned_closer_id || '')
                           }}
                           className="flex items-center gap-1 rounded-lg px-1 py-1"
                           title="Trocar closer"
