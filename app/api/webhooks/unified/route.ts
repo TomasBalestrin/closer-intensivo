@@ -41,6 +41,7 @@ const FORM_DATA_MAPPINGS: Record<string, string[]> = {
   tem_acompanhante: ['voce_vai_com_acompanhante', 'tem_acompanhante', 'vai_com_acompanhante', 'acompanhante'],
   relacao_acompanhante: ['seu_acompanhante_e', 'relacao_acompanhante', 'tipo_acompanhante', 'quem_e_acompanhante'],
   companion: ['qual_o_nome_e_sobrenome_do_seu_acompanhante', 'nome_acompanhante', 'nome_do_acompanhante', 'acompanhante_nome'],
+  is_opportunity: ['is_opportunity', 'oportunidade', 'opportunity', 'e_oportunidade', 'eh_oportunidade'],
 }
 
 // Extract value from form_data using flexible key matching
@@ -71,6 +72,58 @@ function parseCheckinStatus(status: string | null | undefined): boolean {
   if (!status) return false
   const normalized = status.toLowerCase().replace(/[_\s-]/g, '')
   return normalized === 'checkedin' || normalized === 'checkin'
+}
+
+// Look up funil_origem by name/slug and return its UUID
+async function lookupFunilOrigemId(
+  supabase: any,
+  funnelName: string | null,
+  eventId: string | null
+): Promise<string | null> {
+  if (!funnelName || typeof funnelName !== 'string' || !eventId) return null
+
+  const trimmed = funnelName.trim()
+  if (!trimmed) return null
+
+  // Try exact match on nome first
+  const { data: byName } = await supabase
+    .from('funis_origem')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('ativo', true)
+    .ilike('nome', trimmed)
+    .single()
+
+  if (byName?.id) return byName.id
+
+  // Try slug match
+  const slug = trimmed
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  const { data: bySlug } = await supabase
+    .from('funis_origem')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('ativo', true)
+    .eq('slug', slug)
+    .single()
+
+  if (bySlug?.id) return bySlug.id
+
+  // Try partial match on nome
+  const { data: byPartial } = await supabase
+    .from('funis_origem')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('ativo', true)
+    .ilike('nome', `%${trimmed}%`)
+    .single()
+
+  return byPartial?.id || null
 }
 
 // Clean instagram handle
@@ -188,6 +241,10 @@ export async function POST(request: Request) {
       sellerCloserId = await lookupCloserByName(supabase, sellerCloserName)
     }
 
+    // Look up funil_origem_id from funnel name
+    const funnelName = participant.funnel_origin || null
+    const funilOrigemId = await lookupFunilOrigemId(supabase, funnelName, eventId)
+
     // Parse checkin days - only set to true, never overwrite with false
     // If status is "checked_in", set to true; otherwise, leave as undefined (won't overwrite existing value)
     const checkedInDay1 = parseCheckinStatus(checkinDays.day_1) ? true : undefined
@@ -198,17 +255,22 @@ export async function POST(request: Request) {
     const color = getColorFromRevenue(revenue) || null
     const qualification = getQualificationFromRevenue(revenue) || null
 
-    // Determine if opportunity based on oportunidade field
-    // Only explicit positive values count as opportunity
-    const oportunidadeValue = participant.oportunidade
-    const isOpportunity = oportunidadeValue === true ||
-                          oportunidadeValue === 'true' ||
-                          oportunidadeValue === 'sim' ||
-                          oportunidadeValue === 'Sim' ||
-                          oportunidadeValue === 'SIM' ||
-                          oportunidadeValue === 'yes' ||
-                          oportunidadeValue === 'Yes' ||
-                          oportunidadeValue === '1'
+    // Determine if opportunity - check participant object, payload root, and form_data
+    const oportunidadeValue = participant.oportunidade ??
+                              participant.is_opportunity ??
+                              payload.oportunidade ??
+                              payload.is_opportunity ??
+                              extractFromFormData(formData, 'is_opportunity') ??
+                              null
+    const isTruthyValue = (v: any): boolean => {
+      if (v === true) return true
+      if (typeof v === 'string') {
+        const lower = v.toLowerCase().trim()
+        return ['true', 'sim', 'yes', '1', 's'].includes(lower)
+      }
+      return v === 1
+    }
+    const isOpportunity = oportunidadeValue !== null ? isTruthyValue(oportunidadeValue) : false
 
     // Build scoped query for deduplication within event
     const scopedQuery = () => supabase.from('participants').select('id').eq('event_id', eventId)
@@ -263,6 +325,7 @@ export async function POST(request: Request) {
       color,
       qualification,
       funnel: participant.funnel_origin || null,
+      funil_origem_id: funilOrigemId,
       seller_closer_name: sellerCloserName,
       seller_closer_id: sellerCloserId,
       category,
