@@ -18,7 +18,7 @@ function getSupabase() {
 
 export async function POST(request: Request) {
   try {
-    const { participantId, formId, answers, challengeAnswer, desiredChangeAnswer } = await request.json()
+    const { participantId, formId, answers, challengeAnswer, desiredChangeAnswer, instagram } = await request.json()
     const supabase = getSupabase()
 
     // Calculate archetypes (visible to participant)
@@ -223,6 +223,7 @@ IMPORTANTE:
       challenge_answer: challengeAnswer,
       desired_change_answer: desiredChangeAnswer,
       form_completed_at: new Date().toISOString(),
+      ...(instagram ? { instagram: instagram.replace(/^@/, '').trim() } : {}),
     }
 
     const { error: fullError } = await supabase

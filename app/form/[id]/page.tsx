@@ -262,6 +262,11 @@ const openQuestions = [
     id: 'desired_change',
     question: 'Se pudesse mudar uma coisa na sua situação atual, o que seria?',
     placeholder: 'Descreva a mudança que você mais deseja ver acontecer...'
+  },
+  {
+    id: 'instagram',
+    question: 'Qual é o seu Instagram?',
+    placeholder: '@seu.usuario'
   }
 ]
 
@@ -446,6 +451,7 @@ export default function FormPage() {
           answers,
           challengeAnswer: openAnswers.challenge,
           desiredChangeAnswer: openAnswers.desired_change,
+          instagram: openAnswers.instagram || null,
         }),
       })
       if (!response.ok) throw new Error('Analysis API error')
@@ -842,13 +848,23 @@ export default function FormPage() {
           {/* Open Question */}
           {type === 'open' && (
             <div className="space-y-5">
-              <textarea
-                value={openAnswers[data.id] || ''}
-                onChange={(e) => setOpenAnswers({ ...openAnswers, [data.id]: e.target.value })}
-                placeholder={'placeholder' in data ? data.placeholder : ''}
-                className="w-full p-5 rounded-2xl bg-white/[0.07] backdrop-blur-sm border border-white/[0.1] text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-transparent resize-none min-h-[160px] text-base"
-                rows={5}
-              />
+              {data.id === 'instagram' ? (
+                <input
+                  type="text"
+                  value={openAnswers[data.id] || ''}
+                  onChange={(e) => setOpenAnswers({ ...openAnswers, [data.id]: e.target.value })}
+                  placeholder={'placeholder' in data ? data.placeholder : ''}
+                  className="w-full p-5 rounded-2xl bg-white/[0.07] backdrop-blur-sm border border-white/[0.1] text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-transparent text-base"
+                />
+              ) : (
+                <textarea
+                  value={openAnswers[data.id] || ''}
+                  onChange={(e) => setOpenAnswers({ ...openAnswers, [data.id]: e.target.value })}
+                  placeholder={'placeholder' in data ? data.placeholder : ''}
+                  className="w-full p-5 rounded-2xl bg-white/[0.07] backdrop-blur-sm border border-white/[0.1] text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-transparent resize-none min-h-[160px] text-base"
+                  rows={5}
+                />
+              )}
 
               {isLastQuestion ? (
                 <button
