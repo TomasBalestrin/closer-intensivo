@@ -7,7 +7,7 @@ import {
   PDF_FONTS,
   QUAL_LABELS,
   QUAL_REVENUE_RANGE,
-  addCover,
+  addCompactCover,
   addSectionHeader,
   addSubsectionTitle,
   addWrappedText,
@@ -142,7 +142,7 @@ export async function generatePdfReport(input: PdfReportInput): Promise<void> {
   const doc = new jsPDF('p', 'mm', 'a4')
 
   // Cover page
-  addCover(doc, eventName, dayFilter, summary)
+  addCompactCover(doc, eventName, dayFilter, summary)
 
   // Qualification blocks
   for (const block of blocks) {
