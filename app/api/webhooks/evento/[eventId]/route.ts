@@ -175,13 +175,12 @@ export async function POST(
     const color = getColorFromRevenue(revenue) || null
     const qualification = getQualificationFromRevenue(revenue) || null
 
-    // Determine if opportunity
-    const oportunidadeValue = (participant.oportunidade || payload.oportunidade || '').toString().toLowerCase()
-    const isOpportunity = oportunidadeValue !== 'acompanhante' &&
-                          oportunidadeValue !== 'nao' &&
-                          oportunidadeValue !== 'não' &&
-                          oportunidadeValue !== 'false' &&
-                          oportunidadeValue !== ''
+    // Determine if opportunity - only explicit positive values count
+    const oportunidadeValue = (participant.oportunidade || payload.oportunidade || '').toString().toLowerCase().trim()
+    const isOpportunity = oportunidadeValue === 'true' ||
+                          oportunidadeValue === 'sim' ||
+                          oportunidadeValue === 'yes' ||
+                          oportunidadeValue === '1'
 
     // Build scoped query for deduplication within event
     const scopedQuery = () => supabase.from('participants').select('id').eq('event_id', eventId)
