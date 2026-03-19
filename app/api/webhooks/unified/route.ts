@@ -266,7 +266,8 @@ export async function POST(request: Request) {
       if (v === true) return true
       if (typeof v === 'string') {
         const lower = v.toLowerCase().trim()
-        return ['true', 'sim', 'yes', '1', 's'].includes(lower)
+        // "Oportunidade" is sent as the value when the participant IS an opportunity
+        return ['true', 'sim', 'yes', '1', 's', 'oportunidade', 'opportunity'].includes(lower)
       }
       return v === 1
     }
