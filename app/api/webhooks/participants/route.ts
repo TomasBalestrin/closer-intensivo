@@ -112,6 +112,8 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['instagram', [
     'instagram', 'insta', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram',
     'ig', 'instagram_handle', 'perfil_instagram', 'user_instagram', 'arroba',
+    'seu_instagram', 'qual_seu_instagram', 'qual_e_o_seu_instagram',
+    'informe_seu_instagram', 'digite_seu_instagram', 'instagram_pessoal',
   ]],
   ['cpf', [
     'cpf', 'cnpj', 'cpf_cnpj', 'documento', 'digite_o_seu_cpf_ou_cnpj',
@@ -174,8 +176,11 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'o_que_espera', 'expectativa', 'meta', 'o_que_quer_aprender',
     'o_que_voce_pretende_aprender_no_intensivo',
   ]],
-  ['closer', [
+  ['seller_closer_name', [
     'closer', 'vendedor', 'consultor', 'atendente', 'responsavel',
+    'closer_indicado', 'indicado', 'indicacao', 'quem_indicou',
+    'indicado_por', 'convidado_por', 'indicador', 'seller',
+    'representante', 'consultor_vendas', 'vendedor_responsavel',
   ]],
 ]
 
@@ -243,6 +248,26 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
     }
   }
   return null
+}
+
+// Look up closer user by name and return their UUID
+async function lookupCloserByName(
+  supabase: any,
+  sellerName: string | null
+): Promise<string | null> {
+  if (!sellerName || typeof sellerName !== 'string') return null
+
+  const trimmedName = sellerName.trim()
+  if (!trimmedName) return null
+
+  const { data: closerUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('role', 'closer')
+    .ilike('name', `%${trimmedName}%`)
+    .single()
+
+  return closerUser?.id || null
 }
 
 export async function POST(request: Request) {
@@ -384,6 +409,14 @@ export async function POST(request: Request) {
     const color = getColorFromRevenue(extracted.revenue) || null
     const qualification = getQualificationFromRevenue(extracted.revenue) || null
 
+    // Extract seller/closer name and look up UUID
+    const sellerCloserName = extracted.seller_closer_name || null
+    let sellerCloserId: string | null = null
+
+    if (sellerCloserName) {
+      sellerCloserId = await lookupCloserByName(supabase, sellerCloserName)
+    }
+
     // Check if participant already exists (scoped by event_id if provided)
     let existingParticipant = null
 
@@ -440,7 +473,8 @@ export async function POST(request: Request) {
       qr_code: extracted.qr_code || null,
       // status removido - conflita com constraint do banco
       category: extracted.category || null,
-      closer: extracted.closer || null,
+      seller_closer_name: sellerCloserName,
+      seller_closer_id: sellerCloserId,
       color,
       qualification,
       webhook_data: payload,

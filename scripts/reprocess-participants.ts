@@ -129,7 +129,8 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
   ['niche', ['niche', 'nicho', 'area_atuacao', 'qual_sua_area_de_atuacao_profissional', 'qual_sua_area_de_atuacao', 'qual_a_sua_area_de_atuacao', 'area_de_atuacao', 'segmento', 'area', 'setor', 'profissao', 'ramo']],
   ['revenue', ['revenue', 'faturamento', 'quanto_voce_fatura_por_mes', 'faturamento_mensal', 'receita', 'renda', 'ganho_mensal', 'quanto_fatura', 'qual_o_seu_faturamento_mensal']],
   ['phone', ['phone', 'telefone', 'whatsapp', 'celular', 'digite_seu_whatsapp', 'numero_whatsapp', 'tel', 'mobile', 'phone_number', 'qual_o_telefone', 'qual_o_seu_numero_de_telefone']],
-  ['instagram', ['instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle', 'perfil_instagram', 'user_instagram', 'arroba', 'qual_seu_instagram']],
+  ['instagram', ['instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle', 'perfil_instagram', 'user_instagram', 'arroba', 'qual_seu_instagram', 'seu_instagram', 'qual_e_o_seu_instagram', 'informe_seu_instagram', 'digite_seu_instagram', 'instagram_pessoal']],
+  ['seller_closer_name', ['closer', 'vendedor', 'consultor', 'atendente', 'responsavel', 'closer_indicado', 'indicado', 'indicacao', 'quem_indicou', 'indicado_por', 'convidado_por', 'indicador', 'seller', 'representante']],
 ]
 
 const TEM_ACOMPANHANTE_ALIASES = ['tem_acompanhante', 'voce_vai_com_acompanhante', 'vai_com_acompanhante', 'has_companion', 'com_acompanhante', 'acompanhante_sim_nao']
@@ -137,6 +138,23 @@ const TEM_ACOMPANHANTE_ALIASES = ['tem_acompanhante', 'voce_vai_com_acompanhante
 function cleanInstagram(value: string | undefined | null): string | null {
   if (!value || typeof value !== 'string') return null
   return value.replace(/^@/, '').trim() || null
+}
+
+// Look up closer user by name and return their UUID
+async function lookupCloserByName(sellerName: string | null): Promise<string | null> {
+  if (!sellerName || typeof sellerName !== 'string') return null
+
+  const trimmedName = sellerName.trim()
+  if (!trimmedName) return null
+
+  const { data: closerUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('role', 'closer')
+    .ilike('name', `%${trimmedName}%`)
+    .single()
+
+  return closerUser?.id || null
 }
 
 function isTruthy(value: any): boolean {
@@ -255,6 +273,14 @@ async function main() {
       const extractedGeneric = extractFieldsFromWebhookData(participant.webhook_data)
       const extractedUnified = extractFieldsFromUnifiedFormat(participant.webhook_data)
       const extracted = { ...extractedGeneric, ...extractedUnified }
+
+      // Look up seller_closer_id if we have a seller_closer_name
+      if (extracted.seller_closer_name) {
+        const sellerCloserId = await lookupCloserByName(extracted.seller_closer_name)
+        if (sellerCloserId) {
+          extracted.seller_closer_id = sellerCloserId
+        }
+      }
 
       const updateData: Record<string, any> = {}
       for (const [key, value] of Object.entries(extracted)) {

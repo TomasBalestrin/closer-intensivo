@@ -12,7 +12,7 @@ interface EventContextType {
   clearActiveEvent: () => void
   isLoading: boolean
   events: Event[]
-  refreshEvents: () => Promise<void>
+  refreshEvents: () => Promise<Event[]>
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined)
@@ -23,17 +23,59 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
-  const refreshEvents = useCallback(async () => {
+  const refreshEvents = useCallback(async (): Promise<Event[]> => {
     try {
-      const { data } = await supabase
-        .from('events')
-        .select('*')
-        .eq('status', 'ativo')
-        .order('data_inicio', { ascending: false })
+      // Get current user
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        setEvents([])
+        return []
+      }
 
-      setEvents(data || [])
+      // Get user profile to check role
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', authUser.id)
+        .single()
+
+      let eventsData: Event[] = []
+
+      if (userData?.role === 'admin') {
+        // Admin can see all active events
+        const { data } = await supabase
+          .from('events')
+          .select('*')
+          .eq('status', 'ativo')
+          .order('data_inicio', { ascending: false })
+
+        eventsData = data || []
+      } else {
+        // Non-admin: get events user has access to via user_events
+        const { data: userEvents } = await supabase
+          .from('user_events')
+          .select('event_id')
+          .eq('user_id', authUser.id)
+
+        const eventIds = userEvents?.map(ue => ue.event_id) || []
+
+        if (eventIds.length > 0) {
+          const { data } = await supabase
+            .from('events')
+            .select('*')
+            .in('id', eventIds)
+            .eq('status', 'ativo')
+            .order('data_inicio', { ascending: false })
+
+          eventsData = data || []
+        }
+      }
+
+      setEvents(eventsData)
+      return eventsData
     } catch (error) {
       console.error('Error fetching events:', error)
+      return []
     }
   }, [supabase])
 
@@ -42,23 +84,34 @@ export function EventProvider({ children }: { children: ReactNode }) {
     try {
       const storedEventId = localStorage.getItem(STORAGE_KEY)
 
-      if (storedEventId) {
-        const { data: event } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', storedEventId)
-          .eq('status', 'ativo')
-          .single()
+      // First, refresh events to get user's accessible events
+      const accessibleEvents = await refreshEvents()
 
-        if (event) {
-          setActiveEventState(event)
+      if (storedEventId) {
+        // Check if stored event is still valid and accessible
+        const storedEvent = accessibleEvents.find(e => e.id === storedEventId)
+
+        if (storedEvent) {
+          setActiveEventState(storedEvent)
         } else {
-          // Event was archived or doesn't exist, clear storage
+          // Event was archived, doesn't exist, or user lost access - clear storage
           localStorage.removeItem(STORAGE_KEY)
+
+          // Auto-select the most recent accessible event
+          if (accessibleEvents.length > 0) {
+            const mostRecentEvent = accessibleEvents[0]
+            setActiveEventState(mostRecentEvent)
+            localStorage.setItem(STORAGE_KEY, mostRecentEvent.id)
+          }
+        }
+      } else {
+        // No stored event - auto-select the most recent accessible event
+        if (accessibleEvents.length > 0) {
+          const mostRecentEvent = accessibleEvents[0]
+          setActiveEventState(mostRecentEvent)
+          localStorage.setItem(STORAGE_KEY, mostRecentEvent.id)
         }
       }
-
-      await refreshEvents()
     } catch (error) {
       console.error('Error loading active event:', error)
       localStorage.removeItem(STORAGE_KEY)
