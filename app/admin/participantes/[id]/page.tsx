@@ -289,7 +289,7 @@ export default function ParticipantDetail() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ closer_id: closerId })
+        .update({ closer_id: closerId === 'nenhum' ? null : closerId })
         .eq('id', params.id)
 
       if (error) throw error
@@ -1704,6 +1704,14 @@ export default function ParticipantDetail() {
       {/* Modals */}
       <Modal isOpen={assignCloserModal} onClose={() => setAssignCloserModal(false)} title="Atribuir Closer">
         <div className="space-y-3">
+          <button
+            className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-red-50 transition-colors text-red-600"
+            onClick={() => handleAssignCloser('nenhum')}
+          >
+            <XCircle className="h-10 w-10" />
+            <span className="font-medium">Nenhum (remover closer)</span>
+            {!participant.closer_id && <Badge variant="info" className="ml-auto">Atual</Badge>}
+          </button>
           {closers.map((closer) => (
             <button
               key={closer.id}

@@ -330,7 +330,7 @@ export default function AdminParticipantes() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ seller_closer_id: assignCloserId })
+        .update({ seller_closer_id: assignCloserId === 'nenhum' ? null : assignCloserId })
         .in('id', selectedParticipants)
 
       if (error) throw error
@@ -1060,14 +1060,18 @@ export default function AdminParticipantes() {
             label="Vendedor"
             value={assignCloserId}
             onChange={(e) => setAssignCloserId(e.target.value)}
-            options={closers.map(c => ({ value: c.id, label: c.name }))}
+            options={[
+              { value: '', label: 'Selecione um vendedor' },
+              { value: 'nenhum', label: 'Nenhum (remover vendedor)' },
+              ...closers.map(c => ({ value: c.id, label: c.name })),
+            ]}
           />
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
               Cancelar
             </Button>
             <Button onClick={handleBulkAssign} disabled={assigning || !assignCloserId}>
-              {assigning ? 'Atribuindo...' : 'Atribuir'}
+              {assigning ? 'Atribuindo...' : assignCloserId === 'nenhum' ? 'Remover' : 'Atribuir'}
             </Button>
           </div>
         </div>
