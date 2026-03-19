@@ -11,6 +11,7 @@ import { Download } from 'lucide-react'
 
 interface CloserWithStats extends User {
   participantsCount: number
+  opportunitiesTotal: number
   opportunitiesCheckedIn: number
   salesCount: number
   conversionRate: number
@@ -129,6 +130,7 @@ export default function AdminClosers() {
       return {
         ...closer,
         participantsCount: assignedParticipants.length,
+        opportunitiesTotal: opportunities.length,
         opportunitiesCheckedIn,
         salesCount: closerSales.length,
         conversionRate,
@@ -149,7 +151,7 @@ export default function AdminClosers() {
       { key: 'name', label: 'Nome' },
       { key: 'email', label: 'Email' },
       { key: 'participantsCount', label: 'Participantes' },
-      { key: 'opportunitiesCheckedIn', label: 'Oportunidades' },
+      { key: 'opportunitiesTotal', label: 'Oportunidades' },
       { key: 'salesCount', label: 'Vendas' },
       { key: 'conversionRate', label: 'Taxa Conversão', format: (v) => formatPercentage(v) },
       { key: 'totalSalesValue', label: 'Valor Total Vendas', format: (v) => formatCurrency(v) },
@@ -193,6 +195,10 @@ export default function AdminClosers() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-500">Oportunidades</p>
+                <p className="font-semibold">{closer.opportunitiesTotal}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Oport. Comparecidas</p>
                 <p className="font-semibold">{closer.opportunitiesCheckedIn}</p>
               </div>
               <div>
