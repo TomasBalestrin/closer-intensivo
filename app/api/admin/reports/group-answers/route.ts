@@ -42,7 +42,7 @@ Para cada categoria:
 - Crie um rótulo descritivo curto (máximo 60 caracteres em português)
 - Conte quantas respostas pertencem a essa categoria
 - Calcule a porcentagem em relação ao total de ${totalCount} respostas
-- Selecione 2-3 respostas representativas literais da lista
+- Selecione 4-5 respostas representativas literais da lista
 
 Uma resposta pode pertencer a apenas uma categoria. Ordene por contagem decrescente.
 
@@ -70,12 +70,12 @@ Responda EXCLUSIVAMENTE em JSON válido no formato:
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 2000,
+        max_tokens: 3000,
         temperature: 0.3,
         response_format: { type: 'json_object' },
       }),
