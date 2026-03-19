@@ -45,6 +45,7 @@ import {
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, getQualificationClass, formatCurrencyInput, parseCurrency } from '@/lib/utils'
+import { useEvent } from '@/lib/hooks/use-event'
 
 type TabType = 'dados' | 'disc' | 'vendas'
 
@@ -53,6 +54,7 @@ export default function CloserParticipantDetail() {
   const router = useRouter()
   const supabase = createClient()
   const { showToast } = useToast()
+  const { activeEvent } = useEvent()
 
   const [activeTab, setActiveTab] = useState<TabType>('disc')
   const [participant, setParticipant] = useState<Participant | null>(null)
@@ -93,13 +95,25 @@ export default function CloserParticipantDetail() {
 
   useEffect(() => {
     fetchData()
-  }, [params.id])
+  }, [params.id, activeEvent?.id])
 
   const fetchData = async () => {
     setLoading(true)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // Build sales query with event filter
+    let salesQuery = supabase
+      .from('sales')
+      .select('*')
+      .eq('participant_id', params.id)
+      .is('deleted_at', null)
+
+    // Filter sales by active event if selected
+    if (activeEvent?.id) {
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    }
 
     const [participantRes, closersRes, formsRes, salesRes] = await Promise.all([
       supabase
@@ -116,11 +130,7 @@ export default function CloserParticipantDetail() {
         .from('disc_forms')
         .select('*')
         .eq('participant_id', params.id),
-      supabase
-        .from('sales')
-        .select('*')
-        .eq('participant_id', params.id)
-        .is('deleted_at', null),
+      salesQuery,
     ])
 
     if (participantRes.data) {
@@ -173,11 +183,17 @@ export default function CloserParticipantDetail() {
     setForms(formsRes.data || [])
     setSales(salesRes.data || [])
 
-    // Fetch all participants for companion name lookup
-    const { data: allParts } = await supabase
+    // Fetch all participants for companion name lookup (filtered by event)
+    let allPartsQuery = supabase
       .from('participants')
       .select('id, name')
       .eq('assigned_closer_id', user.id)
+
+    if (activeEvent?.id) {
+      allPartsQuery = allPartsQuery.eq('event_id', activeEvent.id)
+    }
+
+    const { data: allParts } = await allPartsQuery
     setAllParticipants(allParts || [])
 
     setLoading(false)
