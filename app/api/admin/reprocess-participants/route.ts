@@ -192,6 +192,31 @@ function findValue(flat: Record<string, any>, aliases: string[]): any {
   return null
 }
 
+// Exact match only - no substring matching (used for sensitive boolean fields like is_opportunity)
+function findValueExact(flat: Record<string, any>, aliases: string[]): any {
+  for (const alias of aliases) {
+    if (flat[alias] !== undefined && flat[alias] !== null && flat[alias] !== '') {
+      return flat[alias]
+    }
+    const withFields = `fields.${alias}`
+    if (flat[withFields] !== undefined && flat[withFields] !== null && flat[withFields] !== '') {
+      return flat[withFields]
+    }
+  }
+  // Also check normalized keys but require EXACT match (not substring)
+  const flatKeys = Object.keys(flat)
+  for (const alias of aliases) {
+    for (const key of flatKeys) {
+      if (flat[key] === undefined || flat[key] === null || flat[key] === '') continue
+      const normKey = normalizeKey(key)
+      if (normKey === alias) {
+        return flat[key]
+      }
+    }
+  }
+  return null
+}
+
 // Process a single participant's webhook_data
 function extractFieldsFromWebhookData(webhookData: any): Record<string, any> {
   const flat = flattenPayload(webhookData)
@@ -210,8 +235,9 @@ function extractFieldsFromWebhookData(webhookData: any): Record<string, any> {
     extracted.tem_acompanhante = isTruthy(rawTemAcompanhante)
   }
 
-  // Extract is_opportunity - only explicit positive values
-  const rawOportunidade = findValue(flat, OPORTUNIDADE_ALIASES)
+  // Extract is_opportunity - EXACT match only (no substring matching)
+  // Using findValueExact to avoid false positives from fields containing "oportunidade"
+  const rawOportunidade = findValueExact(flat, OPORTUNIDADE_ALIASES)
   if (rawOportunidade !== null) {
     extracted.is_opportunity = isOpportunityValue(rawOportunidade)
   }

@@ -251,13 +251,15 @@ const discQuestions = [
   },
 ]
 
-// Perguntas abertas
+// Pergunta do Instagram (primeira do formulário)
+const instagramQuestion = {
+  id: 'instagram',
+  question: 'Qual é o seu Instagram?',
+  placeholder: '@seu.usuario'
+}
+
+// Perguntas abertas (finais)
 const openQuestions = [
-  {
-    id: 'instagram',
-    question: 'Qual é o seu Instagram?',
-    placeholder: '@seu.usuario'
-  },
   {
     id: 'challenge',
     question: 'Qual é o maior desafio que você está enfrentando agora?',
@@ -271,10 +273,11 @@ const openQuestions = [
 ]
 
 // Totals
+const INSTAGRAM_COUNT = 1
 const ARCHETYPE_COUNT = archetypeQuestions.length
 const DISC_COUNT = discQuestions.length
 const OPEN_COUNT = openQuestions.length
-const TOTAL_QUESTIONS = ARCHETYPE_COUNT + DISC_COUNT + OPEN_COUNT
+const TOTAL_QUESTIONS = INSTAGRAM_COUNT + ARCHETYPE_COUNT + DISC_COUNT + OPEN_COUNT
 
 interface ArchetypeResult {
   primary: string
@@ -389,24 +392,32 @@ export default function FormPage() {
   }
 
   const getCurrentQuestionData = () => {
-    if (currentQuestion < ARCHETYPE_COUNT) {
+    if (currentQuestion < INSTAGRAM_COUNT) {
+      // First question: Instagram
+      return {
+        type: 'open',
+        data: instagramQuestion,
+        section: 'Vamos Começar',
+        sectionColor: 'from-pink-400 to-rose-500'
+      }
+    } else if (currentQuestion < INSTAGRAM_COUNT + ARCHETYPE_COUNT) {
       return {
         type: 'archetype',
-        data: archetypeQuestions[currentQuestion],
+        data: archetypeQuestions[currentQuestion - INSTAGRAM_COUNT],
         section: 'Descobrindo seu Arquétipo',
         sectionColor: 'from-sky-400 to-blue-500'
       }
-    } else if (currentQuestion < ARCHETYPE_COUNT + DISC_COUNT) {
+    } else if (currentQuestion < INSTAGRAM_COUNT + ARCHETYPE_COUNT + DISC_COUNT) {
       return {
         type: 'disc',
-        data: discQuestions[currentQuestion - ARCHETYPE_COUNT],
+        data: discQuestions[currentQuestion - INSTAGRAM_COUNT - ARCHETYPE_COUNT],
         section: 'Seu Perfil Comportamental',
         sectionColor: 'from-emerald-400 to-teal-500'
       }
     } else {
       return {
         type: 'open',
-        data: openQuestions[currentQuestion - ARCHETYPE_COUNT - DISC_COUNT],
+        data: openQuestions[currentQuestion - INSTAGRAM_COUNT - ARCHETYPE_COUNT - DISC_COUNT],
         section: 'Últimas Perguntas',
         sectionColor: 'from-amber-400 to-orange-500'
       }
