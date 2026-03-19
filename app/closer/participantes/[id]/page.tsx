@@ -44,7 +44,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Participant, User, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, getQualificationClass } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, FUNIL_OPTIONS, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, getQualificationClass, formatCurrencyInput, parseCurrency } from '@/lib/utils'
 
 type TabType = 'dados' | 'disc' | 'vendas'
 
@@ -318,10 +318,10 @@ export default function CloserParticipantDetail() {
         closer_id: user.id,
         closer_nome: userData?.name || null,
         product_name: saleData.product_name,
-        amount: parseFloat(saleData.total_value),
-        total_value: parseFloat(saleData.total_value),
-        entry_value: parseFloat(saleData.entry_value),
-        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
+        amount: parseCurrency(saleData.total_value),
+        total_value: parseCurrency(saleData.total_value),
+        entry_value: parseCurrency(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseCurrency(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
         dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
         observacoes: saleData.observacoes || null,
@@ -1335,29 +1335,29 @@ export default function CloserParticipantDetail() {
           />
           <Input
             label="Valor Total do Contrato (R$)"
-            type="number"
-            step="0.01"
-            placeholder="0,00"
+            type="text"
+            inputMode="numeric"
+            placeholder="R$ 0,00"
             value={saleData.total_value}
-            onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })}
+            onChange={(e) => setSaleData({ ...saleData, total_value: formatCurrencyInput(e.target.value) })}
             required
           />
           <Input
             label="Valor de Entrada (R$)"
-            type="number"
-            step="0.01"
-            placeholder="0,00"
+            type="text"
+            inputMode="numeric"
+            placeholder="R$ 0,00"
             value={saleData.entry_value}
-            onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })}
+            onChange={(e) => setSaleData({ ...saleData, entry_value: formatCurrencyInput(e.target.value) })}
             required
           />
           <Input
             label="Valor Próxima Semana (R$)"
-            type="number"
-            step="0.01"
-            placeholder="0,00"
+            type="text"
+            inputMode="numeric"
+            placeholder="R$ 0,00"
             value={saleData.valor_proxima_semana}
-            onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: e.target.value })}
+            onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: formatCurrencyInput(e.target.value) })}
           />
           <Input
             label="Forma de Negociação"

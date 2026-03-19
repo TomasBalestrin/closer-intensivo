@@ -210,6 +210,17 @@ export function parseCurrency(value: string): number {
   return parseFloat(clean) || 0
 }
 
+// Format value as BRL currency input mask (e.g., "R$ 96.000,00")
+export function formatCurrencyInput(value: string): string {
+  // Remove everything except digits
+  const digits = value.replace(/\D/g, '')
+  if (!digits) return ''
+  // Convert to cents then to number
+  const cents = parseInt(digits, 10)
+  const reais = cents / 100
+  return reais.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
 export function generateFormUrl(formId: string): string {
   return `/form/${formId}`
 }
