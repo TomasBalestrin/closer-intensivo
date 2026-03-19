@@ -13,10 +13,12 @@ import {
 import { StatsCard } from '@/components/shared'
 import { User, Participant, Sale } from '@/lib/types'
 import { formatCurrency, formatPercentage, getColorClass } from '@/lib/utils'
+import { useEvent } from '@/lib/hooks/use-event'
 
 export default function MeuPainel() {
   const router = useRouter()
   const supabase = createClient()
+  const { activeEvent } = useEvent()
 
   const [closer, setCloser] = useState<User | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -28,7 +30,7 @@ export default function MeuPainel() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [activeEvent?.id])
 
   const fetchData = async () => {
     setLoading(true)
@@ -36,10 +38,20 @@ export default function MeuPainel() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Build queries with event filter
+    let participantsQuery = supabase.from('participants').select('*').eq('assigned_closer_id', user.id)
+    let salesQuery = supabase.from('sales').select('*').eq('closer_id', user.id).is('deleted_at', null)
+
+    // Filter by active event if selected
+    if (activeEvent?.id) {
+      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
+      salesQuery = salesQuery.eq('event_id', activeEvent.id)
+    }
+
     const [closerRes, participantsRes, salesRes] = await Promise.all([
       supabase.from('users').select('*').eq('id', user.id).single(),
-      supabase.from('participants').select('*').eq('assigned_closer_id', user.id),
-      supabase.from('sales').select('*').eq('closer_id', user.id).is('deleted_at', null),
+      participantsQuery,
+      salesQuery,
     ])
 
     setCloser(closerRes.data)
