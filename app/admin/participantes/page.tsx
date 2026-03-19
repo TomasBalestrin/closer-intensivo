@@ -116,9 +116,10 @@ export default function AdminParticipantes() {
     setLoading(true)
 
     // Build queries with event filter
+    // Use simple select without explicit FK joins to avoid query failures
     let participantsQuery = supabase
       .from('participants')
-      .select('*, seller_closer:users!participants_seller_closer_id_fkey(id, name, email, photo_url), assigned_closer:users!participants_assigned_closer_id_fkey(id, name, email, photo_url)')
+      .select('*')
       .order('created_at', { ascending: false })
 
     let salesQuery = supabase
