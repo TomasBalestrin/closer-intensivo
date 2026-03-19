@@ -252,95 +252,144 @@ async function generateStrategicAnalysis(block: QualificationBlock): Promise<str
   const qualLabel = QUAL_LABELS[block.qualification]
   const revenueRange = QUAL_REVENUE_RANGE[block.qualification]
 
+  // Nichos formatados
   const nicheText = block.nicheBreakdown.slice(0, 10)
-    .map(n => `- ${n.niche}: ${n.count} (${n.percentage}%)`)
+    .map(n => `- ${n.niche}: ${n.count} pessoas (${n.percentage}%)`)
     .join('\n')
 
-  const challengeText = block.challengeGroups.slice(0, 8)
-    .map(g => `- ${g.theme}: ${g.count} pessoas (${g.percentage}%)`)
+  // Dificuldades com respostas reais dos participantes
+  const challengeDetailText = block.challengeGroups.slice(0, 8)
+    .map(g => {
+      const samples = g.sample_answers.map(a => `  "${a}"`).join('\n')
+      return `- TEMA: ${g.theme} (${g.count} pessoas, ${g.percentage}%)\n  Respostas reais:\n${samples}`
+    })
+    .join('\n\n')
+
+  // Objetivos com respostas reais
+  const desiredDetailText = block.desiredChangeGroups.slice(0, 8)
+    .map(g => {
+      const samples = g.sample_answers.map(a => `  "${a}"`).join('\n')
+      return `- TEMA: ${g.theme} (${g.count} pessoas, ${g.percentage}%)\n  Respostas reais:\n${samples}`
+    })
+    .join('\n\n')
+
+  // Respostas brutas adicionais para dar mais contexto
+  const rawChallenges = block.participants
+    .map(p => p.challenge_answer)
+    .filter((a): a is string => !!a && a.trim().length > 10)
+    .slice(0, 40)
+    .map(a => `- "${a}"`)
     .join('\n')
 
-  const desiredText = block.desiredChangeGroups.slice(0, 8)
-    .map(g => `- ${g.theme}: ${g.count} pessoas (${g.percentage}%)`)
+  const rawDesired = block.participants
+    .map(p => p.desired_change_answer)
+    .filter((a): a is string => !!a && a.trim().length > 10)
+    .slice(0, 40)
+    .map(a => `- "${a}"`)
     .join('\n')
 
-  const prompt = `Você é um estrategista de palco e copywriter de alto nível para eventos presenciais de alta conversão.
+  const systemPrompt = `Você é o maior estrategista de palco e vendas presenciais do Brasil. Você é especialista em criar seeds, loops abertos, quebras de objeção e roteiros de palco para eventos de alta conversão.
 
-Analise os dados abaixo do bloco de qualificação ${qualLabel} (${revenueRange}) com ${block.count} participantes e gere uma ANÁLISE ESTRATÉGICA PROFUNDA E TÁTICA.
+Você NÃO é um assistente genérico. Você é um estrategista que analisa dados REAIS de audiência e cria material ESPECÍFICO e PRONTO PARA USAR baseado exatamente no que essas pessoas escreveram.
 
-DADOS DO BLOCO:
+REGRAS ABSOLUTAS:
+1. Cada seed, loop e frase DEVE referenciar uma dor ou desejo REAL que apareceu nas respostas dos participantes. Cite trechos reais.
+2. NUNCA escreva frases genéricas como "é importante usar autoridade" ou "mostre cases de sucesso". Escreva a FRASE EXATA pronta para usar.
+3. Cada item deve ter contexto de QUANDO usar nos 3 dias do evento (dia 1 = aquecimento, dia 2 = aprofundamento, dia 3 = conversão).
+4. Não use formatação markdown (sem **, ##, *). Use apenas texto corrido, parágrafos, "- " para listas e MAIÚSCULAS para títulos de seção.
+5. Escreva em português brasileiro coloquial de palco, como um palestrante realmente fala.`
 
-Nichos mais representados:
+  const prompt = `Analise os dados REAIS abaixo de ${block.count} participantes de qualificação ${qualLabel} (${revenueRange}) do Intensivo da Alta Performance da Bethel.
+
+=== NICHOS DOS PARTICIPANTES ===
 ${nicheText}
 
-Principais dificuldades agrupadas:
-${challengeText || 'Não disponível'}
+=== MAIORES DIFICULDADES (agrupadas por tema + respostas reais) ===
+${challengeDetailText || 'Sem dados'}
 
-O que buscam aprender/mudar:
-${desiredText || 'Não disponível'}
+=== AMOSTRA AMPLA DE RESPOSTAS SOBRE DIFICULDADES ===
+${rawChallenges || 'Sem dados'}
 
-=== INSTRUÇÕES DETALHADAS ===
+=== O QUE BUSCAM NO INTENSIVO (agrupado por tema + respostas reais) ===
+${desiredDetailText || 'Sem dados'}
 
-Gere a análise dividida nos seguintes blocos (use os títulos exatos abaixo, separados por linha em branco):
+=== AMOSTRA AMPLA DE RESPOSTAS SOBRE O QUE BUSCAM ===
+${rawDesired || 'Sem dados'}
 
-DIAGNÓSTICO DO PERFIL
-Análise do mindset e momento de negócio deste grupo. Qual a "conversa interna" que essa pessoa tem? Quais são os medos não-ditos? O que esse grupo NÃO sabe que precisa? Conecte as dores declaradas com as dores reais mais profundas.
+=== SUA TAREFA ===
 
-SEEDS PARA PLANTAR DURANTE AS PALESTRAS
-Liste 4-6 seeds (sementes) específicas que o palestrante pode plantar ao longo das falas ANTES do pitch. Cada seed deve ser uma frase ou ideia que será "colhida" depois no momento da oferta. Exemplo de formato: "Seed: [frase exata para dizer no palco] — Momento ideal: [quando usar] — Conexão com a oferta: [como isso prepara para o Elite Premium]"
+Com base EXCLUSIVAMENTE nos dados acima (não invente dores que não existem), gere:
 
-LOOPS ABERTOS PARA USAR NO PALCO
-Liste 3-5 loops abertos (perguntas ou promessas incompletas que geram curiosidade e mantêm atenção). Cada loop deve conectar uma dor deste grupo com algo que será "fechado" no momento do pitch ou na conversa com o closer. Escreva a frase exata do loop.
+DIAGNÓSTICO PROFUNDO DESTE PERFIL
+Qual é a real situação desses empresários de ${revenueRange}? Qual a "conversa interna" que eles têm? O que eles escreveram nas respostas revela quais padrões? Quais dores eles NÃO sabem nomear mas ficam evidentes nas respostas? O que conecta as dificuldades com o que buscam? Cite trechos reais das respostas para embasar cada ponto.
 
-QUEBRA DE OBJEÇÕES PRÉVIA
-Para cada objeção provável deste perfil de faturamento, escreva:
-- A objeção (ex: "é caro demais para o meu momento")
-- A frase exata de quebra prévia para usar NO PALCO, antes mesmo da pessoa pensar na objeção
-- O racional psicológico por trás da quebra (por que funciona)
-Mínimo 4 objeções.
+SEEDS PARA PLANTAR NAS PALESTRAS (mínimo 6)
+Para cada seed:
+- A FRASE EXATA para o palestrante dizer no palco
+- Em qual momento dos 3 dias usar (dia 1 abertura, dia 1 tarde, dia 2 manhã, dia 2 tarde, dia 3 antes do pitch)
+- Qual dor específica da audiência essa seed ativa (cite a resposta real que inspirou)
+- Como essa seed será "colhida" no momento da oferta do Elite Premium
 
-FRASES DE IMPACTO E GATILHOS
-Liste 5-8 frases prontas para usar no palco que conectam as dores específicas deste grupo com a transformação do Elite Premium. Cada frase deve usar pelo menos um gatilho mental (autoridade, escassez, prova social, futuro pace, identidade, contraste, reciprocidade). Indique qual gatilho está sendo usado.
+Exemplos do formato esperado:
+Seed 1: "Quem aqui já tentou montar um processo comercial sozinho, assistindo vídeo no YouTube, e depois de 3 meses percebeu que nada mudou de verdade?"
+Momento: Dia 1, palestra da tarde sobre processos de vendas
+Dor ativada: 23% escreveram que sua maior dificuldade é "estruturar processos comerciais" e "organizar o comercial"
+Colheita: No pitch — "Lembra quando eu perguntei quem tentou sozinho? O Elite Premium existe para você nunca mais precisar adivinhar o próximo passo."
 
-SCRIPT DE ABORDAGEM PARA CLOSERS
-Escreva um mini-script de como o closer deve abordar este perfil específico após a palestra:
-- Frase de abertura (quebrar gelo conectando com algo da palestra)
-- 2-3 perguntas de qualificação calibradas para este perfil de faturamento
-- Como direcionar para o Elite Premium usando as dores declaradas deste grupo
-- Frase de transição para apresentar a oferta
-- Como lidar se a pessoa demonstrar hesitação
+LOOPS ABERTOS (mínimo 5)
+Para cada loop:
+- A frase exata para abrir o loop
+- Em qual palestra/momento usar
+- Qual dor/desejo da audiência ele ativa
+- Quando e como fechar o loop (no pitch ou na conversa com closer)
 
-Seja EXTREMAMENTE específico e prático. Escreva frases PRONTAS para usar, não conceitos genéricos.
-Não use formatação markdown (sem **, ##, etc). Use apenas texto corrido, parágrafos e "- " para listas.
-Escreva em português brasileiro.`
+QUEBRA DE OBJEÇÕES PRÉVIA (mínimo 5)
+Baseado no perfil de faturamento ${revenueRange} e nos nichos predominantes, para cada objeção:
+- Qual é a objeção (seja específico para este perfil, não genérico)
+- A frase EXATA de quebra para usar no palco ANTES do pitch, de forma indireta durante o conteúdo
+- POR QUE essa frase funciona psicologicamente
+- Em qual momento do evento inserir
+
+ROTEIRO DE ABORDAGEM PARA CLOSERS
+Escreva um roteiro completo e detalhado que o closer pode seguir para abordar este perfil:
+- 3 frases diferentes de abertura (conectando com conteúdo do palco e dores deste grupo)
+- Perguntas de diagnóstico que revelam se a pessoa precisa do Elite Premium (baseadas nas dores reais que apareceram)
+- Como usar as próprias respostas do formulário contra a objeção ("Você mesmo escreveu que sua maior dificuldade é X... e isso é exatamente o módulo Y do Elite Premium")
+- Frases de transição para apresentar a oferta
+- Como lidar com "vou pensar", "tá caro", "preciso falar com sócio" — frases específicas para este perfil
+- Frase de fechamento
+
+Seja BRUTAL na especificidade. Cada frase deve ser tão específica que só funciona para ESTE grupo de participantes com ESTAS dores. Se a frase poderia ser usada em qualquer evento genérico, ela está ERRADA — refaça.`
 
   const context = `CONTEXTO DO PRODUTO - ELITE PREMIUM:
 O Elite Premium é a mentoria premium de 1 ano da Bethel que inclui:
 - Estratégia comercial e processo de vendas completo
-- Estruturação de esteira de produtos
+- Estruturação de esteira de produtos com ticket médio crescente
 - Implementação de funis de venda que convertem
 - Marketing e posicionamento digital
 - Processos de gestão e contratação de equipe
 - Ferramentas e SaaS exclusivos para mentorados
 - Acompanhamento próximo e personalizado durante 12 meses
 
-É o produto de maior ticket do evento e o objetivo principal de conversão durante o intensivo.
+É o produto de maior ticket do evento e o objetivo principal de conversão durante o Intensivo da Alta Performance.
 
-CONTEXTO DO EVENTO:
-Intensivo presencial da Bethel (Alta Performance). Os participantes passam 3 dias de imersão com palestras sobre vendas, processos comerciais, gestão e escala de negócios. No terceiro dia acontece o pitch para o Elite Premium. Durante os 3 dias, o palestrante planta seeds e abre loops que preparam a audiência para a oferta. Closers ficam no salão e abordam participantes após as palestras e nos intervalos.
+CONTEXTO DO EVENTO - INTENSIVO DA ALTA PERFORMANCE:
+Evento presencial de 3 dias da Bethel. Palestrantes no palco ensinam conteúdo sobre vendas, gestão, processos comerciais e escala, enquanto plantam seeds e abrem loops que preparam para a oferta do Elite Premium no dia 3. Closers circulam pelo salão e abordam participantes nos intervalos e após as palestras.
 
-GLOSSÁRIO DE TÉCNICAS:
-- Seed (semente): frase ou ideia plantada antes do pitch que será "colhida" no momento da oferta. Ex: "Quem aqui já tentou resolver isso sozinho e não conseguiu?" — prepara para a ideia de que precisa de acompanhamento.
-- Loop aberto: pergunta ou promessa incompleta que cria tensão e curiosidade. A mente quer "fechar" o loop, o que mantém atenção. Ex: "Daqui a pouco vou mostrar o que o fulano fez para sair de 10k para 100k em 8 meses, mas antes..."
-- Quebra de objeção prévia: antecipar e neutralizar uma objeção ANTES que a pessoa a formule conscientemente. Feita de forma indireta durante o conteúdo, não no pitch.
-- Future pace: fazer a pessoa visualizar como será a vida dela após a transformação.
-- Gatilho de identidade: fazer a pessoa se identificar com um grupo desejado ("empresários que pensam assim...").
-- Contraste: comparar o custo da inação vs. o investimento na transformação.`
+Dia 1: Aquecimento — gerar rapport, mostrar que o participante está no lugar certo, começar a plantar desconforto com a situação atual
+Dia 2: Aprofundamento — conteúdo técnico que mostra a complexidade do que precisa ser feito, gerar a sensação de "eu preciso de ajuda com isso"
+Dia 3: Conversão — fechar loops, colher seeds, pitch do Elite Premium, closers em ação`
 
   const res = await fetch('/api/admin/reports/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, context, max_tokens: 8000 }),
+    body: JSON.stringify({
+      prompt,
+      context,
+      max_tokens: 12000,
+      model: 'gpt-4o',
+      system_prompt: systemPrompt,
+    }),
   })
 
   if (!res.ok) throw new Error(`Analysis API error: ${res.status}`)

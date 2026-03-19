@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, context, max_tokens: requestedTokens } = await request.json()
+    const {
+      prompt,
+      context,
+      max_tokens: requestedTokens,
+      model: requestedModel,
+      system_prompt: customSystemPrompt,
+    } = await request.json()
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt é obrigatório' }, { status: 400 })
@@ -13,7 +19,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'OpenAI API key não configurada' }, { status: 500 })
     }
 
-    const systemPrompt = `Você é um analista de dados especializado em eventos presenciais de vendas e mentorias.
+    const systemPrompt = customSystemPrompt
+      ? `${customSystemPrompt}\n\nDados do contexto:\n${context}`
+      : `Você é um analista de dados especializado em eventos presenciais de vendas e mentorias.
 Você recebe dados de participantes de um evento intensivo e deve gerar análises estratégicas.
 
 Responda SEMPRE em português brasileiro.
@@ -23,7 +31,8 @@ Seja direto e objetivo. Forneça insights acionáveis.
 Dados do contexto do evento:
 ${context}`
 
-    const maxTokens = Math.min(requestedTokens || 4000, 8000)
+    const model = requestedModel || 'gpt-4o-mini'
+    const maxTokens = Math.min(requestedTokens || 4000, 16000)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 120000)
@@ -35,7 +44,7 @@ ${context}`
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
