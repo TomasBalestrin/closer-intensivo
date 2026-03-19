@@ -198,6 +198,10 @@ export default function AdminClosers() {
                 <p className="font-semibold">{closer.opportunitiesTotal}</p>
               </div>
               <div>
+                <p className="text-gray-500">Oport. Comparecidas</p>
+                <p className="font-semibold">{closer.opportunitiesCheckedIn}</p>
+              </div>
+              <div>
                 <p className="text-gray-500">Vendas</p>
                 <p className="font-semibold">{closer.salesCount}</p>
               </div>
