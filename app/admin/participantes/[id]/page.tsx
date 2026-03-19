@@ -504,7 +504,7 @@ export default function ParticipantDetail() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ times_called: value })
+        .update({ times_called: value, chamado: value > 0, ...( value === 0 ? { chamado_at: null, chamado_by: null } : {}) })
         .eq('id', params.id)
 
       if (error) throw error
