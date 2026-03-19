@@ -156,6 +156,14 @@ export default function CloserParticipantes() {
   }, [activeEvent?.id])
 
   useEffect(() => {
+    // If data was changed in detail page, clear cache and force fresh fetch
+    const dataChanged = sessionStorage.getItem('participants-data-changed')
+    if (dataChanged) {
+      sessionStorage.removeItem('participants-data-changed')
+      sessionStorage.removeItem(CACHE_KEY)
+      fetchData(false)
+      return
+    }
     const hasCache = !!getCachedParticipants()
     if (hasCache) {
       // We have cached data showing instantly - fetch fresh data in background

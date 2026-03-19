@@ -203,6 +203,8 @@ export default function CloserParticipantDetail() {
       if (error) throw error
 
       showToast('Participante atualizado com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
+      sessionStorage.removeItem('closer-participantes-cache')
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao salvar', 'error')
@@ -225,6 +227,8 @@ export default function CloserParticipantDetail() {
       if (error) throw error
 
       setParticipant({ ...participant, [field]: !currentValue })
+      sessionStorage.setItem('participants-data-changed', 'true')
+      sessionStorage.removeItem('closer-participantes-cache')
       showToast(
         !currentValue
           ? `Check-in Dia ${day} marcado com sucesso`
@@ -289,6 +293,8 @@ export default function CloserParticipantDetail() {
       if (error) throw error
 
       showToast('Participante marcado como chamado!', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
+      sessionStorage.removeItem('closer-participantes-cache')
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao marcar como chamado', 'error')
@@ -331,6 +337,8 @@ export default function CloserParticipantDetail() {
       if (error) throw error
 
       showToast('Venda registrada com sucesso', 'success')
+      sessionStorage.setItem('participants-data-changed', 'true')
+      sessionStorage.removeItem('closer-participantes-cache')
       setSaleModal(false)
       setSaleData({
         product_name: '',
