@@ -45,7 +45,7 @@ export default function AdminClosers() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('id, assigned_closer_id, seller_closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification')
+    let participantsQuery = supabase.from('participants').select('id, closer_id, assigned_closer_id, seller_closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification')
     let salesQuery = supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null)
 
     // Get only closers related to the active event
@@ -86,15 +86,17 @@ export default function AdminClosers() {
   }
 
   const closersWithStats: CloserWithStats[] = useMemo(() => {
-    // Index participants by assigned_closer_id or seller_closer_id for O(n) lookup
+    // Index participants by seller_closer_id and assigned_closer_id (matching detail page logic)
     const participantsByCloser = new Map<string, Participant[]>()
     rawParticipants.forEach(p => {
-      const closerId = p.assigned_closer_id || p.seller_closer_id
-      if (closerId) {
+      const closerIds = new Set<string>()
+      if (p.seller_closer_id) closerIds.add(p.seller_closer_id)
+      if (p.assigned_closer_id) closerIds.add(p.assigned_closer_id)
+      closerIds.forEach(closerId => {
         const list = participantsByCloser.get(closerId) || []
         list.push(p)
         participantsByCloser.set(closerId, list)
-      }
+      })
     })
 
     const salesByCloser = new Map<string, Sale[]>()
