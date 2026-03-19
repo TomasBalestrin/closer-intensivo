@@ -264,9 +264,11 @@ async function generateStrategicAnalysis(block: QualificationBlock): Promise<str
     .map(g => `- ${g.theme}: ${g.count} pessoas (${g.percentage}%)`)
     .join('\n')
 
-  const prompt = `Gere uma análise estratégica de 3-5 parágrafos sobre como posicionar o Elite Premium durante as palestras do evento para participantes de qualificação ${qualLabel} (${revenueRange}).
+  const prompt = `Você é um estrategista de palco e copywriter de alto nível para eventos presenciais de alta conversão.
 
-DADOS DO BLOCO (${block.count} participantes):
+Analise os dados abaixo do bloco de qualificação ${qualLabel} (${revenueRange}) com ${block.count} participantes e gere uma ANÁLISE ESTRATÉGICA PROFUNDA E TÁTICA.
+
+DADOS DO BLOCO:
 
 Nichos mais representados:
 ${nicheText}
@@ -277,13 +279,40 @@ ${challengeText || 'Não disponível'}
 O que buscam aprender/mudar:
 ${desiredText || 'Não disponível'}
 
-Inclua obrigatoriamente:
-1. Quais dores específicas deste grupo o Elite Premium resolve diretamente
-2. Qual linguagem e gatilhos mentais usar nas palestras para esse perfil de faturamento
-3. Quais objeções prováveis deste grupo e como antecipá-las nas falas
-4. Sugestão de abordagem específica para os closers abordarem este perfil após as palestras
+=== INSTRUÇÕES DETALHADAS ===
 
-Seja direto, prático e acionável. Não use markdown, apenas texto corrido com parágrafos.`
+Gere a análise dividida nos seguintes blocos (use os títulos exatos abaixo, separados por linha em branco):
+
+DIAGNÓSTICO DO PERFIL
+Análise do mindset e momento de negócio deste grupo. Qual a "conversa interna" que essa pessoa tem? Quais são os medos não-ditos? O que esse grupo NÃO sabe que precisa? Conecte as dores declaradas com as dores reais mais profundas.
+
+SEEDS PARA PLANTAR DURANTE AS PALESTRAS
+Liste 4-6 seeds (sementes) específicas que o palestrante pode plantar ao longo das falas ANTES do pitch. Cada seed deve ser uma frase ou ideia que será "colhida" depois no momento da oferta. Exemplo de formato: "Seed: [frase exata para dizer no palco] — Momento ideal: [quando usar] — Conexão com a oferta: [como isso prepara para o Elite Premium]"
+
+LOOPS ABERTOS PARA USAR NO PALCO
+Liste 3-5 loops abertos (perguntas ou promessas incompletas que geram curiosidade e mantêm atenção). Cada loop deve conectar uma dor deste grupo com algo que será "fechado" no momento do pitch ou na conversa com o closer. Escreva a frase exata do loop.
+
+QUEBRA DE OBJEÇÕES PRÉVIA
+Para cada objeção provável deste perfil de faturamento, escreva:
+- A objeção (ex: "é caro demais para o meu momento")
+- A frase exata de quebra prévia para usar NO PALCO, antes mesmo da pessoa pensar na objeção
+- O racional psicológico por trás da quebra (por que funciona)
+Mínimo 4 objeções.
+
+FRASES DE IMPACTO E GATILHOS
+Liste 5-8 frases prontas para usar no palco que conectam as dores específicas deste grupo com a transformação do Elite Premium. Cada frase deve usar pelo menos um gatilho mental (autoridade, escassez, prova social, futuro pace, identidade, contraste, reciprocidade). Indique qual gatilho está sendo usado.
+
+SCRIPT DE ABORDAGEM PARA CLOSERS
+Escreva um mini-script de como o closer deve abordar este perfil específico após a palestra:
+- Frase de abertura (quebrar gelo conectando com algo da palestra)
+- 2-3 perguntas de qualificação calibradas para este perfil de faturamento
+- Como direcionar para o Elite Premium usando as dores declaradas deste grupo
+- Frase de transição para apresentar a oferta
+- Como lidar se a pessoa demonstrar hesitação
+
+Seja EXTREMAMENTE específico e prático. Escreva frases PRONTAS para usar, não conceitos genéricos.
+Não use formatação markdown (sem **, ##, etc). Use apenas texto corrido, parágrafos e "- " para listas.
+Escreva em português brasileiro.`
 
   const context = `CONTEXTO DO PRODUTO - ELITE PREMIUM:
 O Elite Premium é a mentoria premium de 1 ano da Bethel que inclui:
@@ -295,12 +324,23 @@ O Elite Premium é a mentoria premium de 1 ano da Bethel que inclui:
 - Ferramentas e SaaS exclusivos para mentorados
 - Acompanhamento próximo e personalizado durante 12 meses
 
-É o produto de maior ticket do evento e o objetivo principal de conversão durante o intensivo.`
+É o produto de maior ticket do evento e o objetivo principal de conversão durante o intensivo.
+
+CONTEXTO DO EVENTO:
+Intensivo presencial da Bethel (Alta Performance). Os participantes passam 3 dias de imersão com palestras sobre vendas, processos comerciais, gestão e escala de negócios. No terceiro dia acontece o pitch para o Elite Premium. Durante os 3 dias, o palestrante planta seeds e abre loops que preparam a audiência para a oferta. Closers ficam no salão e abordam participantes após as palestras e nos intervalos.
+
+GLOSSÁRIO DE TÉCNICAS:
+- Seed (semente): frase ou ideia plantada antes do pitch que será "colhida" no momento da oferta. Ex: "Quem aqui já tentou resolver isso sozinho e não conseguiu?" — prepara para a ideia de que precisa de acompanhamento.
+- Loop aberto: pergunta ou promessa incompleta que cria tensão e curiosidade. A mente quer "fechar" o loop, o que mantém atenção. Ex: "Daqui a pouco vou mostrar o que o fulano fez para sair de 10k para 100k em 8 meses, mas antes..."
+- Quebra de objeção prévia: antecipar e neutralizar uma objeção ANTES que a pessoa a formule conscientemente. Feita de forma indireta durante o conteúdo, não no pitch.
+- Future pace: fazer a pessoa visualizar como será a vida dela após a transformação.
+- Gatilho de identidade: fazer a pessoa se identificar com um grupo desejado ("empresários que pensam assim...").
+- Contraste: comparar o custo da inação vs. o investimento na transformação.`
 
   const res = await fetch('/api/admin/reports/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, context }),
+    body: JSON.stringify({ prompt, context, max_tokens: 8000 }),
   })
 
   if (!res.ok) throw new Error(`Analysis API error: ${res.status}`)
