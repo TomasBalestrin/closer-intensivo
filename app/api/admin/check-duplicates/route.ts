@@ -20,14 +20,22 @@ function normalizeCpf(cpf: string): string {
   return cpf.replace(/\D/g, '')
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = getSupabase()
+    const { searchParams } = new URL(request.url)
+    const eventId = searchParams.get('event_id')
 
-    const { data: participants, error } = await supabase
+    let query = supabase
       .from('participants')
       .select('id, name, email, phone, cpf, event_id, is_opportunity, created_at, assigned_closer_id, seller_closer_id, checked_in_day1, checked_in_day2, checked_in_day3, qualification, revenue')
       .order('created_at', { ascending: true })
+
+    if (eventId) {
+      query = query.eq('event_id', eventId)
+    }
+
+    const { data: participants, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
