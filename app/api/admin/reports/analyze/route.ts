@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, context } = await request.json()
+    const { prompt, context, max_tokens: requestedTokens } = await request.json()
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt é obrigatório' }, { status: 400 })
@@ -23,8 +23,10 @@ Seja direto e objetivo. Forneça insights acionáveis.
 Dados do contexto do evento:
 ${context}`
 
+    const maxTokens = Math.min(requestedTokens || 4000, 8000)
+
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 60000)
+    const timeout = setTimeout(() => controller.abort(), 120000)
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -38,7 +40,7 @@ ${context}`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 4000,
+        max_tokens: maxTokens,
         temperature: 0.7,
       }),
       signal: controller.signal,
@@ -62,7 +64,7 @@ ${context}`
   } catch (error: any) {
     console.error('Error in reports analyze:', error)
     if (error.name === 'AbortError') {
-      return NextResponse.json({ error: 'Timeout na análise (60s)' }, { status: 504 })
+      return NextResponse.json({ error: 'Timeout na análise (120s)' }, { status: 504 })
     }
     return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 })
   }
