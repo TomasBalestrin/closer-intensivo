@@ -440,6 +440,56 @@ export default function AdminParticipantes() {
     }
   }
 
+  // Auto-assign closers based on seller_closer_id (for participants without assigned_closer)
+  const [autoAssigning, setAutoAssigning] = useState(false)
+  const handleAutoAssignClosers = async () => {
+    if (!activeEvent?.id) {
+      alert('Selecione um evento primeiro')
+      return
+    }
+
+    setAutoAssigning(true)
+    try {
+      // Get closers available for this event
+      const { data: userEvents } = await supabase
+        .from('user_events')
+        .select('user_id')
+        .eq('event_id', activeEvent.id)
+        .eq('role', 'closer')
+
+      const availableCloserIds = new Set(userEvents?.map(ue => ue.user_id) || [])
+
+      // Find participants with seller_closer_id but no assigned_closer_id
+      const toUpdate = participants.filter(
+        p => p.seller_closer_id && !p.assigned_closer_id && availableCloserIds.has(p.seller_closer_id)
+      )
+
+      if (toUpdate.length === 0) {
+        alert('Nenhum participante precisa de auto-atribuição')
+        setAutoAssigning(false)
+        return
+      }
+
+      // Update each participant
+      let updated = 0
+      for (const p of toUpdate) {
+        const { error } = await supabase
+          .from('participants')
+          .update({ assigned_closer_id: p.seller_closer_id })
+          .eq('id', p.id)
+        if (!error) updated++
+      }
+
+      alert(`Auto-atribuídos: ${updated} participantes`)
+      fetchData()
+    } catch (error) {
+      console.error('Error auto-assigning closers:', error)
+      alert('Erro ao auto-atribuir closers')
+    } finally {
+      setAutoAssigning(false)
+    }
+  }
+
   // Toggle selection
   const toggleSelectAll = () => {
     if (selectedParticipants.length === filteredParticipants.length) {
@@ -486,6 +536,15 @@ export default function AdminParticipantes() {
                   <List className="h-4 w-4" />
                 </button>
               </div>
+              <Button
+                variant="secondary"
+                onClick={handleAutoAssignClosers}
+                disabled={autoAssigning}
+                title="Auto-atribuir closers baseado no closer que indicou"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {autoAssigning ? 'Atribuindo...' : 'Auto-atribuir'}
+              </Button>
               <Button variant="secondary" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-2" />
                 Exportar CSV
