@@ -132,44 +132,25 @@ export default function AdminParticipantes() {
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
-    // Get closers - merge all users with role 'closer' + user_events closers (same as closers module)
+    // Get closers - only those assigned to this event via user_events
     let closersData: User[] = []
     if (activeEvent?.id) {
-      // Get closers from user_events for this event
+      // Get closer IDs from user_events for this event
       const { data: userEventsData } = await supabase
         .from('user_events')
         .select('user_id')
         .eq('event_id', activeEvent.id)
         .eq('role', 'closer')
 
-      const eventCloserIds = new Set((userEventsData || []).map((ue: any) => ue.user_id))
+      const eventCloserIds = (userEventsData || []).map((ue: any) => ue.user_id)
 
-      // Also get all users with role 'closer' from users table
-      const { data: allClosersData } = await supabase
-        .from('users')
-        .select('id, name, email, photo_url, role')
-        .eq('role', 'closer')
-
-      // Merge: all users with role closer + any from user_events not already included
-      const closersMap = new Map<string, User>()
-      for (const c of (allClosersData || []) as User[]) {
-        closersMap.set(c.id, c)
+      if (eventCloserIds.length > 0) {
+        const { data: eventClosers } = await supabase
+          .from('users')
+          .select('id, name, email, photo_url, role')
+          .in('id', eventCloserIds)
+        closersData = (eventClosers || []) as User[]
       }
-
-      if (eventCloserIds.size > 0) {
-        const missingIds = [...eventCloserIds].filter(id => !closersMap.has(id))
-        if (missingIds.length > 0) {
-          const { data: extraClosers } = await supabase
-            .from('users')
-            .select('id, name, email, photo_url, role')
-            .in('id', missingIds)
-          for (const c of (extraClosers || []) as User[]) {
-            closersMap.set(c.id, c)
-          }
-        }
-      }
-
-      closersData = Array.from(closersMap.values())
     } else {
       const { data } = await supabase.from('users').select('id, name, email, photo_url, role').eq('role', 'closer')
       closersData = (data || []) as User[]
@@ -397,7 +378,7 @@ export default function AdminParticipantes() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ seller_closer_id: singleAssignCloserId })
+        .update({ seller_closer_id: singleAssignCloserId === 'nenhum' ? null : singleAssignCloserId })
         .eq('id', singleAssignParticipantId)
       if (error) throw error
       setSingleAssignParticipantId(null)
@@ -1108,6 +1089,7 @@ export default function AdminParticipantes() {
             onChange={(e) => setSingleAssignCloserId(e.target.value)}
             options={[
               { value: '', label: 'Selecione um closer' },
+              { value: 'nenhum', label: 'Nenhum (remover closer)' },
               ...closers.map(c => ({ value: c.id, label: c.name })),
             ]}
           />
@@ -1116,7 +1098,7 @@ export default function AdminParticipantes() {
               Cancelar
             </Button>
             <Button onClick={handleSingleAssign} disabled={singleAssigning || !singleAssignCloserId}>
-              {singleAssigning ? 'Atribuindo...' : 'Atribuir'}
+              {singleAssigning ? 'Atribuindo...' : singleAssignCloserId === 'nenhum' ? 'Remover' : 'Atribuir'}
             </Button>
           </div>
         </div>
