@@ -48,9 +48,9 @@ import {
   Code,
 } from 'lucide-react'
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
-import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel } from '@/lib/utils'
+import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, formatCurrencyInput, parseCurrency } from '@/lib/utils'
 
-type TabType = 'perfil' | 'disc'
+type TabType = 'perfil' | 'disc' | 'vendas'
 
 export default function ParticipantDetail() {
   const params = useParams()
@@ -107,6 +107,8 @@ export default function ParticipantDetail() {
   const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [chamadoSaving, setChamadoSaving] = useState(false)
+  const [editingChamados, setEditingChamados] = useState(false)
+  const [chamadosInput, setChamadosInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [eventData, setEventData] = useState<{ id: string; data_inicio: string } | null>(null)
 
@@ -120,9 +122,8 @@ export default function ParticipantDetail() {
   const fetchData = async () => {
     setLoading(true)
 
-    const [participantRes, closersRes, formsRes, salesRes] = await Promise.all([
+    const [participantRes, formsRes, salesRes] = await Promise.all([
       supabase.from('participants').select('*, event:events(id, data_inicio)').eq('id', params.id).single(),
-      supabase.from('users').select('*').eq('role', 'closer'),
       supabase.from('disc_forms').select('*').eq('participant_id', params.id),
       supabase.from('sales').select('*, closer:users(*)').eq('participant_id', params.id).is('deleted_at', null),
     ])
@@ -187,7 +188,26 @@ export default function ParticipantDetail() {
       })
     }
 
-    setClosers(closersRes.data || [])
+    // Fetch closers filtered by participant's event
+    const participantEventId = participantRes.data?.event_id
+    let closersData: UserType[] = []
+    if (participantEventId) {
+      const { data: userEventsData } = await supabase
+        .from('user_events')
+        .select('user_id')
+        .eq('event_id', participantEventId)
+        .eq('role', 'closer')
+      if (userEventsData && userEventsData.length > 0) {
+        const userIds = userEventsData.map((ue: any) => ue.user_id)
+        const { data } = await supabase.from('users').select('*').in('id', userIds)
+        closersData = (data || []) as UserType[]
+      }
+    } else {
+      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      closersData = (data || []) as UserType[]
+    }
+
+    setClosers(closersData)
     setForms(formsRes.data || [])
     setSales(salesRes.data || [])
 
@@ -271,7 +291,7 @@ export default function ParticipantDetail() {
     try {
       const { error } = await supabase
         .from('participants')
-        .update({ assigned_closer_id: closerId })
+        .update({ assigned_closer_id: closerId === 'nenhum' ? null : closerId })
         .eq('id', params.id)
 
       if (error) throw error
@@ -339,12 +359,14 @@ export default function ParticipantDetail() {
         closer_id: closerIdForSale,
         closer_nome: closerData?.name || null,
         product_name: saleData.product_name,
-        total_value: parseFloat(saleData.total_value),
-        entry_value: parseFloat(saleData.entry_value),
-        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
+        amount: parseCurrency(saleData.total_value),
+        total_value: parseCurrency(saleData.total_value),
+        entry_value: parseCurrency(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseCurrency(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
         dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
         observacoes: saleData.observacoes || null,
+        event_id: participant?.event_id || null,
       })
 
       if (error) throw error
@@ -364,9 +386,9 @@ export default function ParticipantDetail() {
     setEditingSale(sale)
     setSaleData({
       product_name: sale.product_name || '',
-      total_value: sale.total_value?.toString() || '',
-      entry_value: sale.entry_value?.toString() || '',
-      valor_proxima_semana: sale.valor_proxima_semana?.toString() || '',
+      total_value: sale.total_value ? formatCurrency(Number(sale.total_value)) : '',
+      entry_value: sale.entry_value ? formatCurrency(Number(sale.entry_value)) : '',
+      valor_proxima_semana: sale.valor_proxima_semana ? formatCurrency(Number(sale.valor_proxima_semana)) : '',
       negotiation_type: sale.negotiation_type || '',
       dia_evento: sale.dia_evento?.toString() || '',
       observacoes: sale.observacoes || '',
@@ -383,9 +405,10 @@ export default function ParticipantDetail() {
     try {
       const updateData: any = {
         product_name: saleData.product_name,
-        total_value: parseFloat(saleData.total_value),
-        entry_value: parseFloat(saleData.entry_value),
-        valor_proxima_semana: saleData.valor_proxima_semana ? parseFloat(saleData.valor_proxima_semana) : 0,
+        amount: parseCurrency(saleData.total_value),
+        total_value: parseCurrency(saleData.total_value),
+        entry_value: parseCurrency(saleData.entry_value),
+        valor_proxima_semana: saleData.valor_proxima_semana ? parseCurrency(saleData.valor_proxima_semana) : 0,
         negotiation_type: saleData.negotiation_type,
         dia_evento: saleData.dia_evento ? parseInt(saleData.dia_evento) : null,
         observacoes: saleData.observacoes || null,
@@ -477,6 +500,25 @@ export default function ParticipantDetail() {
       fetchData()
     } catch (error: any) {
       showToast(error.message || 'Erro ao marcar como chamado', 'error')
+    } finally {
+      setChamadoSaving(false)
+    }
+  }
+
+  const handleSaveChamados = async (value: number) => {
+    setChamadoSaving(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({ times_called: value, chamado: value > 0, ...( value === 0 ? { chamado_at: null, chamado_by: null } : {}) })
+        .eq('id', params.id)
+
+      if (error) throw error
+      showToast('Chamados atualizado!', 'success')
+      setEditingChamados(false)
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao atualizar chamados', 'error')
     } finally {
       setChamadoSaving(false)
     }
@@ -597,6 +639,7 @@ export default function ParticipantDetail() {
   const tabs = [
     { id: 'perfil' as TabType, label: 'Perfil', icon: User },
     { id: 'disc' as TabType, label: 'DISC', icon: Brain, badge: participant.disc_profile },
+    { id: 'vendas' as TabType, label: 'Vendas', icon: DollarSign, badge: sales.length > 0 ? `${sales.length}` : undefined },
   ]
 
   return (
@@ -798,20 +841,58 @@ export default function ParticipantDetail() {
               </button>
 
               {/* Chamados */}
-              <button
-                onClick={handleMarcarChamado}
-                disabled={chamadoSaving}
+              <div
                 className={`rounded-xl border p-3 text-left transition-colors ${
                   participant.chamado
                     ? 'bg-yellow-50 border-yellow-200'
-                    : 'bg-white hover:bg-gray-50'
+                    : 'bg-white'
                 }`}
               >
-                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Chamados</p>
-                <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
-                  {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
-                </p>
-              </button>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium">Chamados</p>
+                  {!editingChamados && (
+                    <button
+                      onClick={() => { setChamadosInput(String(participant.times_called || 0)); setEditingChamados(true) }}
+                      className="p-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                {editingChamados ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={chamadosInput}
+                      onChange={(e) => setChamadosInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveChamados(parseInt(chamadosInput) || 0)
+                        if (e.key === 'Escape') setEditingChamados(false)
+                      }}
+                      autoFocus
+                      className="w-12 text-sm font-medium text-gray-900 border border-gray-300 rounded px-1.5 py-0.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      onClick={() => handleSaveChamados(parseInt(chamadosInput) || 0)}
+                      disabled={chamadoSaving}
+                      className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
+                    >
+                      {chamadoSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => setEditingChamados(false)}
+                      className="p-1 text-gray-400 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
+                    {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Action Bar - Vender */}
@@ -932,6 +1013,61 @@ export default function ParticipantDetail() {
                 )}
               </div>
             </div>
+
+            {/* Dados do Credenciamento - All form Q&A from webhook */}
+            {(() => {
+              // Get form_data from participant, or fallback to webhook_data
+              const rawFormData = (participant as any).form_data
+                || (participant.webhook_data as any)?.participant?.form_data
+                || (participant.webhook_data as any)?.fields
+                || null
+
+              if (!rawFormData || typeof rawFormData !== 'object' || Object.keys(rawFormData).length === 0) return null
+
+              // Normalize key for comparison
+              const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+
+              // Keys already displayed in other sections - skip these
+              const skipKeys = new Set([
+                'nome', 'name', 'nome_completo', 'email', 'telefone', 'phone', 'whatsapp', 'celular',
+                'instagram', 'insta', 'cpf', 'cnpj', 'documento',
+              ])
+
+              const entries = Object.entries(rawFormData).filter(([key, value]) => {
+                if (value === null || value === undefined || value === '') return false
+                const nk = norm(key)
+                return !skipKeys.has(nk) && ![...skipKeys].some(sk => nk.includes(sk) && nk.length < sk.length + 15)
+              })
+
+              if (entries.length === 0) return null
+
+              const isUrl = (v: string) => typeof v === 'string' && (v.startsWith('http://') || v.startsWith('https://'))
+
+              return (
+                <div className="bg-white rounded-xl border divide-y">
+                  <div className="px-4 py-3">
+                    <span className="text-xs text-gray-500 uppercase font-medium">Dados do Credenciamento</span>
+                  </div>
+                  {entries.map(([question, answer], idx) => (
+                    <div key={idx} className="px-4 py-3">
+                      <p className="text-xs text-gray-500 font-medium mb-1">{question}</p>
+                      {isUrl(String(answer)) ? (
+                        <a
+                          href={String(answer)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline break-all"
+                        >
+                          {String(answer).length > 60 ? String(answer).substring(0, 60) + '...' : String(answer)}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium text-gray-900 break-words">{String(answer)}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* Respostas do Formulário */}
             {(participant.challenge_answer || participant.desired_change_answer) && (
@@ -1470,11 +1606,118 @@ export default function ParticipantDetail() {
           </div>
         )}
 
+        {/* VENDAS TAB */}
+        {activeTab === 'vendas' && (
+          <div className="space-y-4">
+            {/* Resumo */}
+            {sales.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="bg-white rounded-xl border p-4 text-center">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Total Vendas</p>
+                  <p className="text-xl font-bold text-green-600">{sales.length}</p>
+                </div>
+                <div className="bg-white rounded-xl border p-4 text-center">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Valor Total</p>
+                  <p className="text-xl font-bold text-green-600">{formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}</p>
+                </div>
+                <div className="bg-white rounded-xl border p-4 text-center col-span-2 lg:col-span-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Entrada Total</p>
+                  <p className="text-xl font-bold text-gray-900">{formatCurrency(sales.reduce((sum, s) => sum + Number(s.entry_value), 0))}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Botão Registrar Venda */}
+            <button
+              onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.closer_id || '' })); setSaleModal(true) }}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl font-medium transition-colors"
+            >
+              <DollarSign className="h-5 w-5" />
+              <span>Registrar Venda</span>
+            </button>
+
+            {/* Cards de Vendas */}
+            {sales.length === 0 ? (
+              <div className="bg-white rounded-xl border p-8 text-center">
+                <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-1">Nenhuma venda registrada</p>
+                <p className="text-xs text-gray-400">Clique no botão acima para registrar a primeira venda</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sales.map((sale: any) => (
+                  <div key={sale.id} className="bg-white rounded-xl border overflow-hidden">
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-sm">{sale.product_name}</h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {sale.created_at ? formatDateBR(sale.created_at) : '—'}
+                            {sale.dia_evento ? ` • Dia ${sale.dia_evento}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <button onClick={() => handleEditSale(sale)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setDeletingSale(sale)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-medium">Valor Total</p>
+                          <p className="text-sm font-bold text-green-600">{formatCurrency(sale.total_value)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-medium">Entrada</p>
+                          <p className="text-sm font-medium text-gray-900">{formatCurrency(sale.entry_value)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-medium">Próx. Semana</p>
+                          <p className="text-sm font-medium text-gray-900">{formatCurrency(sale.valor_proxima_semana)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-t">
+                      <div className="flex items-center gap-2">
+                        {sale.closer && (
+                          <>
+                            <Avatar src={sale.closer.photo_url} alt={sale.closer.name} size="sm" />
+                            <span className="text-xs text-gray-700">{sale.closer.name}</span>
+                          </>
+                        )}
+                      </div>
+                      <Badge variant={sale.negotiation_type === 'fechamento' ? 'success' : 'default'}>
+                        {sale.negotiation_type === 'fechamento' ? 'Fechamento' : sale.negotiation_type === 'negociacao' ? 'Negociação' : sale.negotiation_type}
+                      </Badge>
+                    </div>
+                    {sale.observacoes && (
+                      <div className="px-4 py-2.5 border-t text-xs text-gray-600 bg-gray-50/50">
+                        {sale.observacoes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* Modals */}
       <Modal isOpen={assignCloserModal} onClose={() => setAssignCloserModal(false)} title="Atribuir Closer">
         <div className="space-y-3">
+          <button
+            className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-red-50 transition-colors text-red-600"
+            onClick={() => handleAssignCloser('nenhum')}
+          >
+            <XCircle className="h-10 w-10" />
+            <span className="font-medium">Nenhum (remover closer)</span>
+            {!participant.closer_id && <Badge variant="info" className="ml-auto">Atual</Badge>}
+          </button>
           {closers.map((closer) => (
             <button
               key={closer.id}
@@ -1502,9 +1745,9 @@ export default function ParticipantDetail() {
             required
           />
           <Input label="Produto Vendido" value={saleData.product_name} onChange={(e) => setSaleData({ ...saleData, product_name: e.target.value })} required />
-          <Input label="Valor Total (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: e.target.value })} required />
-          <Input label="Valor Entrada (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: e.target.value })} required />
-          <Input label="Valor Próxima Semana (R$)" type="number" step="0.01" placeholder="0,00" value={saleData.valor_proxima_semana} onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: e.target.value })} />
+          <Input label="Valor Total (R$)" type="text" inputMode="numeric" placeholder="R$ 0,00" value={saleData.total_value} onChange={(e) => setSaleData({ ...saleData, total_value: formatCurrencyInput(e.target.value) })} required />
+          <Input label="Valor Entrada (R$)" type="text" inputMode="numeric" placeholder="R$ 0,00" value={saleData.entry_value} onChange={(e) => setSaleData({ ...saleData, entry_value: formatCurrencyInput(e.target.value) })} required />
+          <Input label="Valor Próxima Semana (R$)" type="text" inputMode="numeric" placeholder="R$ 0,00" value={saleData.valor_proxima_semana} onChange={(e) => setSaleData({ ...saleData, valor_proxima_semana: formatCurrencyInput(e.target.value) })} />
           <Input label="Negociação" value={saleData.negotiation_type} onChange={(e) => setSaleData({ ...saleData, negotiation_type: e.target.value })} required />
           <Select
             label="Dia do Evento"

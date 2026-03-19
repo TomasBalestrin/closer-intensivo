@@ -57,18 +57,18 @@ async function processarParticipante(body: any, supabase: any) {
     return { status: 400, error: 'Nome é obrigatório' }
   }
 
-  // Check for existing participant
+  // Check for existing participant (CPF first - most reliable)
   let existingParticipant = null
-  if (external_id) {
+  if (cpf) {
+    const { data } = await supabase.from('participants').select('id').eq('cpf', cpf).single()
+    existingParticipant = data
+  }
+  if (!existingParticipant && external_id) {
     const { data } = await supabase.from('participants').select('id').eq('external_id', external_id).single()
     existingParticipant = data
   }
   if (!existingParticipant && email) {
     const { data } = await supabase.from('participants').select('id').eq('email', email).single()
-    existingParticipant = data
-  }
-  if (!existingParticipant && cpf) {
-    const { data } = await supabase.from('participants').select('id').eq('cpf', cpf).single()
     existingParticipant = data
   }
   if (!existingParticipant && qr_code) {
@@ -151,9 +151,26 @@ async function processarParticipante(body: any, supabase: any) {
   if (sellerName) participantData.seller_closer_name = sellerName
 
   if (existingParticipant) {
+    // Form-derived fields: replace completely (include nulls to clear old values)
+    // Structural fields: merge only (skip nulls to preserve existing data)
+    const FORM_DERIVED_FIELDS = new Set([
+      'cpf', 'phone', 'badge_name', 'niche', 'revenue',
+      'photo_url', 'challenge_answer', 'desired_change_answer', 'instagram',
+      'partner', 'net_profit', 'tem_acompanhante', 'relacao_acompanhante',
+      'companion', 'form_data', 'color', 'qualification',
+    ])
+
+    const updateData: Record<string, any> = {}
+    for (const [key, value] of Object.entries(participantData)) {
+      if (value === undefined) continue
+      // On update: only skip nulls for structural fields (not form-derived)
+      if (value === null && !FORM_DERIVED_FIELDS.has(key)) continue
+      updateData[key] = value
+    }
+
     const { error } = await supabase
       .from('participants')
-      .update(participantData)
+      .update(updateData)
       .eq('id', existingParticipant.id)
     if (error) throw error
     return {

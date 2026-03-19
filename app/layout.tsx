@@ -1,11 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import dynamic from 'next/dynamic'
 import './globals.css'
-
-const PWAInstallPrompt = dynamic(
-  () => import('@/components/shared/pwa-prompt').then(mod => ({ default: mod.PWAInstallPrompt })),
-  { ssr: false }
-)
 
 export const metadata: Metadata = {
   title: 'Bethel Events',
@@ -63,7 +57,6 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         {children}
-        <PWAInstallPrompt />
       </body>
     </html>
   )

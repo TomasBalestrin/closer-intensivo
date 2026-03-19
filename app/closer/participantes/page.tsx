@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge } from '@/components/ui'
-import { Search, Filter, ExternalLink, Phone } from 'lucide-react'
+import { Search, Filter, ExternalLink, Phone, LayoutGrid, List } from 'lucide-react'
 import { Participant, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getColorFromRevenue, getInstagramUrl } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,66 @@ import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 
 const CACHE_KEY = 'closer-participantes-cache'
 const SCROLL_KEY = 'closer-participantes-scroll'
+
+function normalizeText(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+// Matches any key/question that asks for the companion's name
+// e.g. "Qual o nome do seu acompanhante?", "Nome e sobrenome do acompanhante",
+// "nome_acompanhante", "companion_name", "acompanhante", etc.
+function isCompanionKey(key: string): boolean {
+  const norm = normalizeText(key)
+  // Must mention "acompanhante" or "companion"
+  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
+  // If it also mentions name-related words, it's definitely the name field
+  if (/nome|name|sobrenome|completo/.test(norm)) return true
+  // If the key is short (likely a field id like "acompanhante" or "companion"), accept it
+  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
+  // If it's a question asking "qual" (which one), accept it
+  if (norm.includes('qual')) return true
+  return false
+}
+
+// Exclude keys that ask yes/no about having a companion or about the relationship
+function isCompanionMetaKey(key: string): boolean {
+  const norm = normalizeText(key)
+  // "voce vai com acompanhante?" / "tem acompanhante?" / "seu acompanhante e (esposa, socio...)"
+  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
+  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
+  return false
+}
+
+function findCompanionName(data: any): string | null {
+  if (!data || typeof data !== 'object') return null
+
+  // Handle arrays (common pattern: [{label: "...", value: "..."}, ...])
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (item && typeof item === 'object') {
+        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
+        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
+        if (label && typeof value === 'string' && value.trim()) {
+          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
+        }
+      }
+      const found = findCompanionName(item)
+      if (found) return found
+    }
+    return null
+  }
+
+  for (const [key, value] of Object.entries(data)) {
+    if (value && typeof value === 'string' && value.trim()) {
+      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return value.trim()
+    }
+    if (value && typeof value === 'object') {
+      const found = findCompanionName(value)
+      if (found) return found
+    }
+  }
+  return null
+}
 
 function getCachedParticipants(): any[] | null {
   try {
@@ -46,7 +106,10 @@ export default function CloserParticipantes() {
   const [discRespondidoFilter, setDiscRespondidoFilter] = useState('')
   const [chamadoFilter, setChamadoFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const [visibleCount, setVisibleCount] = useState(30)
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 50
 
   const fetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true)
@@ -161,12 +224,48 @@ export default function CloserParticipantes() {
 
   const visibleParticipants = useMemo(() => filteredParticipants.slice(0, visibleCount), [filteredParticipants, visibleCount])
 
+  // Pagination for list view
+  const totalPages = Math.max(1, Math.ceil(filteredParticipants.length / PAGE_SIZE))
+  const paginatedParticipants = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filteredParticipants.slice(start, start + PAGE_SIZE)
+  }, [filteredParticipants, currentPage])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, funnelFilter, opportunityFilter, saleFilter, checkinFilter, colorFilter, qualificationFilter, discRespondidoFilter, chamadoFilter])
+
   return (
     <PullToRefresh onRefresh={() => fetchData(false)}>
       <div className="space-y-6 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Meus Participantes</h1>
-          <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'p-2 rounded-md transition-colors',
+                  viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                )}
+                title="Visualizar como lista"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={cn(
+                  'p-2 rounded-md transition-colors',
+                  viewMode === 'cards' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                )}
+                title="Visualizar como cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+            <span className="text-gray-500">{filteredParticipants.length} participantes</span>
+          </div>
         </div>
 
         {/* Search and Filters - Sticky on scroll */}
@@ -280,13 +379,169 @@ export default function CloserParticipantes() {
           )}
         </div>
 
-        {/* Participants Grid */}
+        {/* Participants */}
         {loading ? (
           <ParticipantGridSkeleton count={6} />
+        ) : viewMode === 'list' ? (
+          /* List View */
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
+            {/* Table header */}
+            <div className="hidden sm:grid sm:grid-cols-[40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(120px,1fr)_minmax(80px,0.8fr)_minmax(60px,0.5fr)] gap-2 items-center px-4 py-3 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div>Foto</div>
+              <div>Nome</div>
+              <div>Faturamento</div>
+              <div>Acompanhante</div>
+              <div>Check-in</div>
+              <div className="text-center">Chamado</div>
+            </div>
+            {/* Table rows */}
+            {paginatedParticipants.map((participant: any) => {
+              const companionName = participant.companion || findCompanionName(participant.webhook_data)
+              return (
+              <div
+                key={participant.id}
+                className="grid grid-cols-[1fr_auto] sm:grid-cols-[40px_minmax(140px,1.5fr)_minmax(100px,1fr)_minmax(120px,1fr)_minmax(80px,0.8fr)_minmax(60px,0.5fr)] gap-2 items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => handleNavigate(participant.id)}
+              >
+                {/* Photo */}
+                <div className="hidden sm:block">
+                  <Avatar
+                    src={participant.photo_url}
+                    alt={participant.name}
+                    size="md"
+                  />
+                </div>
+                {/* Name (mobile: full row with photo) */}
+                <div className="flex items-center gap-3 sm:block min-w-0">
+                  <div className="sm:hidden">
+                    <Avatar
+                      src={participant.photo_url}
+                      alt={participant.name}
+                      size="md"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900 truncate text-sm">{participant.name}</p>
+                      {participant.is_opportunity && (
+                        <Badge variant="success">Oport.</Badge>
+                      )}
+                      {participant.hasSale && (
+                        <Badge variant="success">Vendido</Badge>
+                      )}
+                    </div>
+                    {(participant.color || getColorFromRevenue(participant.revenue)) && (
+                      <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full mt-0.5 ${getColorClass(participant.color || getColorFromRevenue(participant.revenue))}`}>
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'rosa' && 'Rosa'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'preto' && 'Preto'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'azul_claro' && 'Azul Claro'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'verde' && 'Verde'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'dourado' && 'Dourado'}
+                        {(participant.color || getColorFromRevenue(participant.revenue)) === 'laranja' && 'Laranja'}
+                      </span>
+                    )}
+                    {/* Mobile: show extra info below name */}
+                    <div className="sm:hidden text-xs text-gray-500 mt-0.5 space-y-0.5">
+                      {participant.revenue && <p>Faturamento: {participant.revenue}</p>}
+                      {companionName && <p>Acomp.: {companionName}</p>}
+                    </div>
+                  </div>
+                </div>
+                {/* Revenue */}
+                <div className="hidden sm:block min-w-0">
+                  <span className="text-sm text-gray-700 truncate block">{participant.revenue || '—'}</span>
+                </div>
+                {/* Companion */}
+                <div className="hidden sm:block min-w-0">
+                  <span className="text-sm text-gray-700 truncate block">{companionName || '—'}</span>
+                </div>
+                {/* Check-in */}
+                <div className="hidden sm:block">
+                  <span className="text-xs text-gray-600">
+                    {[
+                      participant.checked_in_day1 && 'D1',
+                      participant.checked_in_day2 && 'D2',
+                      participant.checked_in_day3 && 'D3',
+                    ].filter(Boolean).join(', ') || 'Nenhum'}
+                  </span>
+                </div>
+                {/* Times called */}
+                <div className="flex items-center justify-center gap-1">
+                  <Phone className="h-3 w-3 text-gray-400" />
+                  <span className="text-sm text-gray-600">{participant.times_called || 0}x</span>
+                </div>
+              </div>
+            )})}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <p className="text-sm text-gray-600">
+                  {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredParticipants.length)} de {filteredParticipants.length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'<<'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'<'}
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                    .reduce<(number | string)[]>((acc, p, i, arr) => {
+                      if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('...')
+                      acc.push(p)
+                      return acc
+                    }, [])
+                    .map((p, i) =>
+                      typeof p === 'string' ? (
+                        <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">...</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`px-2 py-1 text-xs rounded border ${
+                            currentPage === p
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 bg-white hover:bg-gray-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                  <button
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'>'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {'>>'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
+          /* Cards View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleParticipants.map((participant: any) => {
               const cardStatus = getParticipantCardStatus(participant, participant.hasSale)
+              const companionName = participant.companion || findCompanionName(participant.webhook_data)
               return (
               <Card
                 key={participant.id}
@@ -321,6 +576,11 @@ export default function CloserParticipantes() {
                         </span>
                       )}
                     </div>
+                    {companionName && (
+                      <p className="text-sm text-gray-600">
+                        Acompanhante: <span className="font-medium">{companionName}</span>
+                      </p>
+                    )}
                     {participant.revenue && (
                       <p className="text-sm text-gray-500">
                         Faturamento: {participant.revenue}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, Avatar, Loading, Button } from '@/components/ui'
 import { User, Sale, Participant } from '@/lib/types'
-import { formatCurrency, formatPercentage, exportToCSV } from '@/lib/utils'
+import { formatCurrency, formatPercentage, exportToCSV, getQualificationClass } from '@/lib/utils'
 import { useEvent } from '@/lib/hooks/use-event'
 import { Download } from 'lucide-react'
 
@@ -16,6 +16,9 @@ interface CloserWithStats extends User {
   conversionRate: number
   totalSalesValue: number
   totalEntryValue: number
+  qualAlto: number
+  qualMedio: number
+  qualBaixo: number
 }
 
 export default function AdminClosers() {
@@ -39,27 +42,48 @@ export default function AdminClosers() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('id, assigned_closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3')
+    let participantsQuery = supabase.from('participants').select('id, assigned_closer_id, seller_closer_id, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification')
     let salesQuery = supabase.from('sales').select('id, closer_id, total_value, entry_value').is('deleted_at', null)
 
-    // Get closers - filter by event if selected
+    // Get ALL users with role 'closer' (from users table and user_events table)
     let closersData: User[] = []
     if (activeEvent?.id) {
-      // First get user_ids from user_events for this event with role 'closer'
+      // Get closers from user_events for this event
       const { data: userEventsData } = await supabase
         .from('user_events')
         .select('user_id')
         .eq('event_id', activeEvent.id)
         .eq('role', 'closer')
 
-      if (userEventsData && userEventsData.length > 0) {
-        const userIds = userEventsData.map((ue: any) => ue.user_id)
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('id, name, email, photo_url, role')
-          .in('id', userIds)
-        closersData = (usersData || []) as User[]
+      const eventCloserIds = new Set((userEventsData || []).map((ue: any) => ue.user_id))
+
+      // Also get all users with role 'closer' from users table
+      const { data: allClosersData } = await supabase
+        .from('users')
+        .select('id, name, email, photo_url, role')
+        .eq('role', 'closer')
+
+      // Merge: all users with role closer + any from user_events not already included
+      const closersMap = new Map<string, User>()
+      for (const c of (allClosersData || []) as User[]) {
+        closersMap.set(c.id, c)
       }
+
+      // If there are user_events closers whose users.role isn't 'closer', include them too
+      if (eventCloserIds.size > 0) {
+        const missingIds = [...eventCloserIds].filter(id => !closersMap.has(id))
+        if (missingIds.length > 0) {
+          const { data: extraClosers } = await supabase
+            .from('users')
+            .select('id, name, email, photo_url, role')
+            .in('id', missingIds)
+          for (const c of (extraClosers || []) as User[]) {
+            closersMap.set(c.id, c)
+          }
+        }
+      }
+
+      closersData = Array.from(closersMap.values())
       participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     } else {
@@ -79,13 +103,14 @@ export default function AdminClosers() {
   }
 
   const closersWithStats: CloserWithStats[] = useMemo(() => {
-    // Index participants and sales by assigned_closer_id for O(n) lookup instead of O(n*m)
+    // Index participants by assigned_closer_id or seller_closer_id for O(n) lookup
     const participantsByCloser = new Map<string, Participant[]>()
     rawParticipants.forEach(p => {
-      if (p.assigned_closer_id) {
-        const list = participantsByCloser.get(p.assigned_closer_id) || []
+      const closerId = p.assigned_closer_id || p.seller_closer_id
+      if (closerId) {
+        const list = participantsByCloser.get(closerId) || []
         list.push(p)
-        participantsByCloser.set(p.assigned_closer_id, list)
+        participantsByCloser.set(closerId, list)
       }
     })
 
@@ -124,6 +149,9 @@ export default function AdminClosers() {
         conversionRate,
         totalSalesValue: closerSales.reduce((sum, s) => sum + Number(s.total_value), 0),
         totalEntryValue: closerSales.reduce((sum, s) => sum + Number(s.entry_value), 0),
+        qualAlto: assignedParticipants.filter(p => (p as any).qualification === 'alto').length,
+        qualMedio: assignedParticipants.filter(p => (p as any).qualification === 'medio').length,
+        qualBaixo: assignedParticipants.filter(p => (p as any).qualification === 'baixo').length,
       }
     })
   }, [rawClosers, rawParticipants, rawSales])
@@ -191,6 +219,18 @@ export default function AdminClosers() {
                 <p className="text-gray-500">Valor Vendas</p>
                 <p className="font-semibold">{formatCurrency(closer.totalSalesValue)}</p>
               </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('alto')}`}>
+                Alto: {closer.qualAlto}
+              </span>
+              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('medio')}`}>
+                Médio: {closer.qualMedio}
+              </span>
+              <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${getQualificationClass('baixo')}`}>
+                Baixo: {closer.qualBaixo}
+              </span>
             </div>
 
             <div className="mt-4 pt-4 border-t text-sm">
