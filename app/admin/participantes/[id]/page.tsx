@@ -50,7 +50,7 @@ import {
 import { Participant, User as UserType, Form, Sale } from '@/lib/types'
 import { getColorClass, getInstagramUrl, formatCurrency, formatDateBR, FATURAMENTO_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, FUNIL_OPTIONS, getQualificationClass, normalizeRevenue, formatColorLabel, formatStatusLabel, getStatusClass, formatQualificationLabel, formatCurrencyInput, parseCurrency } from '@/lib/utils'
 
-type TabType = 'perfil' | 'disc'
+type TabType = 'perfil' | 'disc' | 'vendas'
 
 export default function ParticipantDetail() {
   const params = useParams()
@@ -107,6 +107,8 @@ export default function ParticipantDetail() {
   const [deleteParticipantModal, setDeleteParticipantModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [chamadoSaving, setChamadoSaving] = useState(false)
+  const [editingChamados, setEditingChamados] = useState(false)
+  const [chamadosInput, setChamadosInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [eventData, setEventData] = useState<{ id: string; data_inicio: string } | null>(null)
 
@@ -497,6 +499,25 @@ export default function ParticipantDetail() {
     }
   }
 
+  const handleSaveChamados = async (value: number) => {
+    setChamadoSaving(true)
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .update({ times_called: value })
+        .eq('id', params.id)
+
+      if (error) throw error
+      showToast('Chamados atualizado!', 'success')
+      setEditingChamados(false)
+      fetchData()
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao atualizar chamados', 'error')
+    } finally {
+      setChamadoSaving(false)
+    }
+  }
+
   const handleDeleteParticipant = async () => {
     setDeleting(true)
     try {
@@ -612,6 +633,7 @@ export default function ParticipantDetail() {
   const tabs = [
     { id: 'perfil' as TabType, label: 'Perfil', icon: User },
     { id: 'disc' as TabType, label: 'DISC', icon: Brain, badge: participant.disc_profile },
+    { id: 'vendas' as TabType, label: 'Vendas', icon: DollarSign, badge: sales.length > 0 ? `${sales.length}` : undefined },
   ]
 
   return (
@@ -813,20 +835,58 @@ export default function ParticipantDetail() {
               </button>
 
               {/* Chamados */}
-              <button
-                onClick={handleMarcarChamado}
-                disabled={chamadoSaving}
+              <div
                 className={`rounded-xl border p-3 text-left transition-colors ${
                   participant.chamado
                     ? 'bg-yellow-50 border-yellow-200'
-                    : 'bg-white hover:bg-gray-50'
+                    : 'bg-white'
                 }`}
               >
-                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Chamados</p>
-                <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
-                  {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
-                </p>
-              </button>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium">Chamados</p>
+                  {!editingChamados && (
+                    <button
+                      onClick={() => { setChamadosInput(String(participant.times_called || 0)); setEditingChamados(true) }}
+                      className="p-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                {editingChamados ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={chamadosInput}
+                      onChange={(e) => setChamadosInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveChamados(parseInt(chamadosInput) || 0)
+                        if (e.key === 'Escape') setEditingChamados(false)
+                      }}
+                      autoFocus
+                      className="w-12 text-sm font-medium text-gray-900 border border-gray-300 rounded px-1.5 py-0.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      onClick={() => handleSaveChamados(parseInt(chamadosInput) || 0)}
+                      disabled={chamadoSaving}
+                      className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
+                    >
+                      {chamadoSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => setEditingChamados(false)}
+                      className="p-1 text-gray-400 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className={`text-sm font-medium ${participant.chamado ? 'text-yellow-700' : 'text-gray-900'}`}>
+                    {chamadoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `${participant.times_called || 0}x`}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Action Bar - Vender */}
@@ -1536,6 +1596,105 @@ export default function ParticipantDetail() {
                   </Card>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {/* VENDAS TAB */}
+        {activeTab === 'vendas' && (
+          <div className="space-y-4">
+            {/* Resumo */}
+            {sales.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="bg-white rounded-xl border p-4 text-center">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Total Vendas</p>
+                  <p className="text-xl font-bold text-green-600">{sales.length}</p>
+                </div>
+                <div className="bg-white rounded-xl border p-4 text-center">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Valor Total</p>
+                  <p className="text-xl font-bold text-green-600">{formatCurrency(sales.reduce((sum, s) => sum + Number(s.total_value), 0))}</p>
+                </div>
+                <div className="bg-white rounded-xl border p-4 text-center col-span-2 lg:col-span-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">Entrada Total</p>
+                  <p className="text-xl font-bold text-gray-900">{formatCurrency(sales.reduce((sum, s) => sum + Number(s.entry_value), 0))}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Botão Registrar Venda */}
+            <button
+              onClick={() => { setSaleData(prev => ({ ...prev, closer_id: participant?.closer_id || '' })); setSaleModal(true) }}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl font-medium transition-colors"
+            >
+              <DollarSign className="h-5 w-5" />
+              <span>Registrar Venda</span>
+            </button>
+
+            {/* Cards de Vendas */}
+            {sales.length === 0 ? (
+              <div className="bg-white rounded-xl border p-8 text-center">
+                <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-1">Nenhuma venda registrada</p>
+                <p className="text-xs text-gray-400">Clique no botão acima para registrar a primeira venda</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sales.map((sale: any) => (
+                  <div key={sale.id} className="bg-white rounded-xl border overflow-hidden">
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 text-sm">{sale.product_name}</h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {sale.created_at ? formatDateBR(sale.created_at) : '—'}
+                            {sale.dia_evento ? ` • Dia ${sale.dia_evento}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          <button onClick={() => handleEditSale(sale)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setDeletingSale(sale)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-medium">Valor Total</p>
+                          <p className="text-sm font-bold text-green-600">{formatCurrency(sale.total_value)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-medium">Entrada</p>
+                          <p className="text-sm font-medium text-gray-900">{formatCurrency(sale.entry_value)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase font-medium">Próx. Semana</p>
+                          <p className="text-sm font-medium text-gray-900">{formatCurrency(sale.valor_proxima_semana)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-2.5 flex items-center justify-between border-t">
+                      <div className="flex items-center gap-2">
+                        {sale.closer && (
+                          <>
+                            <Avatar src={sale.closer.photo_url} alt={sale.closer.name} size="sm" />
+                            <span className="text-xs text-gray-700">{sale.closer.name}</span>
+                          </>
+                        )}
+                      </div>
+                      <Badge variant={sale.negotiation_type === 'fechamento' ? 'success' : 'default'}>
+                        {sale.negotiation_type === 'fechamento' ? 'Fechamento' : sale.negotiation_type === 'negociacao' ? 'Negociação' : sale.negotiation_type}
+                      </Badge>
+                    </div>
+                    {sale.observacoes && (
+                      <div className="px-4 py-2.5 border-t text-xs text-gray-600 bg-gray-50/50">
+                        {sale.observacoes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
