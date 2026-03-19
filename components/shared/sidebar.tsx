@@ -19,6 +19,7 @@ import {
   Calendar,
   CalendarDays,
   UserCog,
+  Copy,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -48,6 +49,7 @@ export function Sidebar({ user, onLogout, onExitEvent, onCollapseChange }: Sideb
         { name: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
         { name: 'Eventos', href: '/admin/eventos', icon: CalendarDays },
         { name: 'Usuários', href: '/admin/usuarios', icon: UserCog },
+        { name: 'Duplicatas', href: '/admin/duplicatas', icon: Copy },
         { name: 'Webhooks', href: '/admin/webhooks', icon: Webhook },
         { name: 'Painel Admin', href: '/admin/painel-admin', icon: Settings },
       ]
