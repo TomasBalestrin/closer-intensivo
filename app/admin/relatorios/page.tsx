@@ -47,6 +47,7 @@ type Participant = {
   checked_in_day3: boolean
   closer_id: string | null
   assigned_closer_id: string | null
+  seller_closer_id: string | null
   challenge_answer: string | null
   desired_change_answer: string | null
   times_called: number
@@ -170,7 +171,7 @@ export default function AdminRelatorios() {
          checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
       const matchesColor = !colorFilter || pColor === colorFilter
       const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-      const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === closerFilter)
+      const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? (!p.assigned_closer_id && !p.seller_closer_id) : (p.assigned_closer_id === closerFilter || p.seller_closer_id === closerFilter))
       const matchesOpp = opportunityFilter === '' ||
         (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
       return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp
@@ -262,23 +263,29 @@ export default function AdminRelatorios() {
       .slice(0, 20)
 
     // Closer breakdown with opportunities per day
+    // Count participants under both assigned_closer_id and seller_closer_id (matching closers page logic)
     const closerMap: Record<string, { name: string; total: number; checkedIn: number; opportunities: number; oppDay1: number; oppDay2: number; oppDay3: number; sales: number }> = {}
     closerMap['unassigned'] = { name: 'Sem closer', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     closers.forEach(c => {
       closerMap[c.id] = { name: c.name, total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     })
     filtered.forEach(p => {
-      const key = p.assigned_closer_id || 'unassigned'
-      if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
-      closerMap[key].total++
-      if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) closerMap[key].checkedIn++
-      if (p.is_opportunity) {
-        closerMap[key].opportunities++
-        if (p.checked_in_day1) closerMap[key].oppDay1++
-        if (p.checked_in_day2) closerMap[key].oppDay2++
-        if (p.checked_in_day3) closerMap[key].oppDay3++
-      }
-      if (salesMap[p.id]) closerMap[key].sales++
+      const closerIds = new Set<string>()
+      if (p.seller_closer_id) closerIds.add(p.seller_closer_id)
+      if (p.assigned_closer_id) closerIds.add(p.assigned_closer_id)
+      if (closerIds.size === 0) closerIds.add('unassigned')
+      closerIds.forEach(key => {
+        if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
+        closerMap[key].total++
+        if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) closerMap[key].checkedIn++
+        if (p.is_opportunity) {
+          closerMap[key].opportunities++
+          if (p.checked_in_day1) closerMap[key].oppDay1++
+          if (p.checked_in_day2) closerMap[key].oppDay2++
+          if (p.checked_in_day3) closerMap[key].oppDay3++
+        }
+        if (salesMap[p.id]) closerMap[key].sales++
+      })
     })
     const closerRanking = Object.entries(closerMap)
       .filter(([, v]) => v.total > 0)
