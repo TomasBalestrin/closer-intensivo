@@ -155,8 +155,11 @@ export default function AdminRelatorios() {
   // Filtered participants
   const filtered = useMemo(() => {
     return participants.filter(p => {
-      // Exclude "Elite Premium" funnel (keep "Indicação Elite Premium", "Convidado Elite Premium", etc.)
-      if (p.funnel === 'elite_premium') return false
+      // Exclude exact "Elite Premium" funnel/niche (keep "Indicação Elite Premium", "Convidado Elite Premium", etc.)
+      const funnelLower = (p.funnel || '').trim().toLowerCase()
+      const nicheLower = (p.niche || '').trim().toLowerCase()
+      if (funnelLower === 'elite premium' || funnelLower === 'elite_premium') return false
+      if (nicheLower === 'elite premium' || nicheLower === 'elite_premium') return false
 
       const pColor = p.color || getColorFromRevenue(p.revenue)
       const matchesCheckin = !checkinFilter ||
@@ -176,7 +179,11 @@ export default function AdminRelatorios() {
 
   // Dynamic funnel options from actual participant data (exclude elite_premium)
   const funnels = useMemo(() =>
-    [...new Set(participants.map(p => p.funnel).filter(f => f && f !== 'elite_premium'))].sort(),
+    [...new Set(participants.map(p => p.funnel).filter(f => {
+      if (!f) return false
+      const fl = f.trim().toLowerCase()
+      return fl !== 'elite premium' && fl !== 'elite_premium'
+    }))].sort(),
     [participants]
   )
 
