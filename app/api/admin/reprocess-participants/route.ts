@@ -124,9 +124,9 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'receita', 'renda', 'ganho_mensal', 'quanto_fatura', 'qual_o_seu_faturamento_mensal',
   ]],
   ['phone', [
-    'phone', 'telefone', 'whatsapp', 'celular', 'digite_seu_whatsapp',
-    'numero_whatsapp', 'tel', 'mobile', 'phone_number', 'qual_o_telefone',
-    'qual_o_seu_numero_de_telefone',
+    'qual_o_seu_numero_de_telefone', 'digite_seu_whatsapp', 'numero_de_telefone',
+    'numero_whatsapp', 'qual_o_telefone', 'telefone', 'whatsapp', 'celular',
+    'phone', 'tel', 'mobile', 'phone_number',
   ]],
   ['instagram', [
     'instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle',

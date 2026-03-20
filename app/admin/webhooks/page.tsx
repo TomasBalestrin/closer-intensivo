@@ -59,6 +59,10 @@ export default function WebhooksPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'config' | 'logs'>('config')
 
+  // Reprocess state
+  const [reprocessing, setReprocessing] = useState(false)
+  const [reprocessResult, setReprocessResult] = useState<any>(null)
+
   // Logs state
   const [logs, setLogs] = useState<WebhookLog[]>([])
   const [loadingLogs, setLoadingLogs] = useState(false)
@@ -187,6 +191,37 @@ export default function WebhooksPage() {
         return <Badge variant="warning">Timeout</Badge>
       default:
         return <Badge variant="default">{status}</Badge>
+    }
+  }
+
+  const handleReprocess = async (dryRun: boolean) => {
+    setReprocessing(true)
+    setReprocessResult(null)
+    try {
+      const params = new URLSearchParams()
+      if (dryRun) params.set('dry_run', 'true')
+      if (selectedEventId) params.set('event_id', selectedEventId)
+
+      const res = await fetch(`/api/admin/reprocess-participants?${params.toString()}`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      setReprocessResult(data)
+
+      if (data.success) {
+        showToast(
+          dryRun
+            ? `Simulação: ${data.results?.updated || 0} participantes seriam atualizados`
+            : `${data.results?.updated || 0} participantes atualizados com sucesso`,
+          'success'
+        )
+      } else {
+        showToast(data.error || 'Erro ao reprocessar', 'error')
+      }
+    } catch (err: any) {
+      showToast('Erro de conexão ao reprocessar', 'error')
+    } finally {
+      setReprocessing(false)
     }
   }
 
@@ -440,6 +475,89 @@ export default function WebhooksPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Reprocess Participants */}
+          <Card className="border-orange-200 bg-orange-50/50">
+            <CardContent className="py-4">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">Reprocessar Participantes</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                Reextrai telefone, email, nome e outros campos do webhook_data salvo de cada participante.
+                Útil quando a lógica de extração foi corrigida e você precisa atualizar os dados existentes.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleReprocess(true)}
+                  disabled={reprocessing}
+                >
+                  {reprocessing ? (
+                    <><RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Processando...</>
+                  ) : (
+                    <>Simular (Dry Run)</>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleReprocess(false)}
+                  disabled={reprocessing}
+                >
+                  {reprocessing ? (
+                    <><RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Processando...</>
+                  ) : (
+                    <><RefreshCw className="h-4 w-4 mr-1" /> Reprocessar Agora</>
+                  )}
+                </Button>
+              </div>
+
+              {selectedEventId && (
+                <p className="text-xs text-orange-600 mt-2">
+                  Filtrando por evento: <strong>{selectedEvent?.nome_evento}</strong>
+                </p>
+              )}
+              {!selectedEventId && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Nenhum evento selecionado — vai reprocessar todos os participantes.
+                </p>
+              )}
+
+              {reprocessResult && (
+                <div className="mt-3 bg-white rounded-lg border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    {reprocessResult.success ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {reprocessResult.dry_run ? 'Resultado da Simulação' : 'Resultado do Reprocessamento'}
+                    </span>
+                  </div>
+                  {reprocessResult.results && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="bg-gray-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-gray-700">{reprocessResult.results.total}</div>
+                        <div className="text-gray-500">Total</div>
+                      </div>
+                      <div className="bg-green-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-green-700">{reprocessResult.results.updated}</div>
+                        <div className="text-gray-500">Atualizados</div>
+                      </div>
+                      <div className="bg-gray-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-gray-500">{reprocessResult.results.skipped}</div>
+                        <div className="text-gray-500">Ignorados</div>
+                      </div>
+                      <div className="bg-red-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-red-700">{reprocessResult.results.errors}</div>
+                        <div className="text-gray-500">Erros</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Info about deduplication */}
           <Card className="border-gray-200">

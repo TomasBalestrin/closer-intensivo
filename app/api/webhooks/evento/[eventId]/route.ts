@@ -1,100 +1,15 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getColorFromRevenue, getQualificationFromRevenue } from '@/lib/utils'
-
-function getSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase configuration')
-  }
-
-  return createClient(supabaseUrl, supabaseKey)
-}
-
-function normalizeKey(str: string): string {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-}
-
-const FORM_DATA_MAPPINGS: Record<string, string[]> = {
-  cpf: ['digite_seu_cpf', 'cpf', 'cnpj', 'cpf_cnpj', 'documento', 'digite_o_seu_cpf_ou_cnpj'],
-  phone: ['qual_o_telefone', 'telefone', 'whatsapp', 'celular', 'qual_o_seu_numero_de_telefone', 'digite_seu_whatsapp'],
-  badge_name: ['nome_para_cracha', 'cracha', 'apelido'],
-  niche: ['qual_a_sua_area_de_atuacao', 'qual_sua_area_de_atuacao', 'area_de_atuacao', 'nicho', 'area_atuacao', 'segmento', 'profissao'],
-  revenue: ['qual_o_seu_faturamento_mensal', 'faturamento', 'faturamento_mensal', 'quanto_fatura', 'quanto_voce_fatura_por_mes'],
-  photo_url: ['adicione_uma_foto_sua_para_perfil', 'foto', 'foto_perfil', 'photo', 'qual_sua_melhor_foto_de_perfil_para_lhe_conhecermos'],
-  challenge_answer: ['qual_a_maior_dificuldade_no_seu_negocio', 'maior_dificuldade', 'dificuldade', 'desafio', 'qual_sua_maior_dificuldade_no_seu_negocio_hoje'],
-  desired_change_answer: ['o_que_voce_pretende_aprender_no_intensivo', 'o_que_busca', 'objetivo', 'expectativa', 'o_que_pretende_aprender_no_intensivo_da_alta_performance'],
-  instagram: ['instagram', 'insta', 'qual_seu_instagram', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram', 'seu_instagram', 'qual_e_o_seu_instagram', 'informe_seu_instagram', 'digite_seu_instagram', 'instagram_pessoal'],
-  seller_closer_name: ['closer', 'vendedor', 'consultor', 'atendente', 'responsavel', 'closer_indicado', 'indicado', 'indicacao', 'quem_indicou', 'indicado_por', 'convidado_por', 'indicador', 'seller', 'representante'],
-  partner: ['voce_tem_socio', 'socio', 'tem_socio'],
-  net_profit: ['lucro_liquido', 'qual_seu_lucro_liquido_mensal', 'lucro'],
-  oportunidade: ['oportunidade', 'is_opportunity', 'opportunity', 'e_oportunidade', 'eh_oportunidade', 'oport'],
-}
-
-function extractFromFormData(formData: Record<string, any>, targetField: string): any {
-  const aliases = FORM_DATA_MAPPINGS[targetField] || []
-
-  for (const [key, value] of Object.entries(formData)) {
-    const normKey = normalizeKey(key)
-
-    if (aliases.includes(normKey)) {
-      return value
-    }
-
-    for (const alias of aliases) {
-      if (normKey.includes(alias) || alias.includes(normKey)) {
-        return value
-      }
-    }
-  }
-
-  return null
-}
-
-function parseCheckinStatus(status: string | null | undefined): boolean {
-  if (!status) return false
-  const normalized = status.toLowerCase().replace(/[_\s-]/g, '')
-  return normalized === 'checkedin' || normalized === 'checkin'
-}
-
-function cleanInstagram(value: string | undefined | null): string | null {
-  if (!value || typeof value !== 'string') return null
-  return value.replace(/^@/, '').trim() || null
-}
-
-// Look up closer user by name and return their UUID
-async function lookupCloserByName(
-  supabase: any,
-  sellerName: string | null
-): Promise<string | null> {
-  if (!sellerName || typeof sellerName !== 'string') return null
-
-  const trimmedName = sellerName.trim()
-  if (!trimmedName) return null
-
-  const { data: closerUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('role', 'closer')
-    .ilike('name', `%${trimmedName}%`)
-    .single()
-
-  return closerUser?.id || null
-}
+import {
+  getWebhookSupabase,
+  processParticipantWebhook,
+  WebhookValidationError,
+} from '@/lib/webhooks/process-participant'
 
 export async function POST(
   request: Request,
   { params }: { params: { eventId: string } }
 ) {
-  const supabase = getSupabase()
+  const supabase = getWebhookSupabase()
 
   try {
     const { eventId } = params
@@ -123,207 +38,35 @@ export async function POST(
       .single()
     const logId = logData?.id
 
-    // Support both unified format and flat format
-    const participant = payload.participant || payload
-    const formData = participant.form_data || payload.fields || {}
-    const checkinDays = payload.checkin_days || {}
+    // Process webhook using shared module (structured format)
+    const result = await processParticipantWebhook(supabase, payload, {
+      eventId,
+      structuredFormat: true,
+    })
 
-    // Extract participant fields
-    const name = participant.name || formData['Digite seu nome completo'] || formData['nome_completo'] || formData['nome'] || payload.nome || payload.name
-    const email = participant.email || payload.email || payload.login_value
-    const externalId = participant.id || payload.participant_id || payload.external_id
+    if (logId) {
+      await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
+    }
 
-    if (!name && !email) {
+    const statusCode = result.action === 'created' ? 201 : 200
+    return NextResponse.json({
+      success: true,
+      action: result.action,
+      participantId: result.participantId,
+      name: result.name,
+      event_id: eventId,
+      fieldsExtracted: result.fieldsExtracted,
+    }, { status: statusCode })
+  } catch (error: any) {
+    console.error('Webhook error:', error)
+
+    if (error instanceof WebhookValidationError) {
       return NextResponse.json(
-        { error: 'Participante precisa ter name ou email' },
+        { error: error.message, ...error.details },
         { status: 400 }
       )
     }
 
-    // Extract from form_data with flexible matching
-    const cpf = extractFromFormData(formData, 'cpf') || participant.cpf || payload.cpf
-    const phone = extractFromFormData(formData, 'phone') || participant.phone || payload.phone
-    const badgeName = extractFromFormData(formData, 'badge_name')
-    // Note: participant.setor is category, not niche - use form_data for actual niche
-    const niche = extractFromFormData(formData, 'niche') || payload.niche
-    const revenue = participant.faturamento || extractFromFormData(formData, 'revenue') || payload.faturamento
-    const photoUrl = extractFromFormData(formData, 'photo_url')
-    const challengeAnswer = extractFromFormData(formData, 'challenge_answer')
-    const desiredChangeAnswer = extractFromFormData(formData, 'desired_change_answer')
-    const instagram = cleanInstagram(extractFromFormData(formData, 'instagram') || participant.instagram)
-    const partner = extractFromFormData(formData, 'partner')
-    const netProfit = extractFromFormData(formData, 'net_profit')
-
-    // Extract additional fields from participant object
-    const sellerCloserName = participant.closer || payload.closer || extractFromFormData(formData, 'seller_closer_name') || null
-    const category = participant.category || participant.setor || payload.category
-    const qrCode = participant.qr_code || participant.qrcode || payload.qr_code
-    // status removido - conflita com constraint do banco
-
-    // Look up seller_closer_id from name
-    let sellerCloserId: string | null = null
-    if (sellerCloserName) {
-      sellerCloserId = await lookupCloserByName(supabase, sellerCloserName)
-    }
-
-    // Parse checkin days - only set to true, never overwrite with false
-    // If status is "checked_in", set to true; otherwise, leave as undefined (won't overwrite existing value)
-    const checkedInDay1 = parseCheckinStatus(checkinDays.day_1) ? true : undefined
-    const checkedInDay2 = parseCheckinStatus(checkinDays.day_2) ? true : undefined
-    const checkedInDay3 = parseCheckinStatus(checkinDays.day_3) ? true : undefined
-
-    // Calculate color and qualification from revenue
-    const color = getColorFromRevenue(revenue) || null
-    const qualification = getQualificationFromRevenue(revenue) || null
-
-    // Determine if opportunity - only explicit positive values count
-    // Uses ?? to preserve falsy values (false, 0), falls back to form_data search
-    const rawOportunidade = participant.oportunidade ?? payload.oportunidade ?? extractFromFormData(formData, 'oportunidade')
-    const oportunidadeValue = (rawOportunidade || '').toString().toLowerCase().trim()
-    const isOpportunity = oportunidadeValue === 'true' ||
-                          oportunidadeValue === 'sim' ||
-                          oportunidadeValue === 'yes' ||
-                          oportunidadeValue === '1'
-
-    // Build scoped query for deduplication within event
-    const scopedQuery = () => supabase.from('participants').select('id').eq('event_id', eventId)
-
-    // Check if participant exists (within this event)
-    let existingParticipant = null
-
-    // 1. By CPF (most reliable - present in all forms)
-    if (cpf) {
-      const { data } = await scopedQuery().eq('cpf', cpf).single()
-      existingParticipant = data
-    }
-    // 2. By external_id
-    if (!existingParticipant && externalId) {
-      const { data } = await scopedQuery().eq('external_id', externalId).single()
-      existingParticipant = data
-    }
-    // 3. By email
-    if (!existingParticipant && email) {
-      const { data } = await scopedQuery().eq('email', email).single()
-      existingParticipant = data
-    }
-    // 4. By name (last resort)
-    if (!existingParticipant && name) {
-      const { data } = await scopedQuery().eq('name', name).single()
-      existingParticipant = data
-    }
-
-    // Build participant data
-    const participantData: Record<string, any> = {
-      event_id: eventId,
-      name,
-      email,
-      external_id: externalId,
-      cpf,
-      phone,
-      badge_name: badgeName,
-      niche,
-      revenue,
-      photo_url: photoUrl,
-      challenge_answer: challengeAnswer,
-      desired_change_answer: desiredChangeAnswer,
-      instagram,
-      partner,
-      net_profit: netProfit,
-      color,
-      qualification,
-      funnel: participant.funnel_origin || payload.funnel_origin || null,
-      seller_closer_name: sellerCloserName,
-      seller_closer_id: sellerCloserId,
-      category,
-      qr_code: qrCode,
-      // status removido - conflita com constraint do banco
-      is_opportunity: isOpportunity,
-      checked_in_day1: checkedInDay1,
-      checked_in_day2: checkedInDay2,
-      checked_in_day3: checkedInDay3,
-      webhook_data: payload,
-      form_data: Object.keys(formData).length > 0 ? formData : null,
-    }
-
-    // Fields that come from form_data — replace completely on update (include nulls to clear old values)
-    const FORM_DERIVED_FIELDS = new Set([
-      'cpf', 'phone', 'badge_name', 'niche', 'revenue',
-      'photo_url', 'challenge_answer', 'desired_change_answer', 'instagram',
-      'partner', 'net_profit', 'tem_acompanhante', 'relacao_acompanhante',
-      'companion', 'form_data', 'color', 'qualification',
-    ])
-
-    const cleanData = (data: Record<string, any>, isUpdate: boolean) => {
-      const result: Record<string, any> = {}
-      for (const [key, value] of Object.entries(data)) {
-        if (value === undefined) continue
-        // On update: only skip nulls for structural fields (not form-derived)
-        if (isUpdate && value === null && !FORM_DERIVED_FIELDS.has(key)) continue
-        result[key] = value
-      }
-      return result
-    }
-
-    if (existingParticipant) {
-      // Update existing participant — form fields are replaced, structural fields are merged
-      const updateData = cleanData(participantData, true)
-
-      const { error: updateError } = await supabase
-        .from('participants')
-        .update(updateData)
-        .eq('id', existingParticipant.id)
-
-      if (updateError) {
-        console.error('Error updating participant:', updateError)
-        return NextResponse.json(
-          { error: 'Erro ao atualizar participante', details: updateError.message },
-          { status: 500 }
-        )
-      }
-
-      if (logId) {
-        await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
-      }
-
-      return NextResponse.json({
-        success: true,
-        action: 'updated',
-        participantId: existingParticipant.id,
-        name,
-        event_id: eventId,
-      })
-    } else {
-      const insertData = cleanData(participantData, false)
-      insertData.name = name
-
-      const { data: newParticipant, error: insertError } = await supabase
-        .from('participants')
-        .insert(insertData)
-        .select('id')
-        .single()
-
-      if (insertError || !newParticipant) {
-        console.error('Error creating participant:', insertError)
-        return NextResponse.json(
-          { error: 'Erro ao criar participante', details: insertError?.message },
-          { status: 500 }
-        )
-      }
-
-      if (logId) {
-        await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
-      }
-
-      return NextResponse.json({
-        success: true,
-        action: 'created',
-        participantId: newParticipant.id,
-        name,
-        event_id: eventId,
-      })
-    }
-  } catch (error: any) {
-    console.error('Webhook error:', error)
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
@@ -335,7 +78,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { eventId: string } }
 ) {
-  const supabase = getSupabase()
+  const supabase = getWebhookSupabase()
 
   const { data: eventData } = await supabase
     .from('events')
