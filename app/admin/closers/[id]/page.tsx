@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   Button,
@@ -16,10 +16,12 @@ import {
   Modal,
 } from '@/components/ui'
 import { StatsCard } from '@/components/shared'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft, X, Calendar } from 'lucide-react'
 import { User, Participant, Sale } from '@/lib/types'
 import { formatCurrency, formatPercentage, getColorClass } from '@/lib/utils'
 import { useEvent } from '@/lib/hooks/use-event'
+
+type DayFilter = '' | 'day1' | 'day2' | 'day3'
 
 interface SaleWithParticipant extends Sale {
   participant?: Participant
@@ -28,6 +30,7 @@ interface SaleWithParticipant extends Sale {
 export default function CloserDetail() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const { activeEvent, isLoading: eventLoading } = useEvent()
 
@@ -36,6 +39,13 @@ export default function CloserDetail() {
   const [sales, setSales] = useState<SaleWithParticipant[]>([])
   const [loading, setLoading] = useState(true)
   const [showSalesModal, setShowSalesModal] = useState(false)
+
+  // Global day filter - initialized from query param
+  const [dayFilter, setDayFilter] = useState<DayFilter>(() => {
+    const day = searchParams.get('day')
+    if (day === 'day1' || day === 'day2' || day === 'day3') return day
+    return ''
+  })
 
   const [participantFilter, setParticipantFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
@@ -89,7 +99,16 @@ export default function CloserDetail() {
     )
   }
 
-  const opportunities = participants.filter(p => p.is_opportunity)
+  // Apply global day filter to participants
+  const matchesGlobalDay = (p: Participant) => {
+    if (dayFilter === 'day1') return p.checked_in_day1
+    if (dayFilter === 'day2') return p.checked_in_day2
+    if (dayFilter === 'day3') return p.checked_in_day3
+    return true
+  }
+
+  const dayFilteredParticipants = participants.filter(matchesGlobalDay)
+  const opportunities = dayFilteredParticipants.filter(p => p.is_opportunity)
   const opportunitiesDay1 = opportunities.filter(p => p.checked_in_day1).length
   const opportunitiesDay2 = opportunities.filter(p => p.checked_in_day2).length
   const opportunitiesDay3 = opportunities.filter(p => p.checked_in_day3).length
@@ -97,18 +116,24 @@ export default function CloserDetail() {
     p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
   ).length
 
-  // Use max opportunities per day for conversion rate calculation
-  const maxOpportunitiesPerDay = Math.max(opportunitiesDay1, opportunitiesDay2, opportunitiesDay3)
+  // When filtering by specific day, use that day's opportunity count for conversion
+  let conversionDenominator: number
+  if (dayFilter) {
+    conversionDenominator = opportunities.length
+  } else {
+    conversionDenominator = Math.max(opportunitiesDay1, opportunitiesDay2, opportunitiesDay3)
+  }
 
-  const altoQualified = participants.filter(p => p.qualification === 'alto').length
-  const medioQualified = participants.filter(p => p.qualification === 'medio').length
-  const baixoQualified = participants.filter(p => p.qualification === 'baixo').length
+  const altoQualified = dayFilteredParticipants.filter(p => p.qualification === 'alto').length
+  const medioQualified = dayFilteredParticipants.filter(p => p.qualification === 'medio').length
+  const baixoQualified = dayFilteredParticipants.filter(p => p.qualification === 'baixo').length
 
   const totalSalesValue = sales.reduce((sum, s) => sum + Number(s.total_value), 0)
   const totalEntryValue = sales.reduce((sum, s) => sum + Number(s.entry_value), 0)
-  const conversionRate = maxOpportunitiesPerDay > 0 ? sales.length / maxOpportunitiesPerDay : 0
+  const conversionRate = conversionDenominator > 0 ? sales.length / conversionDenominator : 0
 
-  const filteredParticipants = participants.filter(p => {
+  // Section-level filters (within the already day-filtered data)
+  const filteredParticipants = dayFilteredParticipants.filter(p => {
     if (participantFilter === 'day1') return p.checked_in_day1
     if (participantFilter === 'day2') return p.checked_in_day2
     if (participantFilter === 'day3') return p.checked_in_day3
@@ -145,13 +170,38 @@ export default function CloserDetail() {
         </CardContent>
       </Card>
 
+      {/* Day Filter */}
+      <div className="flex items-center gap-2">
+        <Calendar className="h-5 w-5 text-gray-400" />
+        <div className="flex rounded-lg overflow-hidden border border-gray-200">
+          {([
+            { value: '' as DayFilter, label: 'Todos' },
+            { value: 'day1' as DayFilter, label: 'Dia 1' },
+            { value: 'day2' as DayFilter, label: 'Dia 2' },
+            { value: 'day3' as DayFilter, label: 'Dia 3' },
+          ]).map((btn) => (
+            <button
+              key={btn.value}
+              onClick={() => setDayFilter(btn.value)}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                dayFilter === btn.value
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Metrics */}
       <section>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Métricas Gerais</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatsCard
             title="Participantes Atribuídos"
-            value={participants.length}
+            value={dayFilteredParticipants.length}
             icon="Users"
           />
           <StatsCard
