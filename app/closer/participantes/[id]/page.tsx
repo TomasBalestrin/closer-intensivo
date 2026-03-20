@@ -503,7 +503,10 @@ export default function CloserParticipantDetail() {
                 )}
                 {participant.phone && (
                   <a
-                    href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+                    href={`https://wa.me/${(() => {
+                      const digits = participant.phone.replace(/\D/g, '')
+                      return digits.startsWith('55') ? digits : `55${digits}`
+                    })()}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 bg-green-500/80 hover:bg-green-500 px-3 py-1 rounded-full text-sm transition-colors"
