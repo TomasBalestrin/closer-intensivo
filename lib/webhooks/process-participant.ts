@@ -104,18 +104,19 @@ export function flattenPayload(obj: any, prefix = ''): Record<string, any> {
 
 export const FIELD_ALIASES: Array<[string, string[]]> = [
   ['name', [
-    'nome_completo', 'nome', 'name', 'full_name', 'fullname', 'participant_name',
-    'nome_do_participante', 'nome_participante', 'primeiro_nome',
-    'digite_seu_nome_completo',
+    'digite_seu_nome_completo', 'nome_completo', 'full_name', 'fullname',
+    'nome_do_participante', 'nome_participante', 'participant_name',
+    'nome', 'name', 'primeiro_nome',
   ]],
   ['email', [
-    'login_value', 'email', 'e_mail', 'digite_seu_melhor_email', 'melhor_email', 'email_participante',
-    'participant_email', 'endereco_email',
+    'digite_seu_melhor_email', 'qual_o_seu_melhor_e_mail', 'melhor_email',
+    'email_participante', 'participant_email', 'endereco_email',
+    'email', 'e_mail', 'login_value',
   ]],
   ['phone', [
-    'phone', 'telefone', 'whatsapp', 'celular', 'digite_seu_whatsapp',
-    'numero_whatsapp', 'tel', 'mobile', 'phone_number',
-    'qual_o_seu_numero_de_telefone', 'numero_de_telefone',
+    'qual_o_seu_numero_de_telefone', 'digite_seu_whatsapp', 'numero_de_telefone',
+    'numero_whatsapp', 'telefone', 'whatsapp', 'celular',
+    'phone', 'tel', 'mobile', 'phone_number',
   ]],
   ['instagram', [
     'instagram', 'insta', 'qual_seu_do_instagram', 'qual_o_do_seu_instagram',
