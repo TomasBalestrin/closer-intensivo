@@ -155,6 +155,9 @@ export default function AdminRelatorios() {
   // Filtered participants
   const filtered = useMemo(() => {
     return participants.filter(p => {
+      // Exclude "Elite Premium" funnel (keep "Indicação Elite Premium", "Convidado Elite Premium", etc.)
+      if (p.funnel === 'elite_premium') return false
+
       const pColor = p.color || getColorFromRevenue(p.revenue)
       const matchesCheckin = !checkinFilter ||
         (checkinFilter === 'day1' ? p.checked_in_day1 :
@@ -171,9 +174,9 @@ export default function AdminRelatorios() {
     })
   }, [participants, checkinFilter, colorFilter, funnelFilter, closerFilter, opportunityFilter])
 
-  // Dynamic funnel options from actual participant data
+  // Dynamic funnel options from actual participant data (exclude elite_premium)
   const funnels = useMemo(() =>
-    [...new Set(participants.map(p => p.funnel).filter(Boolean))].sort(),
+    [...new Set(participants.map(p => p.funnel).filter(f => f && f !== 'elite_premium'))].sort(),
     [participants]
   )
 
