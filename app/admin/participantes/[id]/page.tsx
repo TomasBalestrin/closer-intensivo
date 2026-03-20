@@ -729,7 +729,7 @@ export default function ParticipantDetail() {
         <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
           {participant.phone && (
             <a
-              href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+              href={`https://wa.me/${(() => { const d = participant.phone.replace(/\D/g, ''); return d.startsWith('55') ? d : `55${d}` })()}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500 active:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors touch-manipulation"
@@ -927,7 +927,7 @@ export default function ParticipantDetail() {
                 </a>
               )}
               {participant.phone && (
-                <a href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                <a href={`https://wa.me/${(() => { const d = participant.phone.replace(/\D/g, ''); return d.startsWith('55') ? d : `55${d}` })()}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
                   <Phone className="h-4 w-4 text-green-500" />
                   <span className="text-sm text-gray-900">{participant.phone}</span>
                   <ExternalLink className="h-3 w-3 text-gray-400 ml-auto" />
