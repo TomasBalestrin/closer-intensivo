@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { flattenPayload, findValue, isTruthy } from '@/lib/webhooks/process-participant'
 
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -16,7 +17,7 @@ function isOpportunityValue(value: any): boolean {
   if (value === true) return true
   if (typeof value === 'string') {
     const v = value.toLowerCase().trim()
-    return ['true', 'sim', 'yes', '1'].includes(v)
+    return ['true', 'sim', 'yes', '1', 's', 'oportunidade', 'opportunity'].includes(v)
   }
   return value === 1
 }
@@ -268,7 +269,67 @@ export async function POST(request: Request) {
       })
     }
 
-    return NextResponse.json({ error: 'action inválida. Use fix_incorrect_opportunities ou remove_duplicates' }, { status: 400 })
+    if (action === 'restore_opportunities') {
+      // Re-scan all participants and set is_opportunity=true where webhook_data says so
+      let query = supabase
+        .from('participants')
+        .select('id, name, is_opportunity, webhook_data')
+
+      if (eventId) {
+        query = query.eq('event_id', eventId)
+      }
+
+      const { data: allParticipants, error } = await query
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      const OPORTUNIDADE_ALIASES = ['oportunidade', 'is_opportunity', 'opportunity', 'eh_oportunidade']
+
+      const idsToRestore: string[] = []
+      for (const p of allParticipants || []) {
+        if (p.is_opportunity) continue // already true, skip
+        if (!p.webhook_data) continue
+
+        const flat = flattenPayload(p.webhook_data)
+        const rawOportunidade = findValue(flat, OPORTUNIDADE_ALIASES)
+
+        if (rawOportunidade !== null && isTruthy(rawOportunidade)) {
+          idsToRestore.push(p.id)
+        }
+      }
+
+      if (idsToRestore.length > 0) {
+        for (let i = 0; i < idsToRestore.length; i += 50) {
+          const batch = idsToRestore.slice(i, i + 50)
+          await supabase
+            .from('participants')
+            .update({ is_opportunity: true })
+            .in('id', batch)
+        }
+      }
+
+      // Get new count
+      let countQuery = supabase
+        .from('participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_opportunity', true)
+
+      if (eventId) {
+        countQuery = countQuery.eq('event_id', eventId)
+      }
+
+      const { count } = await countQuery
+
+      return NextResponse.json({
+        success: true,
+        restored: idsToRestore.length,
+        newOpportunityCount: count
+      })
+    }
+
+    return NextResponse.json({ error: 'action inválida. Use fix_incorrect_opportunities, remove_duplicates ou restore_opportunities' }, { status: 400 })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
