@@ -7,7 +7,9 @@ import { Card, Avatar, Loading, Button } from '@/components/ui'
 import { User, Sale, Participant } from '@/lib/types'
 import { formatCurrency, formatPercentage, exportToCSV, getQualificationClass } from '@/lib/utils'
 import { useEvent } from '@/lib/hooks/use-event'
-import { Download } from 'lucide-react'
+import { Download, Calendar } from 'lucide-react'
+
+type DayFilter = '' | 'day1' | 'day2' | 'day3'
 
 interface CloserWithStats extends User {
   participantsCount: number
@@ -30,6 +32,7 @@ export default function AdminClosers() {
   const supabase = createClient()
   const { activeEvent, isLoading: eventLoading } = useEvent()
   const [loading, setLoading] = useState(true)
+  const [dayFilter, setDayFilter] = useState<DayFilter>('')
 
   useEffect(() => {
     // Wait for event to be loaded before fetching data
@@ -86,6 +89,14 @@ export default function AdminClosers() {
     setLoading(false)
   }
 
+  // Helper to check if participant matches the day filter
+  const matchesDay = useCallback((p: Participant) => {
+    if (dayFilter === 'day1') return p.checked_in_day1
+    if (dayFilter === 'day2') return p.checked_in_day2
+    if (dayFilter === 'day3') return p.checked_in_day3
+    return true
+  }, [dayFilter])
+
   const closersWithStats: CloserWithStats[] = useMemo(() => {
     // Index participants by seller_closer_id and assigned_closer_id (matching detail page logic)
     const participantsByCloser = new Map<string, Participant[]>()
@@ -110,21 +121,29 @@ export default function AdminClosers() {
     })
 
     return rawClosers.map(closer => {
-      const assignedParticipants = participantsByCloser.get(closer.id) || []
+      const allAssigned = participantsByCloser.get(closer.id) || []
+      // Apply day filter to participants
+      const assignedParticipants = allAssigned.filter(matchesDay)
       const opportunities = assignedParticipants.filter(p => p.is_opportunity)
       const opportunitiesCheckedIn = opportunities.filter(
         p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       ).length
 
-      // Calculate opportunities per day and use max for conversion rate
-      const oppDay1 = opportunities.filter(p => p.checked_in_day1).length
-      const oppDay2 = opportunities.filter(p => p.checked_in_day2).length
-      const oppDay3 = opportunities.filter(p => p.checked_in_day3).length
-      const maxOpportunitiesPerDay = Math.max(oppDay1, oppDay2, oppDay3)
+      // When filtering by specific day, use that day's count for conversion
+      // When "Todos", use max across days
+      let conversionDenominator: number
+      if (dayFilter) {
+        conversionDenominator = opportunities.length
+      } else {
+        const oppDay1 = allAssigned.filter(p => p.is_opportunity && p.checked_in_day1).length
+        const oppDay2 = allAssigned.filter(p => p.is_opportunity && p.checked_in_day2).length
+        const oppDay3 = allAssigned.filter(p => p.is_opportunity && p.checked_in_day3).length
+        conversionDenominator = Math.max(oppDay1, oppDay2, oppDay3)
+      }
 
       const closerSales = salesByCloser.get(closer.id) || []
-      const conversionRate = maxOpportunitiesPerDay > 0
-        ? closerSales.length / maxOpportunitiesPerDay
+      const conversionRate = conversionDenominator > 0
+        ? closerSales.length / conversionDenominator
         : 0
 
       return {
@@ -144,7 +163,7 @@ export default function AdminClosers() {
         partBaixo: assignedParticipants.filter(p => (p as any).qualification === 'baixo').length,
       }
     })
-  }, [rawClosers, rawParticipants, rawSales])
+  }, [rawClosers, rawParticipants, rawSales, matchesDay, dayFilter])
 
   const handleExportCSV = () => {
     exportToCSV(closersWithStats, [
@@ -167,6 +186,13 @@ export default function AdminClosers() {
     )
   }
 
+  const dayFilterButtons: { value: DayFilter; label: string }[] = [
+    { value: '', label: 'Todos' },
+    { value: 'day1', label: 'Dia 1' },
+    { value: 'day2', label: 'Dia 2' },
+    { value: 'day3', label: 'Dia 3' },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -177,12 +203,32 @@ export default function AdminClosers() {
         </Button>
       </div>
 
+      {/* Day Filter */}
+      <div className="flex items-center gap-2">
+        <Calendar className="h-5 w-5 text-gray-400" />
+        <div className="flex rounded-lg overflow-hidden border border-gray-200">
+          {dayFilterButtons.map((btn) => (
+            <button
+              key={btn.value}
+              onClick={() => setDayFilter(btn.value)}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                dayFilter === btn.value
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {closersWithStats.map((closer) => (
           <Card
             key={closer.id}
             className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => router.push(`/admin/closers/${closer.id}`)}
+            onClick={() => router.push(`/admin/closers/${closer.id}${dayFilter ? `?day=${dayFilter}` : ''}`)}
           >
             <div className="flex items-center gap-4 mb-4">
               <Avatar src={closer.photo_url} alt={closer.name} size="lg" />
