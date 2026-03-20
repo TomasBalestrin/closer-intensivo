@@ -148,7 +148,7 @@ function isOpportunityValue(value: any): boolean {
   if (value === true) return true
   if (typeof value === 'string') {
     const v = value.toLowerCase().trim()
-    return ['true', 'sim', 'yes', '1'].includes(v)
+    return ['true', 'sim', 'yes', '1', 's', 'oportunidade', 'opportunity'].includes(v)
   }
   return value === 1
 }
@@ -162,7 +162,7 @@ function isTruthy(value: any): boolean {
   if (value === true) return true
   if (typeof value === 'string') {
     const v = value.toLowerCase().trim()
-    return ['true', 'sim', 'yes', '1', 's'].includes(v)
+    return ['true', 'sim', 'yes', '1', 's', 'oportunidade', 'opportunity'].includes(v)
   }
   return value === 1
 }
