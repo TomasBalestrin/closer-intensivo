@@ -60,7 +60,7 @@ export default function CloserParticipantes() {
     // Build queries with event filter
     let participantsQuery = supabase
       .from('participants')
-      .select('id, name, photo_url, funnel, revenue, color, niche, instagram, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification, form_completed_at, chamado, times_called, companion, assigned_closer_id, event_id, created_at')
+      .select('*')
       .eq('assigned_closer_id', user.id)
       .order('created_at', { ascending: false })
 
