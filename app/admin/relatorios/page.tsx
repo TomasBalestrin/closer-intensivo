@@ -47,6 +47,7 @@ type Participant = {
   checked_in_day3: boolean
   closer_id: string | null
   assigned_closer_id: string | null
+  seller_closer_id: string | null
   challenge_answer: string | null
   desired_change_answer: string | null
   times_called: number
