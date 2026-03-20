@@ -235,10 +235,11 @@ function extractFieldsFromWebhookData(webhookData: any): Record<string, any> {
     extracted.tem_acompanhante = isTruthy(rawTemAcompanhante)
   }
 
-  // Extract is_opportunity - only explicit positive values
+  // Extract is_opportunity - only set to true, never override to false
+  // (manual changes to false should be preserved)
   const rawOportunidade = findValue(flat, OPORTUNIDADE_ALIASES)
-  if (rawOportunidade !== null) {
-    extracted.is_opportunity = isOpportunityValue(rawOportunidade)
+  if (rawOportunidade !== null && isOpportunityValue(rawOportunidade)) {
+    extracted.is_opportunity = true
   }
 
   // Recalculate color and qualification from revenue
@@ -271,9 +272,9 @@ function extractFieldsFromUnifiedFormat(webhookData: any): Record<string, any> {
   if (participant.faturamento) extracted.revenue = participant.faturamento
   if (participant.funnel_origin) extracted.funnel = participant.funnel_origin
 
-  // Extract is_opportunity - only explicit positive values
-  if (participant.oportunidade !== undefined) {
-    extracted.is_opportunity = isOpportunityValue(participant.oportunidade)
+  // Extract is_opportunity - only set to true, never override to false
+  if (participant.oportunidade !== undefined && isOpportunityValue(participant.oportunidade)) {
+    extracted.is_opportunity = true
   }
 
   // Extract from form_data using normalized key matching
