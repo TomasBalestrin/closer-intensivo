@@ -16,50 +16,6 @@ function normalizeText(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 
-function isCompanionKey(key: string): boolean {
-  const norm = normalizeText(key)
-  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
-  if (/nome|name|sobrenome|completo/.test(norm)) return true
-  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
-  if (norm.includes('qual')) return true
-  return false
-}
-
-function isCompanionMetaKey(key: string): boolean {
-  const norm = normalizeText(key)
-  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
-  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
-  return false
-}
-
-function findCompanionName(data: any): string | null {
-  if (!data || typeof data !== 'object') return null
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      if (item && typeof item === 'object') {
-        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
-        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
-        if (label && typeof value === 'string' && value.trim()) {
-          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
-        }
-      }
-      const found = findCompanionName(item)
-      if (found) return found
-    }
-    return null
-  }
-  for (const [key, value] of Object.entries(data)) {
-    if (value && typeof value === 'string' && (value as string).trim()) {
-      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return (value as string).trim()
-    }
-    if (value && typeof value === 'object') {
-      const found = findCompanionName(value)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 export default function AdminParticipantes() {
   const router = useRouter()
   const supabase = createClient()
@@ -119,7 +75,7 @@ export default function AdminParticipantes() {
     // Use simple select without explicit FK joins to avoid query failures
     let participantsQuery = supabase
       .from('participants')
-      .select('*')
+      .select('id, name, email, phone, photo_url, funnel, revenue, color, niche, instagram, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification, form_completed_at, chamado, times_called, seller_closer_id, seller_closer_name, assigned_closer_id, companion, event_id, created_at')
       .order('created_at', { ascending: false })
 
     let salesQuery = supabase
@@ -188,7 +144,7 @@ export default function AdminParticipantes() {
       assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
     })) || []
 
-    setParticipants(participantsWithSales)
+    setParticipants(participantsWithSales as any)
     setClosers(closersData)
     setVisibleCount(30)
     setLoading(false)
@@ -470,14 +426,22 @@ export default function AdminParticipantes() {
         return
       }
 
-      // Update each participant
-      let updated = 0
+      // Group by seller_closer_id for batch updates
+      const groups = new Map<string, string[]>()
       for (const p of toUpdate) {
+        const key = p.seller_closer_id!
+        const ids = groups.get(key) || []
+        ids.push(p.id)
+        groups.set(key, ids)
+      }
+
+      let updated = 0
+      for (const [closerId, participantIds] of groups) {
         const { error } = await supabase
           .from('participants')
-          .update({ assigned_closer_id: p.seller_closer_id })
-          .eq('id', p.id)
-        if (!error) updated++
+          .update({ assigned_closer_id: closerId })
+          .in('id', participantIds)
+        if (!error) updated += participantIds.length
       }
 
       alert(`Auto-atribuídos: ${updated} participantes`)
@@ -862,7 +826,7 @@ export default function AdminParticipantes() {
                 {/* Table rows */}
                 {paginatedParticipants.map((participant) => {
                   const closerAssigned = (participant as any).assigned_closer || closers.find(c => c.id === participant.assigned_closer_id)
-                  const companionName = participant.companion || findCompanionName(participant.webhook_data)
+                  const companionName = participant.companion
                   return (
                   <div
                     key={participant.id}
