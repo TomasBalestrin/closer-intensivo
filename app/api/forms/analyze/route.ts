@@ -172,7 +172,7 @@ IMPORTANTE:
     }
 
     // Update participant with all analysis data
-    // Strategy: Always save webhook_data first (guaranteed to work), then try individual columns
+    // Strategy: Save analysis data into disc_analysis JSON (always works), then save individual columns progressively
     const allAnalysisData = {
       archetypes: { primary: archetypeResult.primary, secondary: archetypeResult.secondary, description: combinedDescription },
       disc: { profile: discResult.profile, scores: discResult.scores },
@@ -187,18 +187,8 @@ IMPORTANTE:
       desiredChangeAnswer,
     }
 
-    // Step 1: Save ONLY webhook_data (this column exists in base schema - guaranteed to work)
-    const { error: webhookError } = await supabase
-      .from('participants')
-      .update({ webhook_data: allAnalysisData })
-      .eq('id', participantId)
-
-    if (webhookError) {
-      console.error('webhook_data update failed:', webhookError.message)
-    }
-
-    // Step 2: Try to save to individual columns (works if migration_002 was applied)
-    const fullUpdate = {
+    // Step 1: Save core DISC/archetype fields + form answers (these columns exist since migration_002)
+    const coreUpdate: Record<string, any> = {
       primary_archetype: archetypeResult.primary,
       secondary_archetype: archetypeResult.secondary,
       archetype_description: combinedDescription,
@@ -208,11 +198,49 @@ IMPORTANTE:
       disc_score_s: discResult.scores.S,
       disc_score_c: discResult.scores.C,
       disc_analysis: {
+        ...allAnalysisData,
         profile_name: discProfileInfo.profile,
         profile_description: discProfileInfo.description,
         primary_trait: primaryTraitInfo,
         secondary_trait: secondaryTraitInfo
       },
+      challenge_answer: challengeAnswer,
+      desired_change_answer: desiredChangeAnswer,
+      form_completed_at: new Date().toISOString(),
+      ...(instagram ? { instagram: instagram.replace(/^@/, '').trim() } : {}),
+    }
+
+    const { error: coreError } = await supabase
+      .from('participants')
+      .update(coreUpdate)
+      .eq('id', participantId)
+
+    if (coreError) {
+      console.error('Core DISC update failed:', coreError.message)
+      // Fallback: try minimal update to at least mark as processed
+      const { error: minimalError } = await supabase
+        .from('participants')
+        .update({
+          primary_archetype: archetypeResult.primary,
+          secondary_archetype: archetypeResult.secondary,
+          disc_profile: discResult.profile,
+          disc_score_d: discResult.scores.D,
+          disc_score_i: discResult.scores.I,
+          disc_score_s: discResult.scores.S,
+          disc_score_c: discResult.scores.C,
+          form_completed_at: new Date().toISOString(),
+          challenge_answer: challengeAnswer,
+          desired_change_answer: desiredChangeAnswer,
+        })
+        .eq('id', participantId)
+
+      if (minimalError) {
+        console.error('Minimal DISC update also failed:', minimalError.message)
+      }
+    }
+
+    // Step 2: Try to save sales insight columns (may not exist in all schemas)
+    const salesUpdate: Record<string, any> = {
       personality_summary: salesAnalysis.personality_summary,
       sales_approach: salesAnalysis.sales_approach,
       decision_triggers: salesAnalysis.decision_triggers,
@@ -220,19 +248,15 @@ IMPORTANTE:
       closing_strategies: salesAnalysis.closing_strategies,
       things_to_avoid: salesAnalysis.things_to_avoid,
       quick_tips: salesAnalysis.quick_tips,
-      challenge_answer: challengeAnswer,
-      desired_change_answer: desiredChangeAnswer,
-      form_completed_at: new Date().toISOString(),
-      ...(instagram ? { instagram: instagram.replace(/^@/, '').trim() } : {}),
     }
 
-    const { error: fullError } = await supabase
+    const { error: salesError } = await supabase
       .from('participants')
-      .update(fullUpdate)
+      .update(salesUpdate)
       .eq('id', participantId)
 
-    if (fullError) {
-      console.error('Individual columns update failed (migration_002 may not be applied):', fullError.message)
+    if (salesError) {
+      console.error('Sales insight columns update failed (columns may not exist):', salesError.message)
     }
 
     // Also update disc_forms record with completion status and answers
