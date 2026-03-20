@@ -75,7 +75,7 @@ export default function AdminParticipantes() {
     // Use simple select without explicit FK joins to avoid query failures
     let participantsQuery = supabase
       .from('participants')
-      .select('id, name, email, phone, photo_url, funnel, revenue, color, niche, instagram, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification, form_completed_at, chamado, times_called, seller_closer_id, seller_closer_name, assigned_closer_id, companion, event_id, created_at')
+      .select('*')
       .order('created_at', { ascending: false })
 
     let salesQuery = supabase
@@ -144,7 +144,7 @@ export default function AdminParticipantes() {
       assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
     })) || []
 
-    setParticipants(participantsWithSales as any)
+    setParticipants(participantsWithSales)
     setClosers(closersData)
     setVisibleCount(30)
     setLoading(false)

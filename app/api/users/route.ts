@@ -132,7 +132,7 @@ export async function GET() {
 
     const { data: users, error } = await supabaseAdmin
       .from('users')
-      .select('id, name, email, role, photo_url, created_at')
+      .select('*')
       .order('name')
 
     if (error) throw error

@@ -99,7 +99,7 @@ export default function AdminRelatorios() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('id, name, revenue, color, funnel, niche, is_opportunity, checked_in_day1, checked_in_day2, checked_in_day3, qualification, assigned_closer_id, form_completed_at, event_id, challenge_answer, desired_change_answer, disc_profile, disc_score_d, disc_score_i, disc_score_s, disc_score_c')
+    let participantsQuery = supabase.from('participants').select('*')
     let salesQuery = supabase.from('sales').select('participant_id').is('deleted_at', null)
 
     // Filter by active event if selected
