@@ -63,6 +63,10 @@ export default function WebhooksPage() {
   const [reprocessing, setReprocessing] = useState(false)
   const [reprocessResult, setReprocessResult] = useState<any>(null)
 
+  // DISC reprocess state
+  const [discReprocessing, setDiscReprocessing] = useState(false)
+  const [discReprocessResult, setDiscReprocessResult] = useState<any>(null)
+
   // Retry failed webhooks state
   const [retrying, setRetrying] = useState(false)
   const [retryResult, setRetryResult] = useState<any>(null)
@@ -227,6 +231,37 @@ export default function WebhooksPage() {
       showToast('Erro de conexão ao reprocessar', 'error')
     } finally {
       setReprocessing(false)
+    }
+  }
+
+  const handleDiscReprocess = async (dryRun: boolean) => {
+    setDiscReprocessing(true)
+    setDiscReprocessResult(null)
+    try {
+      const params = new URLSearchParams()
+      if (dryRun) params.set('dry_run', 'true')
+      if (selectedEventId) params.set('event_id', selectedEventId)
+
+      const res = await fetch(`/api/admin/reprocess-disc?${params.toString()}`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      setDiscReprocessResult(data)
+
+      if (data.success) {
+        showToast(
+          dryRun
+            ? `Simulação: ${data.needs_reprocessing || 0} participantes precisam de reprocessamento DISC`
+            : `${data.results?.success || 0} participantes reprocessados com sucesso`,
+          'success'
+        )
+      } else {
+        showToast(data.error || 'Erro ao reprocessar DISC', 'error')
+      }
+    } catch (err: any) {
+      showToast('Erro de conexão ao reprocessar DISC', 'error')
+    } finally {
+      setDiscReprocessing(false)
     }
   }
 
@@ -596,6 +631,94 @@ export default function WebhooksPage() {
                       </div>
                       <div className="bg-red-50 rounded p-2 text-center">
                         <div className="text-lg font-bold text-red-700">{reprocessResult.results.errors}</div>
+                        <div className="text-gray-500">Erros</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Reprocess DISC */}
+          <Card className="border-purple-200 bg-purple-50/50">
+            <CardContent className="py-4">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">Reprocessar Análise DISC</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                Reprocessa a análise DISC somente dos participantes que precisam: formulário respondido mas sem perfil DISC,
+                ou com perfil mas sem scores salvos nas colunas.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleDiscReprocess(true)}
+                  disabled={discReprocessing}
+                >
+                  {discReprocessing ? (
+                    <><RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Processando...</>
+                  ) : (
+                    <>Simular (Dry Run)</>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleDiscReprocess(false)}
+                  disabled={discReprocessing}
+                >
+                  {discReprocessing ? (
+                    <><RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Processando...</>
+                  ) : (
+                    <><RefreshCw className="h-4 w-4 mr-1" /> Reprocessar DISC Agora</>
+                  )}
+                </Button>
+              </div>
+
+              {selectedEventId && (
+                <p className="text-xs text-purple-600 mt-2">
+                  Filtrando por evento: <strong>{selectedEvent?.nome_evento}</strong>
+                </p>
+              )}
+
+              {discReprocessResult && (
+                <div className="mt-3 bg-white rounded-lg border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    {discReprocessResult.success ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {discReprocessResult.dry_run ? 'Resultado da Simulação' : 'Resultado do Reprocessamento DISC'}
+                    </span>
+                  </div>
+                  {discReprocessResult.dry_run ? (
+                    <div className="text-xs text-gray-600">
+                      <p><strong>{discReprocessResult.total_checked}</strong> participantes verificados</p>
+                      <p><strong>{discReprocessResult.needs_reprocessing}</strong> precisam de reprocessamento</p>
+                      {discReprocessResult.participants && discReprocessResult.participants.length > 0 && (
+                        <div className="mt-2 max-h-40 overflow-y-auto">
+                          {discReprocessResult.participants.map((p: any) => (
+                            <div key={p.id} className="text-xs text-gray-500 py-0.5">
+                              {p.name} — {!p.has_disc_profile ? 'sem perfil DISC' : 'sem scores'}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : discReprocessResult.results && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="bg-gray-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-gray-700">{discReprocessResult.results.needs_reprocessing}</div>
+                        <div className="text-gray-500">Necessários</div>
+                      </div>
+                      <div className="bg-green-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-green-700">{discReprocessResult.results.success}</div>
+                        <div className="text-gray-500">Sucesso</div>
+                      </div>
+                      <div className="bg-red-50 rounded p-2 text-center">
+                        <div className="text-lg font-bold text-red-700">{discReprocessResult.results.errors}</div>
                         <div className="text-gray-500">Erros</div>
                       </div>
                     </div>
