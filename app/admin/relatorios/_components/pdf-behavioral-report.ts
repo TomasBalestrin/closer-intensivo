@@ -168,10 +168,11 @@ export async function generateBehavioralPdfReport(input: BehavioralReportInput):
           data.cell.styles.textColor = [156, 163, 175]
         }
       }
-      // Color DISC column
+      // Color DISC column (disc_profile is "DI", "SC" etc — color by first char)
       if (data.section === 'body' && data.column.index === 2) {
         const profile = data.cell.raw as string
-        const discColor = DISC_COLORS[profile]
+        const primaryDisc = profile?.charAt(0)
+        const discColor = DISC_COLORS[primaryDisc]
         if (discColor) {
           data.cell.styles.textColor = [discColor.r, discColor.g, discColor.b]
           data.cell.styles.fontStyle = 'bold'
@@ -382,7 +383,8 @@ interface DiscRow {
 function computeDiscSummary(participants: Participant[]): DiscRow[] {
   const profiles = ['D', 'I', 'S', 'C']
   return profiles.map(profile => {
-    const matching = participants.filter(p => p.disc_profile === profile)
+    // disc_profile is stored as 2-char string like "DI", "SC" — match by first char (primary)
+    const matching = participants.filter(p => p.disc_profile?.charAt(0) === profile)
     return {
       profile,
       total: matching.length,
