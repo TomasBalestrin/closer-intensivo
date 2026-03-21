@@ -10,6 +10,7 @@ export async function POST(
   { params }: { params: { eventId: string } }
 ) {
   const supabase = getWebhookSupabase()
+  let logId: string | null = null
 
   try {
     const { eventId } = params
@@ -33,10 +34,10 @@ export async function POST(
     // Log the webhook
     const { data: logData } = await supabase
       .from('webhooks_log')
-      .insert({ payload, processed: false })
+      .insert({ payload, processed: false, event_id: eventId })
       .select('id')
       .single()
-    const logId = logData?.id
+    logId = logData?.id || null
 
     // Process webhook using shared module (structured format)
     const result = await processParticipantWebhook(supabase, payload, {
@@ -59,6 +60,17 @@ export async function POST(
     }, { status: statusCode })
   } catch (error: any) {
     console.error('Webhook error:', error)
+
+    // Save error details to webhook log for later retry
+    if (logId) {
+      await supabase
+        .from('webhooks_log')
+        .update({
+          processed: false,
+          error_message: error.message || 'Unknown error',
+        })
+        .eq('id', logId)
+    }
 
     if (error instanceof WebhookValidationError) {
       return NextResponse.json(
