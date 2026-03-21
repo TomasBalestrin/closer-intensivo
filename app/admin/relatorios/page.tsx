@@ -25,6 +25,8 @@ import { PdfReportModal } from './_components/pdf-report-modal'
 import { PdfBehavioralModal } from './_components/pdf-behavioral-modal'
 import { User } from '@/lib/types'
 import { useEvent } from '@/lib/hooks/use-event'
+import { calculateDISC } from '@/lib/disc'
+import { calculateArchetypes, getCombinedDescription } from '@/lib/archetypes'
 import {
   getColorClass,
   getColorFromRevenue,
@@ -155,10 +157,32 @@ export default function AdminRelatorios() {
     const sRes = await salesQuery
     if (sRes.error) console.error('Sales error:', sRes.error)
 
-    // Hydrate DISC data from webhook_data/disc_analysis when disc_profile column is empty
+    // Fetch completed disc_forms to recalculate DISC for participants missing disc_profile
+    const participantIds = allParticipantsData.map((p: any) => p.id)
+    let discFormsMap: Record<string, any> = {}
+    if (participantIds.length > 0) {
+      // Fetch in batches to avoid query size limits
+      for (let i = 0; i < participantIds.length; i += 200) {
+        const batch = participantIds.slice(i, i + 200)
+        const { data: forms } = await supabase
+          .from('disc_forms')
+          .select('participant_id, answers, completed_at')
+          .in('participant_id', batch)
+          .not('answers', 'is', null)
+        if (forms) {
+          for (const f of forms) {
+            if (f.answers && typeof f.answers === 'object' && Object.keys(f.answers).length > 0) {
+              discFormsMap[f.participant_id] = f.answers
+            }
+          }
+        }
+      }
+    }
+
+    // Hydrate DISC data from multiple sources when disc_profile column is empty
     const hydratedParticipants = allParticipantsData.map((p: any) => {
       if (!p.disc_profile) {
-        // Try webhook_data first
+        // Source 1: webhook_data
         const wd = p.webhook_data as any
         if (wd?.disc?.profile) {
           return {
@@ -172,7 +196,7 @@ export default function AdminRelatorios() {
             secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
           }
         }
-        // Try disc_analysis JSON (discResult.profile stores "DI", "SC", etc.)
+        // Source 2: disc_analysis JSON
         const da = p.disc_analysis as any
         const daProfile = da?.discResult?.profile || da?.profile
         if (daProfile) {
@@ -185,6 +209,27 @@ export default function AdminRelatorios() {
             disc_score_c: p.disc_score_c ?? da.discResult?.scores?.C ?? da.scores?.C,
             primary_archetype: p.primary_archetype ?? da.archetypeResult?.primary,
             secondary_archetype: p.secondary_archetype ?? da.archetypeResult?.secondary,
+          }
+        }
+        // Source 3: recalculate from disc_forms answers or disc_analysis.answers
+        const answers = discFormsMap[p.id] || da?.answers
+        if (answers && typeof answers === 'object') {
+          try {
+            const discResult = calculateDISC(answers)
+            const archResult = calculateArchetypes(answers)
+            return {
+              ...p,
+              disc_profile: discResult.profile,
+              disc_score_d: discResult.scores.D,
+              disc_score_i: discResult.scores.I,
+              disc_score_s: discResult.scores.S,
+              disc_score_c: discResult.scores.C,
+              primary_archetype: p.primary_archetype ?? archResult.primary,
+              secondary_archetype: p.secondary_archetype ?? archResult.secondary,
+              archetype_description: p.archetype_description ?? getCombinedDescription(archResult.primary, archResult.secondary),
+            }
+          } catch (e) {
+            // Calculation failed, skip
           }
         }
       }
