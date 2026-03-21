@@ -22,6 +22,7 @@ import {
   FileDown,
 } from 'lucide-react'
 import { PdfReportModal } from './_components/pdf-report-modal'
+import { PdfBehavioralModal } from './_components/pdf-behavioral-modal'
 import { User } from '@/lib/types'
 import { useEvent } from '@/lib/hooks/use-event'
 import {
@@ -77,8 +78,9 @@ export default function AdminRelatorios() {
   const [aiLoading, setAiLoading] = useState(false)
   const [showAiSection, setShowAiSection] = useState(true)
 
-  // PDF Report Modal
+  // PDF Report Modals
   const [showPdfModal, setShowPdfModal] = useState(false)
+  const [showBehavioralModal, setShowBehavioralModal] = useState(false)
 
   // Collapsible sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -431,6 +433,14 @@ export default function AdminRelatorios() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">{filtered.length} participantes {hasActiveFilters ? '(filtrados)' : ''}</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowBehavioralModal(true)}
+          >
+            <Brain className="h-4 w-4 mr-2" />
+            Perfis PDF
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -910,6 +920,14 @@ export default function AdminRelatorios() {
       <PdfReportModal
         isOpen={showPdfModal}
         onClose={() => setShowPdfModal(false)}
+        participants={filtered as any}
+        eventName={activeEvent?.nome_evento || 'Evento'}
+      />
+
+      {/* Behavioral Profile PDF Modal */}
+      <PdfBehavioralModal
+        isOpen={showBehavioralModal}
+        onClose={() => setShowBehavioralModal(false)}
         participants={filtered as any}
         eventName={activeEvent?.nome_evento || 'Evento'}
       />

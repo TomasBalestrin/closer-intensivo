@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
-import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2, LayoutGrid, List, UserPlus } from 'lucide-react'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2, LayoutGrid, List, UserPlus, Brain } from 'lucide-react'
 import { Participant, User, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue, cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
 import { useEvent } from '@/lib/hooks/use-event'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
+import { PdfBehavioralModal } from '@/app/admin/relatorios/_components/pdf-behavioral-modal'
 
 function normalizeText(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -67,6 +68,7 @@ export default function AdminParticipantes() {
   const [singleAssignParticipantId, setSingleAssignParticipantId] = useState<string | null>(null)
   const [singleAssignCloserId, setSingleAssignCloserId] = useState('')
   const [singleAssigning, setSingleAssigning] = useState(false)
+  const [showBehavioralModal, setShowBehavioralModal] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -508,6 +510,10 @@ export default function AdminParticipantes() {
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 {autoAssigning ? 'Atribuindo...' : 'Auto-atribuir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowBehavioralModal(true)}>
+                <Brain className="h-4 w-4 mr-2" />
+                Perfis PDF
               </Button>
               <Button variant="secondary" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-2" />
@@ -1218,6 +1224,14 @@ export default function AdminParticipantes() {
           </div>
         </div>
       </Modal>
+
+      {/* Behavioral Profile PDF Modal */}
+      <PdfBehavioralModal
+        isOpen={showBehavioralModal}
+        onClose={() => setShowBehavioralModal(false)}
+        participants={participants as any}
+        eventName={activeEvent?.nome_evento || 'Evento'}
+      />
     </>
   )
 }
