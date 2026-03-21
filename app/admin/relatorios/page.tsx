@@ -172,21 +172,19 @@ export default function AdminRelatorios() {
             secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
           }
         }
-        // Try disc_analysis JSON
+        // Try disc_analysis JSON (discResult.profile stores "DI", "SC", etc.)
         const da = p.disc_analysis as any
-        if (da?.profile_name) {
-          // disc_analysis stores profile as 2-char like "DI" in the top-level profile field
-          // or as profile_name like "DI - Dominância + Influência"
-          const profileMatch = da.profile_name?.match(/^([DISC]{1,2})\b/)
-          if (profileMatch) {
-            return {
-              ...p,
-              disc_profile: profileMatch[1],
-              disc_score_d: p.disc_score_d ?? da.scores?.D,
-              disc_score_i: p.disc_score_i ?? da.scores?.I,
-              disc_score_s: p.disc_score_s ?? da.scores?.S,
-              disc_score_c: p.disc_score_c ?? da.scores?.C,
-            }
+        const daProfile = da?.discResult?.profile || da?.profile
+        if (daProfile) {
+          return {
+            ...p,
+            disc_profile: daProfile,
+            disc_score_d: p.disc_score_d ?? da.discResult?.scores?.D ?? da.scores?.D,
+            disc_score_i: p.disc_score_i ?? da.discResult?.scores?.I ?? da.scores?.I,
+            disc_score_s: p.disc_score_s ?? da.discResult?.scores?.S ?? da.scores?.S,
+            disc_score_c: p.disc_score_c ?? da.discResult?.scores?.C ?? da.scores?.C,
+            primary_archetype: p.primary_archetype ?? da.archetypeResult?.primary,
+            secondary_archetype: p.secondary_archetype ?? da.archetypeResult?.secondary,
           }
         }
       }

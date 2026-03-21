@@ -167,17 +167,17 @@ export default function AdminParticipantes() {
           }
         } else {
           const da = p.disc_analysis as any
-          if (da?.profile_name) {
-            const profileMatch = da.profile_name?.match(/^([DISC]{1,2})\b/)
-            if (profileMatch) {
-              hydrated = {
-                ...p,
-                disc_profile: profileMatch[1],
-                disc_score_d: p.disc_score_d ?? da.scores?.D,
-                disc_score_i: p.disc_score_i ?? da.scores?.I,
-                disc_score_s: p.disc_score_s ?? da.scores?.S,
-                disc_score_c: p.disc_score_c ?? da.scores?.C,
-              }
+          const daProfile = da?.discResult?.profile || da?.profile
+          if (daProfile) {
+            hydrated = {
+              ...p,
+              disc_profile: daProfile,
+              disc_score_d: p.disc_score_d ?? da.discResult?.scores?.D ?? da.scores?.D,
+              disc_score_i: p.disc_score_i ?? da.discResult?.scores?.I ?? da.scores?.I,
+              disc_score_s: p.disc_score_s ?? da.discResult?.scores?.S ?? da.scores?.S,
+              disc_score_c: p.disc_score_c ?? da.discResult?.scores?.C ?? da.scores?.C,
+              primary_archetype: p.primary_archetype ?? da.archetypeResult?.primary,
+              secondary_archetype: p.secondary_archetype ?? da.archetypeResult?.secondary,
             }
           }
         }
