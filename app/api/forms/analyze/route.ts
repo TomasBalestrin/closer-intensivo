@@ -199,6 +199,7 @@ IMPORTANTE:
       disc_score_c: discResult.scores.C,
       disc_analysis: {
         ...allAnalysisData,
+        answers, // Save original answers for future reprocessing
         profile_name: discProfileInfo.profile,
         profile_description: discProfileInfo.description,
         primary_trait: primaryTraitInfo,
@@ -236,6 +237,10 @@ IMPORTANTE:
 
       if (minimalError) {
         console.error('Minimal DISC update also failed:', minimalError.message)
+        return NextResponse.json(
+          { error: `Erro ao salvar análise DISC: ${minimalError.message}`, success: false },
+          { status: 500 }
+        )
       }
     }
 
