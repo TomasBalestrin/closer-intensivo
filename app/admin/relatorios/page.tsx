@@ -102,12 +102,11 @@ export default function AdminRelatorios() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('*')
+    // Fetch ALL participants using pagination (Supabase defaults to 1000 rows max)
     let salesQuery = supabase.from('sales').select('participant_id').is('deleted_at', null)
 
     // Filter by active event if selected
     if (activeEvent?.id) {
-      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
@@ -134,14 +133,65 @@ export default function AdminRelatorios() {
       closersData = (data || []) as User[]
     }
 
-    const [pRes, sRes] = await Promise.all([
-      participantsQuery,
-      salesQuery,
-    ])
+    // Fetch all participants with pagination to avoid 1000-row limit
+    let allParticipantsData: any[] = []
+    const PAGE_SIZE = 1000
+    let page = 0
+    let hasMore = true
+    while (hasMore) {
+      let q = supabase.from('participants').select('*').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1).order('created_at', { ascending: false })
+      if (activeEvent?.id) q = q.eq('event_id', activeEvent.id)
+      const { data, error } = await q
+      if (error) { console.error('Participants error:', error); break }
+      if (data && data.length > 0) {
+        allParticipantsData = allParticipantsData.concat(data)
+        hasMore = data.length === PAGE_SIZE
+      } else {
+        hasMore = false
+      }
+      page++
+    }
 
-    if (pRes.error) console.error('Participants error:', pRes.error)
+    const sRes = await salesQuery
     if (sRes.error) console.error('Sales error:', sRes.error)
-    setParticipants((pRes.data || []) as any)
+
+    // Hydrate DISC data from webhook_data/disc_analysis when disc_profile column is empty
+    const hydratedParticipants = allParticipantsData.map((p: any) => {
+      if (!p.disc_profile) {
+        // Try webhook_data first
+        const wd = p.webhook_data as any
+        if (wd?.disc?.profile) {
+          return {
+            ...p,
+            disc_profile: wd.disc.profile,
+            disc_score_d: p.disc_score_d ?? wd.disc.scores?.D,
+            disc_score_i: p.disc_score_i ?? wd.disc.scores?.I,
+            disc_score_s: p.disc_score_s ?? wd.disc.scores?.S,
+            disc_score_c: p.disc_score_c ?? wd.disc.scores?.C,
+            primary_archetype: p.primary_archetype ?? wd.archetypes?.primary,
+            secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
+          }
+        }
+        // Try disc_analysis JSON (discResult.profile stores "DI", "SC", etc.)
+        const da = p.disc_analysis as any
+        const daProfile = da?.discResult?.profile || da?.profile
+        if (daProfile) {
+          return {
+            ...p,
+            disc_profile: daProfile,
+            disc_score_d: p.disc_score_d ?? da.discResult?.scores?.D ?? da.scores?.D,
+            disc_score_i: p.disc_score_i ?? da.discResult?.scores?.I ?? da.scores?.I,
+            disc_score_s: p.disc_score_s ?? da.discResult?.scores?.S ?? da.scores?.S,
+            disc_score_c: p.disc_score_c ?? da.discResult?.scores?.C ?? da.scores?.C,
+            primary_archetype: p.primary_archetype ?? da.archetypeResult?.primary,
+            secondary_archetype: p.secondary_archetype ?? da.archetypeResult?.secondary,
+          }
+        }
+      }
+      return p
+    })
+
+    setParticipants(hydratedParticipants as any)
     setClosers(closersData)
     const map: Record<string, boolean> = {}
     sRes.data?.forEach(s => { map[s.participant_id] = true })
