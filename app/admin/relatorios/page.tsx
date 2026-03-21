@@ -72,6 +72,8 @@ export default function AdminRelatorios() {
   const [funnelFilter, setFunnelFilter] = useState('')
   const [closerFilter, setCloserFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
+  const [discFilter, setDiscFilter] = useState('')
+  const [discProfileFilter, setDiscProfileFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // AI Analysis
@@ -196,19 +198,19 @@ export default function AdminRelatorios() {
             secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
           }
         }
-        // Source 2: disc_analysis JSON
+        // Source 2: disc_analysis JSON (check multiple paths where profile may be stored)
         const da = p.disc_analysis as any
-        const daProfile = da?.discResult?.profile || da?.profile
+        const daProfile = da?.disc?.profile || da?.discResult?.profile || da?.profile
         if (daProfile) {
           return {
             ...p,
             disc_profile: daProfile,
-            disc_score_d: p.disc_score_d ?? da.discResult?.scores?.D ?? da.scores?.D,
-            disc_score_i: p.disc_score_i ?? da.discResult?.scores?.I ?? da.scores?.I,
-            disc_score_s: p.disc_score_s ?? da.discResult?.scores?.S ?? da.scores?.S,
-            disc_score_c: p.disc_score_c ?? da.discResult?.scores?.C ?? da.scores?.C,
-            primary_archetype: p.primary_archetype ?? da.archetypeResult?.primary,
-            secondary_archetype: p.secondary_archetype ?? da.archetypeResult?.secondary,
+            disc_score_d: p.disc_score_d ?? da.disc?.scores?.D ?? da.discResult?.scores?.D ?? da.scores?.D,
+            disc_score_i: p.disc_score_i ?? da.disc?.scores?.I ?? da.discResult?.scores?.I ?? da.scores?.I,
+            disc_score_s: p.disc_score_s ?? da.disc?.scores?.S ?? da.discResult?.scores?.S ?? da.scores?.S,
+            disc_score_c: p.disc_score_c ?? da.disc?.scores?.C ?? da.discResult?.scores?.C ?? da.scores?.C,
+            primary_archetype: p.primary_archetype ?? da.archetypes?.primary ?? da.archetypeResult?.primary,
+            secondary_archetype: p.secondary_archetype ?? da.archetypes?.secondary ?? da.archetypeResult?.secondary,
           }
         }
         // Source 3: recalculate from disc_forms answers or disc_analysis.answers
@@ -271,9 +273,13 @@ export default function AdminRelatorios() {
       const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? (!p.assigned_closer_id && !p.seller_closer_id) : (p.assigned_closer_id === closerFilter || p.seller_closer_id === closerFilter))
       const matchesOpp = opportunityFilter === '' ||
         (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
-      return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp
+      const matchesDisc = !discFilter ||
+        (discFilter === 'yes' ? !!p.disc_profile : !p.disc_profile)
+      const matchesDiscProfile = !discProfileFilter ||
+        p.disc_profile?.charAt(0) === discProfileFilter
+      return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp && matchesDisc && matchesDiscProfile
     })
-  }, [participants, checkinFilter, colorFilter, funnelFilter, closerFilter, opportunityFilter])
+  }, [participants, checkinFilter, colorFilter, funnelFilter, closerFilter, opportunityFilter, discFilter, discProfileFilter])
 
   // Dynamic funnel options from actual participant data (exclude elite_premium)
   const funnels = useMemo(() =>
@@ -285,7 +291,7 @@ export default function AdminRelatorios() {
     [participants]
   )
 
-  const hasActiveFilters = checkinFilter || colorFilter || funnelFilter || closerFilter || opportunityFilter
+  const hasActiveFilters = checkinFilter || colorFilter || funnelFilter || closerFilter || opportunityFilter || discFilter || discProfileFilter
 
   const clearFilters = () => {
     setCheckinFilter('')
@@ -293,6 +299,8 @@ export default function AdminRelatorios() {
     setFunnelFilter('')
     setCloserFilter('')
     setOpportunityFilter('')
+    setDiscFilter('')
+    setDiscProfileFilter('')
   }
 
   // === COMPUTED STATS ===
@@ -560,7 +568,7 @@ export default function AdminRelatorios() {
 
         {showFilters && (
           <div className="mt-3 p-4 bg-white rounded-lg shadow-sm space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <Select
                 label="Credenciamento"
                 value={checkinFilter}
@@ -615,6 +623,28 @@ export default function AdminRelatorios() {
                   { value: '', label: 'Todos' },
                   { value: 'true', label: 'Sim' },
                   { value: 'false', label: 'Não' },
+                ]}
+              />
+              <Select
+                label="Preencheu DISC"
+                value={discFilter}
+                onChange={(e) => setDiscFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'yes', label: 'Sim — Com perfil' },
+                  { value: 'no', label: 'Não — Sem perfil' },
+                ]}
+              />
+              <Select
+                label="Perfil DISC"
+                value={discProfileFilter}
+                onChange={(e) => setDiscProfileFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos os perfis' },
+                  { value: 'D', label: 'D — Dominância' },
+                  { value: 'I', label: 'I — Influência' },
+                  { value: 'S', label: 'S — Estabilidade' },
+                  { value: 'C', label: 'C — Conformidade' },
                 ]}
               />
             </div>
