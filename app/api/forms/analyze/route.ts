@@ -218,29 +218,46 @@ IMPORTANTE:
 
     if (coreError) {
       console.error('Core DISC update failed:', coreError.message)
-      // Fallback: try minimal update to at least mark as processed
-      const { error: minimalError } = await supabase
+      // Fallback: try without disc_score columns (may not exist if migration_002 not applied)
+      const { error: fallback1Error } = await supabase
         .from('participants')
         .update({
           primary_archetype: archetypeResult.primary,
           secondary_archetype: archetypeResult.secondary,
           disc_profile: discResult.profile,
-          disc_score_d: discResult.scores.D,
-          disc_score_i: discResult.scores.I,
-          disc_score_s: discResult.scores.S,
-          disc_score_c: discResult.scores.C,
+          disc_analysis: {
+            ...allAnalysisData,
+            answers,
+            scores: discResult.scores,
+            profile_name: discProfileInfo.profile,
+            profile_description: discProfileInfo.description,
+            primary_trait: primaryTraitInfo,
+            secondary_trait: secondaryTraitInfo,
+          },
           form_completed_at: new Date().toISOString(),
           challenge_answer: challengeAnswer,
           desired_change_answer: desiredChangeAnswer,
         })
         .eq('id', participantId)
 
-      if (minimalError) {
-        console.error('Minimal DISC update also failed:', minimalError.message)
-        return NextResponse.json(
-          { error: `Erro ao salvar análise DISC: ${minimalError.message}`, success: false },
-          { status: 500 }
-        )
+      if (fallback1Error) {
+        console.error('Fallback DISC update also failed:', fallback1Error.message)
+        // Last resort: absolute minimum fields
+        const { error: minimalError } = await supabase
+          .from('participants')
+          .update({
+            disc_profile: discResult.profile,
+            form_completed_at: new Date().toISOString(),
+          })
+          .eq('id', participantId)
+
+        if (minimalError) {
+          console.error('Minimal DISC update also failed:', minimalError.message)
+          return NextResponse.json(
+            { error: `Erro ao salvar análise DISC: ${minimalError.message}`, success: false },
+            { status: 500 }
+          )
+        }
       }
     }
 
