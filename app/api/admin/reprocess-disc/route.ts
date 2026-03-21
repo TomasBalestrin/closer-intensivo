@@ -24,9 +24,7 @@ export async function POST(request: Request) {
     const eventId = url.searchParams.get('event_id')
     const dryRun = url.searchParams.get('dry_run') === 'true'
 
-    // Find participants that need DISC reprocessing:
-    // 1. Has form_completed_at (form was answered) but no disc_profile (analysis not done)
-    // 2. Has disc_analysis with answers saved but no disc_score_d (scores not saved to columns)
+    // Step 1: Fetch all participants
     let query = supabase
       .from('participants')
       .select('id, name, email, disc_analysis, disc_profile, disc_score_d, form_completed_at, challenge_answer, desired_change_answer')
@@ -52,19 +50,37 @@ export async function POST(request: Request) {
       })
     }
 
-    // Filter only those that need reprocessing
+    // Step 2: Fetch all completed disc_forms with answers
+    const { data: allDiscForms } = await supabase
+      .from('disc_forms')
+      .select('participant_id, id, answers, completed_at')
+      .not('completed_at', 'is', null)
+      .not('answers', 'is', null)
+
+    const discFormsByParticipant = new Map<string, any>()
+    if (allDiscForms) {
+      for (const form of allDiscForms) {
+        if (form.answers && Object.keys(form.answers).length > 0) {
+          discFormsByParticipant.set(form.participant_id, form)
+        }
+      }
+    }
+
+    // Step 3: Filter participants that need reprocessing
     const needsReprocessing = participants.filter(p => {
-      const hasFormCompleted = !!p.form_completed_at
       const hasDiscProfile = !!p.disc_profile
       const hasDiscScores = p.disc_score_d !== null && p.disc_score_d !== undefined
-      const hasAnswers = !!(p.disc_analysis as any)?.answers && Object.keys((p.disc_analysis as any).answers).length > 0
+      const hasAnswersInAnalysis = !!(p.disc_analysis as any)?.answers && Object.keys((p.disc_analysis as any).answers).length > 0
+      const hasAnswersInForms = discFormsByParticipant.has(p.id)
+      const hasAnyAnswers = hasAnswersInAnalysis || hasAnswersInForms
+      const hasFormCompleted = !!p.form_completed_at || hasAnswersInForms
 
-      // Needs reprocessing if:
-      // - Form completed but no DISC profile at all
-      // - Has DISC analysis with answers but scores not saved to columns
-      return (hasFormCompleted && !hasDiscProfile && hasAnswers) ||
-             (hasFormCompleted && hasDiscProfile && !hasDiscScores && hasAnswers) ||
-             (!hasFormCompleted && !hasDiscProfile && hasAnswers)
+      // Needs reprocessing if has answers available AND:
+      // - No DISC profile at all
+      // - Has profile but scores not saved to columns
+      if (!hasAnyAnswers) return false
+      return (!hasDiscProfile && hasFormCompleted) ||
+             (hasDiscProfile && !hasDiscScores)
     })
 
     if (needsReprocessing.length === 0) {
@@ -87,26 +103,10 @@ export async function POST(request: Request) {
           name: p.name,
           has_disc_profile: !!p.disc_profile,
           has_disc_scores: p.disc_score_d !== null,
-          has_answers: !!(p.disc_analysis as any)?.answers,
+          has_answers_in_analysis: !!(p.disc_analysis as any)?.answers,
+          has_answers_in_forms: discFormsByParticipant.has(p.id),
         })),
       })
-    }
-
-    // Also check for disc_forms table answers as fallback
-    const participantIds = needsReprocessing.map(p => p.id)
-    const { data: discForms } = await supabase
-      .from('disc_forms')
-      .select('participant_id, id, answers')
-      .in('participant_id', participantIds)
-      .not('answers', 'is', null)
-
-    const formsByParticipant = new Map<string, any>()
-    if (discForms) {
-      for (const form of discForms) {
-        if (form.answers && Object.keys(form.answers).length > 0) {
-          formsByParticipant.set(form.participant_id, form)
-        }
-      }
     }
 
     const results = {
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       try {
         // Get answers from disc_analysis or disc_forms
         let answers = (participant.disc_analysis as any)?.answers
-        const discForm = formsByParticipant.get(participant.id)
+        const discForm = discFormsByParticipant.get(participant.id)
 
         if ((!answers || Object.keys(answers).length === 0) && discForm?.answers) {
           answers = discForm.answers
