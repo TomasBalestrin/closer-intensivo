@@ -150,7 +150,10 @@ export default function CloserParticipantes() {
         (saleFilter === 'true' ? p.hasSale : !p.hasSale)
       const hasCheckin = p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       const matchesCheckin = checkinFilter === '' ||
-        (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
+        (checkinFilter === 'true' ? hasCheckin : checkinFilter === 'false' ? !hasCheckin :
+        checkinFilter === 'day1' ? p.checked_in_day1 :
+        checkinFilter === 'day2' ? p.checked_in_day2 :
+        checkinFilter === 'day3' ? p.checked_in_day3 : true)
       const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
       const matchesQualification = !qualificationFilter || p.qualification === qualificationFilter
       const matchesDiscRespondido = discRespondidoFilter === '' ||
@@ -268,6 +271,9 @@ export default function CloserParticipantes() {
                   { value: '', label: 'Todos' },
                   { value: 'true', label: 'Presentes' },
                   { value: 'false', label: 'Ausentes' },
+                  { value: 'day1', label: 'Dia 1' },
+                  { value: 'day2', label: 'Dia 2' },
+                  { value: 'day3', label: 'Dia 3' },
                 ]}
               />
               <Select
