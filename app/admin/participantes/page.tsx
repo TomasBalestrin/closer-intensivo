@@ -74,12 +74,7 @@ export default function AdminParticipantes() {
     setLoading(true)
 
     // Build queries with event filter
-    // Use simple select without explicit FK joins to avoid query failures
-    let participantsQuery = supabase
-      .from('participants')
-      .select('*')
-      .order('created_at', { ascending: false })
-
+    // Fetch ALL participants using pagination (Supabase defaults to 1000 rows max)
     let salesQuery = supabase
       .from('sales')
       .select('participant_id')
@@ -87,7 +82,6 @@ export default function AdminParticipantes() {
 
     // Filter by active event if selected
     if (activeEvent?.id) {
-      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
@@ -115,17 +109,33 @@ export default function AdminParticipantes() {
       closersData = (data || []) as User[]
     }
 
-    const [participantsRes, salesRes] = await Promise.all([
-      participantsQuery,
-      salesQuery,
-    ])
+    // Fetch all participants with pagination to avoid 1000-row limit
+    let allParticipantsData: any[] = []
+    const PAGE_SIZE = 1000
+    let page = 0
+    let hasMore = true
+    while (hasMore) {
+      let q = supabase.from('participants').select('*').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1).order('created_at', { ascending: false })
+      if (activeEvent?.id) q = q.eq('event_id', activeEvent.id)
+      const { data, error } = await q
+      if (error) { console.error('Participants error:', error); break }
+      if (data && data.length > 0) {
+        allParticipantsData = allParticipantsData.concat(data)
+        hasMore = data.length === PAGE_SIZE
+      } else {
+        hasMore = false
+      }
+      page++
+    }
+
+    const salesRes = await salesQuery
 
     // Use Set for O(1) lookup instead of .some() O(n)
     const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
 
     // Build lookup for seller closers and assigned closers
-    const sellerCloserIds = [...new Set(participantsRes.data?.map(p => p.seller_closer_id).filter(Boolean))]
-    const assignedCloserIds = [...new Set(participantsRes.data?.map(p => p.assigned_closer_id).filter(Boolean))]
+    const sellerCloserIds = [...new Set(allParticipantsData.map(p => p.seller_closer_id).filter(Boolean))]
+    const assignedCloserIds = [...new Set(allParticipantsData.map(p => p.assigned_closer_id).filter(Boolean))]
     const allCloserIds = [...new Set([...sellerCloserIds, ...assignedCloserIds])]
 
     let closerLookup: Record<string, User> = {}
@@ -139,12 +149,46 @@ export default function AdminParticipantes() {
       }
     }
 
-    const participantsWithSales = participantsRes.data?.map(p => ({
-      ...p,
-      hasSale: salesSet.has(p.id),
-      seller_closer: p.seller_closer_id ? closerLookup[p.seller_closer_id] : null,
-      assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
-    })) || []
+    // Hydrate DISC data from webhook_data/disc_analysis when disc_profile column is empty
+    const participantsWithSales = allParticipantsData.map(p => {
+      let hydrated = p
+      if (!p.disc_profile) {
+        const wd = p.webhook_data as any
+        if (wd?.disc?.profile) {
+          hydrated = {
+            ...p,
+            disc_profile: wd.disc.profile,
+            disc_score_d: p.disc_score_d ?? wd.disc.scores?.D,
+            disc_score_i: p.disc_score_i ?? wd.disc.scores?.I,
+            disc_score_s: p.disc_score_s ?? wd.disc.scores?.S,
+            disc_score_c: p.disc_score_c ?? wd.disc.scores?.C,
+            primary_archetype: p.primary_archetype ?? wd.archetypes?.primary,
+            secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
+          }
+        } else {
+          const da = p.disc_analysis as any
+          if (da?.profile_name) {
+            const profileMatch = da.profile_name?.match(/^([DISC]{1,2})\b/)
+            if (profileMatch) {
+              hydrated = {
+                ...p,
+                disc_profile: profileMatch[1],
+                disc_score_d: p.disc_score_d ?? da.scores?.D,
+                disc_score_i: p.disc_score_i ?? da.scores?.I,
+                disc_score_s: p.disc_score_s ?? da.scores?.S,
+                disc_score_c: p.disc_score_c ?? da.scores?.C,
+              }
+            }
+          }
+        }
+      }
+      return {
+        ...hydrated,
+        hasSale: salesSet.has(p.id),
+        seller_closer: p.seller_closer_id ? closerLookup[p.seller_closer_id] : null,
+        assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
+      }
+    })
 
     setParticipants(participantsWithSales)
     setClosers(closersData)
