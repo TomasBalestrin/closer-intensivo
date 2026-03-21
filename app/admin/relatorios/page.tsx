@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileDown,
+  AlertCircle,
 } from 'lucide-react'
 import { PdfReportModal } from './_components/pdf-report-modal'
 import { PdfBehavioralModal } from './_components/pdf-behavioral-modal'
@@ -89,6 +90,7 @@ export default function AdminRelatorios() {
   // Collapsible sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     summary: true,
+    disc: false,
     qualification: true,
     revenue: true,
     niches: true,
@@ -414,6 +416,21 @@ export default function AdminRelatorios() {
     const challengeThemes = groupThemes(challengeAnswers)
     const desiredThemes = groupThemes(desiredAnswers)
 
+    // DISC breakdown
+    const withDisc = filtered.filter(p => !!p.disc_profile).length
+    const withoutDisc = total - withDisc
+    const oppWithDisc = filtered.filter(p => p.is_opportunity && !!p.disc_profile).length
+    const discProfiles = ['D', 'I', 'S', 'C'] as const
+    const discBreakdown = discProfiles.map(profile => {
+      const matching = filtered.filter(p => p.disc_profile?.charAt(0) === profile)
+      return {
+        profile,
+        total: matching.length,
+        opportunities: matching.filter(p => p.is_opportunity).length,
+        sales: matching.filter(p => salesMap[p.id]).length,
+      }
+    })
+
     return {
       total, checkedIn, opportunities, withSale,
       checkedD1, checkedD2, checkedD3,
@@ -421,6 +438,7 @@ export default function AdminRelatorios() {
       nicheRanking, closerRanking, oppByNiche,
       challengeAnswers, desiredAnswers,
       challengeThemes, desiredThemes,
+      withDisc, withoutDisc, oppWithDisc, discBreakdown,
     }
   }, [filtered, salesMap, closers])
 
@@ -666,6 +684,100 @@ export default function AdminRelatorios() {
           <StatCard icon={Target} label="Oportunidades" value={stats.opportunities} subtitle={pct(stats.opportunities, stats.total)} color="purple" />
           <StatCard icon={DollarSign} label="Com Venda" value={stats.withSale} subtitle={pct(stats.withSale, stats.total)} color="emerald" />
         </div>
+      )}
+
+      {/* DISC Profile Breakdown */}
+      <SectionHeader title="Relatório Perfil DISC" icon={Brain} sectionKey="disc" expanded={expandedSections.disc} onToggle={toggleSection} />
+      {expandedSections.disc && (
+        <Card className="border-blue-200">
+          <CardContent>
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+              <div className="p-4 bg-blue-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
+                <p className="text-xs text-blue-600 mt-1">Total Participantes</p>
+              </div>
+              <div className="p-4 bg-purple-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-purple-700">{stats.opportunities}</p>
+                <p className="text-xs text-purple-600 mt-1">Oportunidades</p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-green-700">{stats.withDisc}</p>
+                <p className="text-xs text-green-600 mt-1">Preencheram DISC</p>
+                <p className="text-[10px] text-green-500">{pct(stats.withDisc, stats.total)} do total</p>
+              </div>
+              <div className="p-4 bg-amber-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-amber-700">{stats.oppWithDisc}</p>
+                <p className="text-xs text-amber-600 mt-1">Oportunidades com DISC</p>
+                <p className="text-[10px] text-amber-500">{pct(stats.oppWithDisc, stats.opportunities)} das oportunidades</p>
+              </div>
+            </div>
+
+            {/* DISC profile table */}
+            <div className="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Perfil</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Total</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Oportunidades</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Vendas</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 w-1/4">Distribuição</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.discBreakdown.map(row => {
+                    const colors: Record<string, { text: string; bg: string; bar: string; label: string }> = {
+                      D: { text: 'text-red-600', bg: 'bg-red-50', bar: 'bg-red-500', label: 'Dominância' },
+                      I: { text: 'text-yellow-600', bg: 'bg-yellow-50', bar: 'bg-yellow-500', label: 'Influência' },
+                      S: { text: 'text-green-600', bg: 'bg-green-50', bar: 'bg-green-500', label: 'Estabilidade' },
+                      C: { text: 'text-blue-600', bg: 'bg-blue-50', bar: 'bg-blue-500', label: 'Conformidade' },
+                    }
+                    const c = colors[row.profile]
+                    return (
+                      <tr key={row.profile} className="border-b last:border-0">
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full ${c.bg} ${c.text} font-bold text-lg`}>
+                            {row.profile}
+                          </span>
+                        </td>
+                        <td className={`py-3 px-4 font-medium ${c.text}`}>{c.label}</td>
+                        <td className="text-right py-3 px-4 font-semibold">{row.total}</td>
+                        <td className="text-right py-3 px-4 font-semibold text-purple-600">{row.opportunities}</td>
+                        <td className="text-right py-3 px-4 font-semibold text-emerald-600">{row.sales}</td>
+                        <td className="py-3 px-4">
+                          <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${c.bar} rounded-full transition-all`} style={{ width: `${stats.withDisc > 0 ? (row.total / stats.withDisc) * 100 : 0}%` }} />
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5 text-right">{stats.withDisc > 0 ? pct(row.total, stats.withDisc) : '0%'}</p>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="bg-gray-50 font-semibold">
+                    <td className="py-3 px-4" />
+                    <td className="py-3 px-4">TOTAL</td>
+                    <td className="text-right py-3 px-4">{stats.withDisc}</td>
+                    <td className="text-right py-3 px-4 text-purple-600">{stats.oppWithDisc}</td>
+                    <td className="text-right py-3 px-4 text-emerald-600">{stats.discBreakdown.reduce((s, r) => s + r.sales, 0)}</td>
+                    <td className="py-3 px-4" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Without DISC notice */}
+            {stats.withoutDisc > 0 && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <p className="text-xs text-gray-500">
+                  <strong>{stats.withoutDisc}</strong> participantes ({pct(stats.withoutDisc, stats.total)}) ainda não preencheram o formulário DISC.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Qualification Breakdown */}
