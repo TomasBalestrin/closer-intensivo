@@ -129,17 +129,7 @@ export default function AdminClosers() {
         p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       ).length
 
-      // When filtering by specific day, use that day's count for conversion
-      // When "Todos", use max across days
-      let conversionDenominator: number
-      if (dayFilter) {
-        conversionDenominator = opportunities.length
-      } else {
-        const oppDay1 = allAssigned.filter(p => p.is_opportunity && p.checked_in_day1).length
-        const oppDay2 = allAssigned.filter(p => p.is_opportunity && p.checked_in_day2).length
-        const oppDay3 = allAssigned.filter(p => p.is_opportunity && p.checked_in_day3).length
-        conversionDenominator = Math.max(oppDay1, oppDay2, oppDay3)
-      }
+      const conversionDenominator = opportunities.length
 
       const closerSales = salesByCloser.get(closer.id) || []
       const conversionRate = conversionDenominator > 0

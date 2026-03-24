@@ -116,13 +116,7 @@ export default function CloserDetail() {
     p => p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
   ).length
 
-  // When filtering by specific day, use that day's opportunity count for conversion
-  let conversionDenominator: number
-  if (dayFilter) {
-    conversionDenominator = opportunities.length
-  } else {
-    conversionDenominator = Math.max(opportunitiesDay1, opportunitiesDay2, opportunitiesDay3)
-  }
+  const conversionDenominator = opportunities.length
 
   const altoQualified = dayFilteredParticipants.filter(p => p.qualification === 'alto').length
   const medioQualified = dayFilteredParticipants.filter(p => p.qualification === 'medio').length
