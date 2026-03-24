@@ -123,11 +123,12 @@ export default function AdminDashboard() {
 
   const opportunities = useMemo(() => filteredParticipants.filter(p => p.is_opportunity), [filteredParticipants])
 
-  // Get sales for filtered participants
+  // Get sales filtered by dia_evento when a day filter is active
   const filteredSales = useMemo(() => {
-    const participantIds = new Set(filteredParticipants.map(p => p.id))
-    return sales.filter(s => participantIds.has(s.participant_id))
-  }, [filteredParticipants, sales])
+    if (dayFilter === 'todos') return sales
+    const dayNumber = dayFilter === 'dia1' ? 1 : dayFilter === 'dia2' ? 2 : 3
+    return sales.filter(s => s.dia_evento === dayNumber)
+  }, [sales, dayFilter])
 
   // Stats calculations - memoized
   const stats = useMemo(() => {
