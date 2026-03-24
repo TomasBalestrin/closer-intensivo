@@ -83,6 +83,9 @@ export default function AdminRelatorios() {
   const [aiLoading, setAiLoading] = useState(false)
   const [showAiSection, setShowAiSection] = useState(true)
 
+  // DISC forms map (to detect unprocessed submissions)
+  const [discFormsSet, setDiscFormsSet] = useState<Set<string>>(new Set())
+
   // PDF Report Modals
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [showBehavioralModal, setShowBehavioralModal] = useState(false)
@@ -182,6 +185,9 @@ export default function AdminRelatorios() {
         }
       }
     }
+
+    // Track which participants have disc_forms answers (filled form)
+    setDiscFormsSet(new Set(Object.keys(discFormsMap)))
 
     // Hydrate DISC data from multiple sources when disc_profile column is empty
     const hydratedParticipants = allParticipantsData.map((p: any) => {
@@ -420,6 +426,8 @@ export default function AdminRelatorios() {
     const withDisc = filtered.filter(p => !!p.disc_profile).length
     const withoutDisc = total - withDisc
     const oppWithDisc = filtered.filter(p => p.is_opportunity && !!p.disc_profile).length
+    // Filled disc form but profile not processed (answers exist in disc_forms but no disc_profile after hydration)
+    const discFilledNotProcessed = filtered.filter(p => !p.disc_profile && discFormsSet.has(p.id)).length
     const discProfiles = ['D', 'I', 'S', 'C'] as const
     const discBreakdown = discProfiles.map(profile => {
       const matching = filtered.filter(p => p.disc_profile?.charAt(0) === profile)
@@ -438,9 +446,9 @@ export default function AdminRelatorios() {
       nicheRanking, closerRanking, oppByNiche,
       challengeAnswers, desiredAnswers,
       challengeThemes, desiredThemes,
-      withDisc, withoutDisc, oppWithDisc, discBreakdown,
+      withDisc, withoutDisc, oppWithDisc, discBreakdown, discFilledNotProcessed,
     }
-  }, [filtered, salesMap, closers])
+  }, [filtered, salesMap, closers, discFormsSet])
 
   // Build context for AI
   const buildAiContext = () => {
@@ -692,7 +700,7 @@ export default function AdminRelatorios() {
         <Card className="border-blue-200">
           <CardContent>
             {/* Summary cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
               <div className="p-4 bg-blue-50 rounded-xl text-center">
                 <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
                 <p className="text-xs text-blue-600 mt-1">Total Participantes</p>
@@ -710,6 +718,13 @@ export default function AdminRelatorios() {
                 <p className="text-2xl font-bold text-amber-700">{stats.oppWithDisc}</p>
                 <p className="text-xs text-amber-600 mt-1">Oportunidades com DISC</p>
                 <p className="text-[10px] text-amber-500">{pct(stats.oppWithDisc, stats.opportunities)} das oportunidades</p>
+              </div>
+              <div className={`p-4 rounded-xl text-center ${stats.discFilledNotProcessed > 0 ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                <p className={`text-2xl font-bold ${stats.discFilledNotProcessed > 0 ? 'text-red-600' : 'text-gray-400'}`}>{stats.discFilledNotProcessed}</p>
+                <p className={`text-xs mt-1 ${stats.discFilledNotProcessed > 0 ? 'text-red-500' : 'text-gray-400'}`}>Erro de Processamento</p>
+                {stats.discFilledNotProcessed > 0 && (
+                  <p className="text-[10px] text-red-400">preencheram mas não processou</p>
+                )}
               </div>
             </div>
 
@@ -767,15 +782,25 @@ export default function AdminRelatorios() {
               </table>
             </div>
 
-            {/* Without DISC notice */}
-            {stats.withoutDisc > 0 && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                <p className="text-xs text-gray-500">
-                  <strong>{stats.withoutDisc}</strong> participantes ({pct(stats.withoutDisc, stats.total)}) ainda não preencheram o formulário DISC.
-                </p>
-              </div>
-            )}
+            {/* DISC notices */}
+            <div className="mt-4 space-y-2">
+              {stats.discFilledNotProcessed > 0 && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-xs text-red-700">
+                    <strong>{stats.discFilledNotProcessed}</strong> participantes preencheram o formulário DISC mas tiveram <strong>erro de processamento</strong> (respostas existem, perfil não foi gerado). Use o reprocessamento para corrigir.
+                  </p>
+                </div>
+              )}
+              {stats.withoutDisc > 0 && (
+                <div className="p-3 bg-gray-50 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <p className="text-xs text-gray-500">
+                    <strong>{stats.withoutDisc - stats.discFilledNotProcessed}</strong> participantes ({pct(stats.withoutDisc - stats.discFilledNotProcessed, stats.total)}) ainda não preencheram o formulário DISC.
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
