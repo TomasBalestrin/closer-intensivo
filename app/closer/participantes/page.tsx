@@ -16,66 +16,6 @@ import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
 const CACHE_KEY = 'closer-participantes-cache'
 const SCROLL_KEY = 'closer-participantes-scroll'
 
-function normalizeText(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
-
-// Matches any key/question that asks for the companion's name
-// e.g. "Qual o nome do seu acompanhante?", "Nome e sobrenome do acompanhante",
-// "nome_acompanhante", "companion_name", "acompanhante", etc.
-function isCompanionKey(key: string): boolean {
-  const norm = normalizeText(key)
-  // Must mention "acompanhante" or "companion"
-  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
-  // If it also mentions name-related words, it's definitely the name field
-  if (/nome|name|sobrenome|completo/.test(norm)) return true
-  // If the key is short (likely a field id like "acompanhante" or "companion"), accept it
-  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
-  // If it's a question asking "qual" (which one), accept it
-  if (norm.includes('qual')) return true
-  return false
-}
-
-// Exclude keys that ask yes/no about having a companion or about the relationship
-function isCompanionMetaKey(key: string): boolean {
-  const norm = normalizeText(key)
-  // "voce vai com acompanhante?" / "tem acompanhante?" / "seu acompanhante e (esposa, socio...)"
-  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
-  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
-  return false
-}
-
-function findCompanionName(data: any): string | null {
-  if (!data || typeof data !== 'object') return null
-
-  // Handle arrays (common pattern: [{label: "...", value: "..."}, ...])
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      if (item && typeof item === 'object') {
-        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
-        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
-        if (label && typeof value === 'string' && value.trim()) {
-          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
-        }
-      }
-      const found = findCompanionName(item)
-      if (found) return found
-    }
-    return null
-  }
-
-  for (const [key, value] of Object.entries(data)) {
-    if (value && typeof value === 'string' && value.trim()) {
-      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return value.trim()
-    }
-    if (value && typeof value === 'object') {
-      const found = findCompanionName(value)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 function getCachedParticipants(): any[] | null {
   try {
     const cached = sessionStorage.getItem(CACHE_KEY)
@@ -210,7 +150,10 @@ export default function CloserParticipantes() {
         (saleFilter === 'true' ? p.hasSale : !p.hasSale)
       const hasCheckin = p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3
       const matchesCheckin = checkinFilter === '' ||
-        (checkinFilter === 'true' ? hasCheckin : !hasCheckin)
+        (checkinFilter === 'true' ? hasCheckin : checkinFilter === 'false' ? !hasCheckin :
+        checkinFilter === 'day1' ? p.checked_in_day1 :
+        checkinFilter === 'day2' ? p.checked_in_day2 :
+        checkinFilter === 'day3' ? p.checked_in_day3 : true)
       const matchesColor = !colorFilter || (p.color === colorFilter) || (getColorFromRevenue(p.revenue) === colorFilter)
       const matchesQualification = !qualificationFilter || p.qualification === qualificationFilter
       const matchesDiscRespondido = discRespondidoFilter === '' ||
@@ -328,6 +271,9 @@ export default function CloserParticipantes() {
                   { value: '', label: 'Todos' },
                   { value: 'true', label: 'Presentes' },
                   { value: 'false', label: 'Ausentes' },
+                  { value: 'day1', label: 'Dia 1' },
+                  { value: 'day2', label: 'Dia 2' },
+                  { value: 'day3', label: 'Dia 3' },
                 ]}
               />
               <Select
@@ -396,7 +342,7 @@ export default function CloserParticipantes() {
             </div>
             {/* Table rows */}
             {paginatedParticipants.map((participant: any) => {
-              const companionName = participant.companion || findCompanionName(participant.webhook_data)
+              const companionName = participant.companion
               return (
               <div
                 key={participant.id}
@@ -541,7 +487,7 @@ export default function CloserParticipantes() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleParticipants.map((participant: any) => {
               const cardStatus = getParticipantCardStatus(participant, participant.hasSale)
-              const companionName = participant.companion || findCompanionName(participant.webhook_data)
+              const companionName = participant.companion
               return (
               <Card
                 key={participant.id}

@@ -561,8 +561,24 @@ export default function ParticipantDetail() {
     if (!participant) return
     setFormLoading(true)
     try {
-      // Get the form data
-      const answers = form.answers || {}
+      // Get answers from form, or fallback to disc_analysis saved in participant
+      let answers = form?.answers && Object.keys(form.answers).length > 0
+        ? form.answers
+        : null
+
+      // Fallback: try to get answers from disc_analysis JSON stored in participant
+      if (!answers && participant.disc_analysis) {
+        const analysis = participant.disc_analysis as any
+        if (analysis.challengeAnswer !== undefined || analysis.archetypes) {
+          // disc_analysis contains the original answers in some cases
+          answers = analysis.answers || analysis.originalAnswers || null
+        }
+      }
+
+      if (!answers || Object.keys(answers).length === 0) {
+        showToast('Sem respostas do formulário para reprocessar. O participante precisa responder o formulário novamente.', 'error')
+        return
+      }
 
       // Call the analysis API
       const response = await fetch('/api/forms/analyze', {
@@ -570,14 +586,17 @@ export default function ParticipantDetail() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participantId: participant.id,
+          formId: form?.id || null,
           answers,
           challengeAnswer: participant.challenge_answer || '',
           desiredChangeAnswer: participant.desired_change_answer || '',
         }),
       })
 
+      const result = await response.json()
+
       if (!response.ok) {
-        throw new Error('Erro na análise')
+        throw new Error(result.error || 'Erro na análise')
       }
 
       showToast('Análise reprocessada com sucesso', 'success')
@@ -729,7 +748,7 @@ export default function ParticipantDetail() {
         <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
           {participant.phone && (
             <a
-              href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`}
+              href={`https://wa.me/${(() => { const d = participant.phone.replace(/\D/g, ''); return d.startsWith('55') ? d : `55${d}` })()}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500 active:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors touch-manipulation"
@@ -927,7 +946,7 @@ export default function ParticipantDetail() {
                 </a>
               )}
               {participant.phone && (
-                <a href={`https://wa.me/${participant.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+                <a href={`https://wa.me/${(() => { const d = participant.phone.replace(/\D/g, ''); return d.startsWith('55') ? d : `55${d}` })()}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
                   <Phone className="h-4 w-4 text-green-500" />
                   <span className="text-sm text-gray-900">{participant.phone}</span>
                   <ExternalLink className="h-3 w-3 text-gray-400 ml-auto" />
@@ -1235,7 +1254,7 @@ export default function ParticipantDetail() {
             {/* ═══════════════════════════════════════════════ */}
             {/* STATE 3: Form completed but not processed */}
             {/* ═══════════════════════════════════════════════ */}
-            {!hasDiscProfile && hasCompletedForms && (
+            {!hasDiscProfile && (hasCompletedForms || hasFormCompleted) && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Brain className="h-12 w-12 text-amber-400 mx-auto mb-3" />
@@ -1243,7 +1262,12 @@ export default function ParticipantDetail() {
                   <p className="text-gray-500 text-sm mb-4">
                     O participante respondeu o formulário, mas os dados DISC não foram gerados.
                   </p>
-                  <Button onClick={() => handleReprocessAnalysis(completedForms[0])} loading={formLoading}>
+                  <Button
+                    onClick={() => handleReprocessAnalysis(
+                      completedForms[0] || { answers: (participant.disc_analysis as any)?.answers || {} }
+                    )}
+                    loading={formLoading}
+                  >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Reprocessar Análise
                   </Button>

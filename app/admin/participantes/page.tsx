@@ -4,60 +4,19 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button, Input, Select, Card, Avatar, Badge, Modal } from '@/components/ui'
-import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2, LayoutGrid, List, UserPlus } from 'lucide-react'
+import { Search, Filter, ExternalLink, Download, Plus, Users, CheckSquare, Square, Phone, Trash2, LayoutGrid, List, UserPlus, Brain } from 'lucide-react'
 import { Participant, User, getParticipantCardStatus, CARD_STATUS_STYLES } from '@/lib/types'
 import { getColorClass, getInstagramUrl, exportToCSV, formatBoolean, FATURAMENTO_OPTIONS, FUNIL_OPTIONS, getColorFromRevenue, getQualificationFromRevenue, normalizeRevenue, cn } from '@/lib/utils'
 import { useDebounce } from '@/lib/hooks'
 import { useEvent } from '@/lib/hooks/use-event'
 import { PullToRefresh } from '@/components/shared/pull-to-refresh'
 import { ParticipantGridSkeleton } from '@/components/shared/skeleton'
+import { PdfBehavioralModal } from '@/app/admin/relatorios/_components/pdf-behavioral-modal'
+import { calculateDISC } from '@/lib/disc'
+import { calculateArchetypes, getCombinedDescription } from '@/lib/archetypes'
 
 function normalizeText(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
-
-function isCompanionKey(key: string): boolean {
-  const norm = normalizeText(key)
-  if (!norm.includes('acompanhante') && !norm.includes('companion')) return false
-  if (/nome|name|sobrenome|completo/.test(norm)) return true
-  if (norm.replace(/[^a-z]/g, '').length <= 25) return true
-  if (norm.includes('qual')) return true
-  return false
-}
-
-function isCompanionMetaKey(key: string): boolean {
-  const norm = normalizeText(key)
-  if (/vai.+com.+acompanhante|tem.+acompanhante|voce.+acompanhante/.test(norm) && !/nome|name/.test(norm)) return true
-  if (/seu.+acompanhante.+e\b|relacao|relationship|tipo.+acompanhante/.test(norm)) return true
-  return false
-}
-
-function findCompanionName(data: any): string | null {
-  if (!data || typeof data !== 'object') return null
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      if (item && typeof item === 'object') {
-        const label = item.label || item.field || item.name || item.key || item.question || item.titulo || item.ref
-        const value = item.value ?? item.answer ?? item.text ?? item.response ?? item.resposta
-        if (label && typeof value === 'string' && value.trim()) {
-          if (isCompanionKey(String(label)) && !isCompanionMetaKey(String(label))) return value.trim()
-        }
-      }
-      const found = findCompanionName(item)
-      if (found) return found
-    }
-    return null
-  }
-  for (const [key, value] of Object.entries(data)) {
-    if (value && typeof value === 'string' && (value as string).trim()) {
-      if (isCompanionKey(key) && !isCompanionMetaKey(key)) return (value as string).trim()
-    }
-    if (value && typeof value === 'object') {
-      const found = findCompanionName(value)
-      if (found) return found
-    }
-  }
-  return null
 }
 
 export default function AdminParticipantes() {
@@ -111,17 +70,13 @@ export default function AdminParticipantes() {
   const [singleAssignParticipantId, setSingleAssignParticipantId] = useState<string | null>(null)
   const [singleAssignCloserId, setSingleAssignCloserId] = useState('')
   const [singleAssigning, setSingleAssigning] = useState(false)
+  const [showBehavioralModal, setShowBehavioralModal] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
 
     // Build queries with event filter
-    // Use simple select without explicit FK joins to avoid query failures
-    let participantsQuery = supabase
-      .from('participants')
-      .select('*')
-      .order('created_at', { ascending: false })
-
+    // Fetch ALL participants using pagination (Supabase defaults to 1000 rows max)
     let salesQuery = supabase
       .from('sales')
       .select('participant_id')
@@ -129,7 +84,6 @@ export default function AdminParticipantes() {
 
     // Filter by active event if selected
     if (activeEvent?.id) {
-      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
@@ -157,17 +111,33 @@ export default function AdminParticipantes() {
       closersData = (data || []) as User[]
     }
 
-    const [participantsRes, salesRes] = await Promise.all([
-      participantsQuery,
-      salesQuery,
-    ])
+    // Fetch all participants with pagination to avoid 1000-row limit
+    let allParticipantsData: any[] = []
+    const PAGE_SIZE = 1000
+    let page = 0
+    let hasMore = true
+    while (hasMore) {
+      let q = supabase.from('participants').select('*').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1).order('created_at', { ascending: false })
+      if (activeEvent?.id) q = q.eq('event_id', activeEvent.id)
+      const { data, error } = await q
+      if (error) { console.error('Participants error:', error); break }
+      if (data && data.length > 0) {
+        allParticipantsData = allParticipantsData.concat(data)
+        hasMore = data.length === PAGE_SIZE
+      } else {
+        hasMore = false
+      }
+      page++
+    }
+
+    const salesRes = await salesQuery
 
     // Use Set for O(1) lookup instead of .some() O(n)
     const salesSet = new Set(salesRes.data?.map(s => s.participant_id))
 
     // Build lookup for seller closers and assigned closers
-    const sellerCloserIds = [...new Set(participantsRes.data?.map(p => p.seller_closer_id).filter(Boolean))]
-    const assignedCloserIds = [...new Set(participantsRes.data?.map(p => p.assigned_closer_id).filter(Boolean))]
+    const sellerCloserIds = [...new Set(allParticipantsData.map(p => p.seller_closer_id).filter(Boolean))]
+    const assignedCloserIds = [...new Set(allParticipantsData.map(p => p.assigned_closer_id).filter(Boolean))]
     const allCloserIds = [...new Set([...sellerCloserIds, ...assignedCloserIds])]
 
     let closerLookup: Record<string, User> = {}
@@ -181,12 +151,91 @@ export default function AdminParticipantes() {
       }
     }
 
-    const participantsWithSales = participantsRes.data?.map(p => ({
-      ...p,
-      hasSale: salesSet.has(p.id),
-      seller_closer: p.seller_closer_id ? closerLookup[p.seller_closer_id] : null,
-      assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
-    })) || []
+    // Fetch completed disc_forms to recalculate DISC for participants missing disc_profile
+    const participantIds = allParticipantsData.map((p: any) => p.id)
+    let discFormsMap: Record<string, any> = {}
+    if (participantIds.length > 0) {
+      for (let i = 0; i < participantIds.length; i += 200) {
+        const batch = participantIds.slice(i, i + 200)
+        const { data: forms } = await supabase
+          .from('disc_forms')
+          .select('participant_id, answers, completed_at')
+          .in('participant_id', batch)
+          .not('answers', 'is', null)
+        if (forms) {
+          for (const f of forms) {
+            if (f.answers && typeof f.answers === 'object' && Object.keys(f.answers).length > 0) {
+              discFormsMap[f.participant_id] = f.answers
+            }
+          }
+        }
+      }
+    }
+
+    // Hydrate DISC data from multiple sources when disc_profile column is empty
+    const participantsWithSales = allParticipantsData.map(p => {
+      let hydrated = p
+      if (!p.disc_profile) {
+        // Source 1: webhook_data
+        const wd = p.webhook_data as any
+        if (wd?.disc?.profile) {
+          hydrated = {
+            ...p,
+            disc_profile: wd.disc.profile,
+            disc_score_d: p.disc_score_d ?? wd.disc.scores?.D,
+            disc_score_i: p.disc_score_i ?? wd.disc.scores?.I,
+            disc_score_s: p.disc_score_s ?? wd.disc.scores?.S,
+            disc_score_c: p.disc_score_c ?? wd.disc.scores?.C,
+            primary_archetype: p.primary_archetype ?? wd.archetypes?.primary,
+            secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
+          }
+        } else {
+          // Source 2: disc_analysis JSON
+          const da = p.disc_analysis as any
+          const daProfile = da?.discResult?.profile || da?.profile
+          if (daProfile) {
+            hydrated = {
+              ...p,
+              disc_profile: daProfile,
+              disc_score_d: p.disc_score_d ?? da.discResult?.scores?.D ?? da.scores?.D,
+              disc_score_i: p.disc_score_i ?? da.discResult?.scores?.I ?? da.scores?.I,
+              disc_score_s: p.disc_score_s ?? da.discResult?.scores?.S ?? da.scores?.S,
+              disc_score_c: p.disc_score_c ?? da.discResult?.scores?.C ?? da.scores?.C,
+              primary_archetype: p.primary_archetype ?? da.archetypeResult?.primary,
+              secondary_archetype: p.secondary_archetype ?? da.archetypeResult?.secondary,
+            }
+          } else {
+            // Source 3: recalculate from disc_forms answers or disc_analysis.answers
+            const answers = discFormsMap[p.id] || da?.answers
+            if (answers && typeof answers === 'object') {
+              try {
+                const discResult = calculateDISC(answers)
+                const archResult = calculateArchetypes(answers)
+                hydrated = {
+                  ...p,
+                  disc_profile: discResult.profile,
+                  disc_score_d: discResult.scores.D,
+                  disc_score_i: discResult.scores.I,
+                  disc_score_s: discResult.scores.S,
+                  disc_score_c: discResult.scores.C,
+                  primary_archetype: p.primary_archetype ?? archResult.primary,
+                  secondary_archetype: p.secondary_archetype ?? archResult.secondary,
+                  archetype_description: p.archetype_description ?? getCombinedDescription(archResult.primary, archResult.secondary),
+                }
+              } catch (e) {
+                // Calculation failed, skip
+              }
+            }
+          }
+        }
+      }
+      return {
+        ...hydrated,
+        hasSale: salesSet.has(p.id),
+        seller_closer: p.seller_closer_id ? closerLookup[p.seller_closer_id] : null,
+        assigned_closer: p.assigned_closer_id ? closerLookup[p.assigned_closer_id] : null,
+      }
+    })
 
     setParticipants(participantsWithSales)
     setClosers(closersData)
@@ -470,14 +519,22 @@ export default function AdminParticipantes() {
         return
       }
 
-      // Update each participant
-      let updated = 0
+      // Group by seller_closer_id for batch updates
+      const groups = new Map<string, string[]>()
       for (const p of toUpdate) {
+        const key = p.seller_closer_id!
+        const ids = groups.get(key) || []
+        ids.push(p.id)
+        groups.set(key, ids)
+      }
+
+      let updated = 0
+      for (const [closerId, participantIds] of groups) {
         const { error } = await supabase
           .from('participants')
-          .update({ assigned_closer_id: p.seller_closer_id })
-          .eq('id', p.id)
-        if (!error) updated++
+          .update({ assigned_closer_id: closerId })
+          .in('id', participantIds)
+        if (!error) updated += participantIds.length
       }
 
       alert(`Auto-atribuídos: ${updated} participantes`)
@@ -544,6 +601,10 @@ export default function AdminParticipantes() {
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 {autoAssigning ? 'Atribuindo...' : 'Auto-atribuir'}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowBehavioralModal(true)}>
+                <Brain className="h-4 w-4 mr-2" />
+                Perfis PDF
               </Button>
               <Button variant="secondary" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-2" />
@@ -862,7 +923,7 @@ export default function AdminParticipantes() {
                 {/* Table rows */}
                 {paginatedParticipants.map((participant) => {
                   const closerAssigned = (participant as any).assigned_closer || closers.find(c => c.id === participant.assigned_closer_id)
-                  const companionName = participant.companion || findCompanionName(participant.webhook_data)
+                  const companionName = participant.companion
                   return (
                   <div
                     key={participant.id}
@@ -1254,6 +1315,14 @@ export default function AdminParticipantes() {
           </div>
         </div>
       </Modal>
+
+      {/* Behavioral Profile PDF Modal */}
+      <PdfBehavioralModal
+        isOpen={showBehavioralModal}
+        onClose={() => setShowBehavioralModal(false)}
+        participants={participants as any}
+        eventName={activeEvent?.nome_evento || 'Evento'}
+      />
     </>
   )
 }

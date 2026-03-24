@@ -124,9 +124,9 @@ const FIELD_ALIASES: Array<[string, string[]]> = [
     'receita', 'renda', 'ganho_mensal', 'quanto_fatura', 'qual_o_seu_faturamento_mensal',
   ]],
   ['phone', [
-    'phone', 'telefone', 'whatsapp', 'celular', 'digite_seu_whatsapp',
-    'numero_whatsapp', 'tel', 'mobile', 'phone_number', 'qual_o_telefone',
-    'qual_o_seu_numero_de_telefone',
+    'qual_o_seu_numero_de_telefone', 'digite_seu_whatsapp', 'numero_de_telefone',
+    'numero_whatsapp', 'qual_o_telefone', 'telefone', 'whatsapp', 'celular',
+    'phone', 'tel', 'mobile', 'phone_number',
   ]],
   ['instagram', [
     'instagram', 'insta', 'qual_seu_do_instagram', 'ig', 'instagram_handle',
@@ -148,8 +148,7 @@ function isOpportunityValue(value: any): boolean {
   if (value === true) return true
   if (typeof value === 'string') {
     const v = value.toLowerCase().trim()
-    // "Oportunidade" is sent as the value when the participant IS an opportunity
-    return ['true', 'sim', 'yes', '1', 'oportunidade', 'opportunity'].includes(v)
+    return ['true', 'sim', 'yes', '1', 's', 'oportunidade', 'opportunity'].includes(v)
   }
   return value === 1
 }
@@ -163,7 +162,7 @@ function isTruthy(value: any): boolean {
   if (value === true) return true
   if (typeof value === 'string') {
     const v = value.toLowerCase().trim()
-    return ['true', 'sim', 'yes', '1', 's'].includes(v)
+    return ['true', 'sim', 'yes', '1', 's', 'oportunidade', 'opportunity'].includes(v)
   }
   return value === 1
 }
@@ -236,10 +235,11 @@ function extractFieldsFromWebhookData(webhookData: any): Record<string, any> {
     extracted.tem_acompanhante = isTruthy(rawTemAcompanhante)
   }
 
-  // Extract is_opportunity - only explicit positive values
+  // Extract is_opportunity - only set to true, never override to false
+  // (manual changes to false should be preserved)
   const rawOportunidade = findValue(flat, OPORTUNIDADE_ALIASES)
-  if (rawOportunidade !== null) {
-    extracted.is_opportunity = isOpportunityValue(rawOportunidade)
+  if (rawOportunidade !== null && isOpportunityValue(rawOportunidade)) {
+    extracted.is_opportunity = true
   }
 
   // Recalculate color and qualification from revenue
@@ -272,9 +272,9 @@ function extractFieldsFromUnifiedFormat(webhookData: any): Record<string, any> {
   if (participant.faturamento) extracted.revenue = participant.faturamento
   if (participant.funnel_origin) extracted.funnel = participant.funnel_origin
 
-  // Extract is_opportunity - only explicit positive values
-  if (participant.oportunidade !== undefined) {
-    extracted.is_opportunity = isOpportunityValue(participant.oportunidade)
+  // Extract is_opportunity - only set to true, never override to false
+  if (participant.oportunidade !== undefined && isOpportunityValue(participant.oportunidade)) {
+    extracted.is_opportunity = true
   }
 
   // Extract from form_data using normalized key matching

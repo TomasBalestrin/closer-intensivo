@@ -270,6 +270,53 @@ export async function POST(request: Request) {
       )
     }
 
+    // Check if participant has a completed DISC form with answers — trigger analysis automatically
+    let analysisTriggered = false
+    try {
+      const { data: discForm } = await supabase
+        .from('disc_forms')
+        .select('id, answers, completed_at')
+        .eq('participant_id', existingParticipant.id)
+        .not('answers', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      // Also check if participant already has DISC profile (skip if already analyzed)
+      const { data: participantCheck } = await supabase
+        .from('participants')
+        .select('disc_profile, challenge_answer, desired_change_answer')
+        .eq('id', existingParticipant.id)
+        .single()
+
+      const hasDiscAnswers = discForm?.answers && typeof discForm.answers === 'object' && Object.keys(discForm.answers).length > 0
+      const alreadyAnalyzed = !!participantCheck?.disc_profile
+
+      if (hasDiscAnswers && !alreadyAnalyzed) {
+        // Trigger analysis in the background (non-blocking)
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000'
+
+        fetch(`${baseUrl}/api/forms/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            participantId: existingParticipant.id,
+            formId: discForm.id,
+            answers: discForm.answers,
+            challengeAnswer: updateData.challenge_answer || participantCheck?.challenge_answer || '',
+            desiredChangeAnswer: updateData.desired_change_answer || participantCheck?.desired_change_answer || '',
+          }),
+        }).catch(err => console.error('Auto-analysis trigger failed:', err))
+
+        analysisTriggered = true
+      }
+    } catch (err) {
+      // Non-critical — analysis can always be triggered manually
+      console.error('Error checking for auto-analysis:', err)
+    }
+
     // Mark webhook as processed
     if (logId) {
       await supabase.from('webhooks_log').update({ processed: true }).eq('id', logId)
@@ -280,6 +327,7 @@ export async function POST(request: Request) {
       participantId: existingParticipant.id,
       participantName: existingParticipant.name,
       updated: Object.keys(updateData),
+      analysisTriggered,
     })
   } catch (error: any) {
     console.error('Answers webhook error:', error)

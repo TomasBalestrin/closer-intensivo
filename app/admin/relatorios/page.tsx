@@ -20,10 +20,14 @@ import {
   ChevronDown,
   ChevronUp,
   FileDown,
+  AlertCircle,
 } from 'lucide-react'
 import { PdfReportModal } from './_components/pdf-report-modal'
+import { PdfBehavioralModal } from './_components/pdf-behavioral-modal'
 import { User } from '@/lib/types'
 import { useEvent } from '@/lib/hooks/use-event'
+import { calculateDISC } from '@/lib/disc'
+import { calculateArchetypes, getCombinedDescription } from '@/lib/archetypes'
 import {
   getColorClass,
   getColorFromRevenue,
@@ -47,6 +51,7 @@ type Participant = {
   checked_in_day3: boolean
   closer_id: string | null
   assigned_closer_id: string | null
+  seller_closer_id: string | null
   challenge_answer: string | null
   desired_change_answer: string | null
   times_called: number
@@ -68,6 +73,8 @@ export default function AdminRelatorios() {
   const [funnelFilter, setFunnelFilter] = useState('')
   const [closerFilter, setCloserFilter] = useState('')
   const [opportunityFilter, setOpportunityFilter] = useState('')
+  const [discFilter, setDiscFilter] = useState('')
+  const [discProfileFilter, setDiscProfileFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
 
   // AI Analysis
@@ -76,12 +83,17 @@ export default function AdminRelatorios() {
   const [aiLoading, setAiLoading] = useState(false)
   const [showAiSection, setShowAiSection] = useState(true)
 
-  // PDF Report Modal
+  // DISC forms map (to detect unprocessed submissions)
+  const [discFormsSet, setDiscFormsSet] = useState<Set<string>>(new Set())
+
+  // PDF Report Modals
   const [showPdfModal, setShowPdfModal] = useState(false)
+  const [showBehavioralModal, setShowBehavioralModal] = useState(false)
 
   // Collapsible sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     summary: true,
+    disc: false,
     qualification: true,
     revenue: true,
     niches: true,
@@ -99,12 +111,11 @@ export default function AdminRelatorios() {
     setLoading(true)
 
     // Build queries with event filter
-    let participantsQuery = supabase.from('participants').select('*')
+    // Fetch ALL participants using pagination (Supabase defaults to 1000 rows max)
     let salesQuery = supabase.from('sales').select('participant_id').is('deleted_at', null)
 
     // Filter by active event if selected
     if (activeEvent?.id) {
-      participantsQuery = participantsQuery.eq('event_id', activeEvent.id)
       salesQuery = salesQuery.eq('event_id', activeEvent.id)
     }
 
@@ -121,24 +132,121 @@ export default function AdminRelatorios() {
         const userIds = userEventsData.map((ue: any) => ue.user_id)
         const { data: usersData } = await supabase
           .from('users')
-          .select('*')
+          .select('id, name, email, photo_url')
           .in('id', userIds)
         closersData = (usersData || []) as User[]
       }
     } else {
       // No event selected, get all closers
-      const { data } = await supabase.from('users').select('*').eq('role', 'closer')
+      const { data } = await supabase.from('users').select('id, name, email, photo_url').eq('role', 'closer')
       closersData = (data || []) as User[]
     }
 
-    const [pRes, sRes] = await Promise.all([
-      participantsQuery,
-      salesQuery,
-    ])
+    // Fetch all participants with pagination to avoid 1000-row limit
+    let allParticipantsData: any[] = []
+    const PAGE_SIZE = 1000
+    let page = 0
+    let hasMore = true
+    while (hasMore) {
+      let q = supabase.from('participants').select('*').range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1).order('created_at', { ascending: false })
+      if (activeEvent?.id) q = q.eq('event_id', activeEvent.id)
+      const { data, error } = await q
+      if (error) { console.error('Participants error:', error); break }
+      if (data && data.length > 0) {
+        allParticipantsData = allParticipantsData.concat(data)
+        hasMore = data.length === PAGE_SIZE
+      } else {
+        hasMore = false
+      }
+      page++
+    }
 
-    if (pRes.error) console.error('Participants error:', pRes.error)
+    const sRes = await salesQuery
     if (sRes.error) console.error('Sales error:', sRes.error)
-    setParticipants((pRes.data || []) as any)
+
+    // Fetch completed disc_forms to recalculate DISC for participants missing disc_profile
+    const participantIds = allParticipantsData.map((p: any) => p.id)
+    let discFormsMap: Record<string, any> = {}
+    if (participantIds.length > 0) {
+      // Fetch in batches to avoid query size limits
+      for (let i = 0; i < participantIds.length; i += 200) {
+        const batch = participantIds.slice(i, i + 200)
+        const { data: forms } = await supabase
+          .from('disc_forms')
+          .select('participant_id, answers, completed_at')
+          .in('participant_id', batch)
+          .not('answers', 'is', null)
+        if (forms) {
+          for (const f of forms) {
+            if (f.answers && typeof f.answers === 'object' && Object.keys(f.answers).length > 0) {
+              discFormsMap[f.participant_id] = f.answers
+            }
+          }
+        }
+      }
+    }
+
+    // Track which participants have disc_forms answers (filled form)
+    setDiscFormsSet(new Set(Object.keys(discFormsMap)))
+
+    // Hydrate DISC data from multiple sources when disc_profile column is empty
+    const hydratedParticipants = allParticipantsData.map((p: any) => {
+      if (!p.disc_profile) {
+        // Source 1: webhook_data
+        const wd = p.webhook_data as any
+        if (wd?.disc?.profile) {
+          return {
+            ...p,
+            disc_profile: wd.disc.profile,
+            disc_score_d: p.disc_score_d ?? wd.disc.scores?.D,
+            disc_score_i: p.disc_score_i ?? wd.disc.scores?.I,
+            disc_score_s: p.disc_score_s ?? wd.disc.scores?.S,
+            disc_score_c: p.disc_score_c ?? wd.disc.scores?.C,
+            primary_archetype: p.primary_archetype ?? wd.archetypes?.primary,
+            secondary_archetype: p.secondary_archetype ?? wd.archetypes?.secondary,
+          }
+        }
+        // Source 2: disc_analysis JSON (check multiple paths where profile may be stored)
+        const da = p.disc_analysis as any
+        const daProfile = da?.disc?.profile || da?.discResult?.profile || da?.profile
+        if (daProfile) {
+          return {
+            ...p,
+            disc_profile: daProfile,
+            disc_score_d: p.disc_score_d ?? da.disc?.scores?.D ?? da.discResult?.scores?.D ?? da.scores?.D,
+            disc_score_i: p.disc_score_i ?? da.disc?.scores?.I ?? da.discResult?.scores?.I ?? da.scores?.I,
+            disc_score_s: p.disc_score_s ?? da.disc?.scores?.S ?? da.discResult?.scores?.S ?? da.scores?.S,
+            disc_score_c: p.disc_score_c ?? da.disc?.scores?.C ?? da.discResult?.scores?.C ?? da.scores?.C,
+            primary_archetype: p.primary_archetype ?? da.archetypes?.primary ?? da.archetypeResult?.primary,
+            secondary_archetype: p.secondary_archetype ?? da.archetypes?.secondary ?? da.archetypeResult?.secondary,
+          }
+        }
+        // Source 3: recalculate from disc_forms answers or disc_analysis.answers
+        const answers = discFormsMap[p.id] || da?.answers
+        if (answers && typeof answers === 'object') {
+          try {
+            const discResult = calculateDISC(answers)
+            const archResult = calculateArchetypes(answers)
+            return {
+              ...p,
+              disc_profile: discResult.profile,
+              disc_score_d: discResult.scores.D,
+              disc_score_i: discResult.scores.I,
+              disc_score_s: discResult.scores.S,
+              disc_score_c: discResult.scores.C,
+              primary_archetype: p.primary_archetype ?? archResult.primary,
+              secondary_archetype: p.secondary_archetype ?? archResult.secondary,
+              archetype_description: p.archetype_description ?? getCombinedDescription(archResult.primary, archResult.secondary),
+            }
+          } catch (e) {
+            // Calculation failed, skip
+          }
+        }
+      }
+      return p
+    })
+
+    setParticipants(hydratedParticipants as any)
     setClosers(closersData)
     const map: Record<string, boolean> = {}
     sRes.data?.forEach(s => { map[s.participant_id] = true })
@@ -155,6 +263,12 @@ export default function AdminRelatorios() {
   // Filtered participants
   const filtered = useMemo(() => {
     return participants.filter(p => {
+      // Exclude exact "Elite Premium" funnel/niche (keep "Indicação Elite Premium", "Convidado Elite Premium", etc.)
+      const funnelLower = (p.funnel || '').trim().toLowerCase()
+      const nicheLower = (p.niche || '').trim().toLowerCase()
+      if (funnelLower === 'elite premium' || funnelLower === 'elite_premium') return false
+      if (nicheLower === 'elite premium' || nicheLower === 'elite_premium') return false
+
       const pColor = p.color || getColorFromRevenue(p.revenue)
       const matchesCheckin = !checkinFilter ||
         (checkinFilter === 'day1' ? p.checked_in_day1 :
@@ -164,20 +278,28 @@ export default function AdminRelatorios() {
          checkinFilter === 'none' ? (!p.checked_in_day1 && !p.checked_in_day2 && !p.checked_in_day3) : true)
       const matchesColor = !colorFilter || pColor === colorFilter
       const matchesFunnel = !funnelFilter || p.funnel === funnelFilter
-      const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? !p.assigned_closer_id : p.assigned_closer_id === closerFilter)
+      const matchesCloser = !closerFilter || (closerFilter === 'unassigned' ? (!p.assigned_closer_id && !p.seller_closer_id) : (p.assigned_closer_id === closerFilter || p.seller_closer_id === closerFilter))
       const matchesOpp = opportunityFilter === '' ||
         (opportunityFilter === 'true' ? p.is_opportunity : !p.is_opportunity)
-      return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp
+      const matchesDisc = !discFilter ||
+        (discFilter === 'yes' ? !!p.disc_profile : !p.disc_profile)
+      const matchesDiscProfile = !discProfileFilter ||
+        p.disc_profile?.charAt(0) === discProfileFilter
+      return matchesCheckin && matchesColor && matchesFunnel && matchesCloser && matchesOpp && matchesDisc && matchesDiscProfile
     })
-  }, [participants, checkinFilter, colorFilter, funnelFilter, closerFilter, opportunityFilter])
+  }, [participants, checkinFilter, colorFilter, funnelFilter, closerFilter, opportunityFilter, discFilter, discProfileFilter])
 
-  // Dynamic funnel options from actual participant data
+  // Dynamic funnel options from actual participant data (exclude elite_premium)
   const funnels = useMemo(() =>
-    [...new Set(participants.map(p => p.funnel).filter(Boolean))].sort(),
+    [...new Set(participants.map(p => p.funnel).filter(f => {
+      if (!f) return false
+      const fl = f.trim().toLowerCase()
+      return fl !== 'elite premium' && fl !== 'elite_premium'
+    }))].sort(),
     [participants]
   )
 
-  const hasActiveFilters = checkinFilter || colorFilter || funnelFilter || closerFilter || opportunityFilter
+  const hasActiveFilters = checkinFilter || colorFilter || funnelFilter || closerFilter || opportunityFilter || discFilter || discProfileFilter
 
   const clearFilters = () => {
     setCheckinFilter('')
@@ -185,6 +307,8 @@ export default function AdminRelatorios() {
     setFunnelFilter('')
     setCloserFilter('')
     setOpportunityFilter('')
+    setDiscFilter('')
+    setDiscProfileFilter('')
   }
 
   // === COMPUTED STATS ===
@@ -252,23 +376,29 @@ export default function AdminRelatorios() {
       .slice(0, 20)
 
     // Closer breakdown with opportunities per day
+    // Count participants under both assigned_closer_id and seller_closer_id (matching closers page logic)
     const closerMap: Record<string, { name: string; total: number; checkedIn: number; opportunities: number; oppDay1: number; oppDay2: number; oppDay3: number; sales: number }> = {}
     closerMap['unassigned'] = { name: 'Sem closer', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     closers.forEach(c => {
       closerMap[c.id] = { name: c.name, total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
     })
     filtered.forEach(p => {
-      const key = p.assigned_closer_id || 'unassigned'
-      if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
-      closerMap[key].total++
-      if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) closerMap[key].checkedIn++
-      if (p.is_opportunity) {
-        closerMap[key].opportunities++
-        if (p.checked_in_day1) closerMap[key].oppDay1++
-        if (p.checked_in_day2) closerMap[key].oppDay2++
-        if (p.checked_in_day3) closerMap[key].oppDay3++
-      }
-      if (salesMap[p.id]) closerMap[key].sales++
+      const closerIds = new Set<string>()
+      if (p.seller_closer_id) closerIds.add(p.seller_closer_id)
+      if (p.assigned_closer_id) closerIds.add(p.assigned_closer_id)
+      if (closerIds.size === 0) closerIds.add('unassigned')
+      closerIds.forEach(key => {
+        if (!closerMap[key]) closerMap[key] = { name: 'Desconhecido', total: 0, checkedIn: 0, opportunities: 0, oppDay1: 0, oppDay2: 0, oppDay3: 0, sales: 0 }
+        closerMap[key].total++
+        if (p.checked_in_day1 || p.checked_in_day2 || p.checked_in_day3) closerMap[key].checkedIn++
+        if (p.is_opportunity) {
+          closerMap[key].opportunities++
+          if (p.checked_in_day1) closerMap[key].oppDay1++
+          if (p.checked_in_day2) closerMap[key].oppDay2++
+          if (p.checked_in_day3) closerMap[key].oppDay3++
+        }
+        if (salesMap[p.id]) closerMap[key].sales++
+      })
     })
     const closerRanking = Object.entries(closerMap)
       .filter(([, v]) => v.total > 0)
@@ -292,6 +422,23 @@ export default function AdminRelatorios() {
     const challengeThemes = groupThemes(challengeAnswers)
     const desiredThemes = groupThemes(desiredAnswers)
 
+    // DISC breakdown
+    const withDisc = filtered.filter(p => !!p.disc_profile).length
+    const withoutDisc = total - withDisc
+    const oppWithDisc = filtered.filter(p => p.is_opportunity && !!p.disc_profile).length
+    // Filled disc form but profile not processed (answers exist in disc_forms but no disc_profile after hydration)
+    const discFilledNotProcessed = filtered.filter(p => !p.disc_profile && discFormsSet.has(p.id)).length
+    const discProfiles = ['D', 'I', 'S', 'C'] as const
+    const discBreakdown = discProfiles.map(profile => {
+      const matching = filtered.filter(p => p.disc_profile?.charAt(0) === profile)
+      return {
+        profile,
+        total: matching.length,
+        opportunities: matching.filter(p => p.is_opportunity).length,
+        sales: matching.filter(p => salesMap[p.id]).length,
+      }
+    })
+
     return {
       total, checkedIn, opportunities, withSale,
       checkedD1, checkedD2, checkedD3,
@@ -299,8 +446,9 @@ export default function AdminRelatorios() {
       nicheRanking, closerRanking, oppByNiche,
       challengeAnswers, desiredAnswers,
       challengeThemes, desiredThemes,
+      withDisc, withoutDisc, oppWithDisc, discBreakdown, discFilledNotProcessed,
     }
-  }, [filtered, salesMap, closers])
+  }, [filtered, salesMap, closers, discFormsSet])
 
   // Build context for AI
   const buildAiContext = () => {
@@ -417,6 +565,14 @@ export default function AdminRelatorios() {
           <Button
             variant="secondary"
             size="sm"
+            onClick={() => setShowBehavioralModal(true)}
+          >
+            <Brain className="h-4 w-4 mr-2" />
+            Perfis PDF
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setShowPdfModal(true)}
           >
             <FileDown className="h-4 w-4 mr-2" />
@@ -438,7 +594,7 @@ export default function AdminRelatorios() {
 
         {showFilters && (
           <div className="mt-3 p-4 bg-white rounded-lg shadow-sm space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <Select
                 label="Credenciamento"
                 value={checkinFilter}
@@ -495,6 +651,28 @@ export default function AdminRelatorios() {
                   { value: 'false', label: 'Não' },
                 ]}
               />
+              <Select
+                label="Preencheu DISC"
+                value={discFilter}
+                onChange={(e) => setDiscFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'yes', label: 'Sim — Com perfil' },
+                  { value: 'no', label: 'Não — Sem perfil' },
+                ]}
+              />
+              <Select
+                label="Perfil DISC"
+                value={discProfileFilter}
+                onChange={(e) => setDiscProfileFilter(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos os perfis' },
+                  { value: 'D', label: 'D — Dominância' },
+                  { value: 'I', label: 'I — Influência' },
+                  { value: 'S', label: 'S — Estabilidade' },
+                  { value: 'C', label: 'C — Conformidade' },
+                ]}
+              />
             </div>
             {hasActiveFilters && (
               <div className="flex justify-end">
@@ -514,6 +692,117 @@ export default function AdminRelatorios() {
           <StatCard icon={Target} label="Oportunidades" value={stats.opportunities} subtitle={pct(stats.opportunities, stats.total)} color="purple" />
           <StatCard icon={DollarSign} label="Com Venda" value={stats.withSale} subtitle={pct(stats.withSale, stats.total)} color="emerald" />
         </div>
+      )}
+
+      {/* DISC Profile Breakdown */}
+      <SectionHeader title="Relatório Perfil DISC" icon={Brain} sectionKey="disc" expanded={expandedSections.disc} onToggle={toggleSection} />
+      {expandedSections.disc && (
+        <Card className="border-blue-200">
+          <CardContent>
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+              <div className="p-4 bg-blue-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
+                <p className="text-xs text-blue-600 mt-1">Total Participantes</p>
+              </div>
+              <div className="p-4 bg-purple-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-purple-700">{stats.opportunities}</p>
+                <p className="text-xs text-purple-600 mt-1">Oportunidades</p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-green-700">{stats.withDisc}</p>
+                <p className="text-xs text-green-600 mt-1">Preencheram DISC</p>
+                <p className="text-[10px] text-green-500">{pct(stats.withDisc, stats.total)} do total</p>
+              </div>
+              <div className="p-4 bg-amber-50 rounded-xl text-center">
+                <p className="text-2xl font-bold text-amber-700">{stats.oppWithDisc}</p>
+                <p className="text-xs text-amber-600 mt-1">Oportunidades com DISC</p>
+                <p className="text-[10px] text-amber-500">{pct(stats.oppWithDisc, stats.opportunities)} das oportunidades</p>
+              </div>
+              <div className={`p-4 rounded-xl text-center ${stats.discFilledNotProcessed > 0 ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                <p className={`text-2xl font-bold ${stats.discFilledNotProcessed > 0 ? 'text-red-600' : 'text-gray-400'}`}>{stats.discFilledNotProcessed}</p>
+                <p className={`text-xs mt-1 ${stats.discFilledNotProcessed > 0 ? 'text-red-500' : 'text-gray-400'}`}>Erro de Processamento</p>
+                {stats.discFilledNotProcessed > 0 && (
+                  <p className="text-[10px] text-red-400">preencheram mas não processou</p>
+                )}
+              </div>
+            </div>
+
+            {/* DISC profile table */}
+            <div className="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Perfil</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Total</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Oportunidades</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Vendas</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 w-1/4">Distribuição</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.discBreakdown.map(row => {
+                    const colors: Record<string, { text: string; bg: string; bar: string; label: string }> = {
+                      D: { text: 'text-red-600', bg: 'bg-red-50', bar: 'bg-red-500', label: 'Dominância' },
+                      I: { text: 'text-yellow-600', bg: 'bg-yellow-50', bar: 'bg-yellow-500', label: 'Influência' },
+                      S: { text: 'text-green-600', bg: 'bg-green-50', bar: 'bg-green-500', label: 'Estabilidade' },
+                      C: { text: 'text-blue-600', bg: 'bg-blue-50', bar: 'bg-blue-500', label: 'Conformidade' },
+                    }
+                    const c = colors[row.profile]
+                    return (
+                      <tr key={row.profile} className="border-b last:border-0">
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center justify-center w-9 h-9 rounded-full ${c.bg} ${c.text} font-bold text-lg`}>
+                            {row.profile}
+                          </span>
+                        </td>
+                        <td className={`py-3 px-4 font-medium ${c.text}`}>{c.label}</td>
+                        <td className="text-right py-3 px-4 font-semibold">{row.total}</td>
+                        <td className="text-right py-3 px-4 font-semibold text-purple-600">{row.opportunities}</td>
+                        <td className="text-right py-3 px-4 font-semibold text-emerald-600">{row.sales}</td>
+                        <td className="py-3 px-4">
+                          <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${c.bar} rounded-full transition-all`} style={{ width: `${stats.withDisc > 0 ? (row.total / stats.withDisc) * 100 : 0}%` }} />
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5 text-right">{stats.withDisc > 0 ? pct(row.total, stats.withDisc) : '0%'}</p>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="bg-gray-50 font-semibold">
+                    <td className="py-3 px-4" />
+                    <td className="py-3 px-4">TOTAL</td>
+                    <td className="text-right py-3 px-4">{stats.withDisc}</td>
+                    <td className="text-right py-3 px-4 text-purple-600">{stats.oppWithDisc}</td>
+                    <td className="text-right py-3 px-4 text-emerald-600">{stats.discBreakdown.reduce((s, r) => s + r.sales, 0)}</td>
+                    <td className="py-3 px-4" />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* DISC notices */}
+            <div className="mt-4 space-y-2">
+              {stats.discFilledNotProcessed > 0 && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <p className="text-xs text-red-700">
+                    <strong>{stats.discFilledNotProcessed}</strong> participantes preencheram o formulário DISC mas tiveram <strong>erro de processamento</strong> (respostas existem, perfil não foi gerado). Use o reprocessamento para corrigir.
+                  </p>
+                </div>
+              )}
+              {stats.withoutDisc > 0 && (
+                <div className="p-3 bg-gray-50 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <p className="text-xs text-gray-500">
+                    <strong>{stats.withoutDisc - stats.discFilledNotProcessed}</strong> participantes ({pct(stats.withoutDisc - stats.discFilledNotProcessed, stats.total)}) ainda não preencheram o formulário DISC.
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Qualification Breakdown */}
@@ -893,6 +1182,14 @@ export default function AdminRelatorios() {
       <PdfReportModal
         isOpen={showPdfModal}
         onClose={() => setShowPdfModal(false)}
+        participants={filtered as any}
+        eventName={activeEvent?.nome_evento || 'Evento'}
+      />
+
+      {/* Behavioral Profile PDF Modal */}
+      <PdfBehavioralModal
+        isOpen={showBehavioralModal}
+        onClose={() => setShowBehavioralModal(false)}
         participants={filtered as any}
         eventName={activeEvent?.nome_evento || 'Evento'}
       />
