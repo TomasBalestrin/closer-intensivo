@@ -318,7 +318,7 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(altoSales.length, altoOppsTotal))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(altoSales.length, altoQualified.length))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(medioSales.length, medioOppsTotal))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(medioSales.length, medioQualified.length))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>
@@ -370,7 +370,7 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Conversão</p>
-                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(baixoSales.length, baixoOppsTotal))}</p>
+                <p className="text-lg font-bold text-gray-900">{formatPercentage(calcConversion(baixoSales.length, baixoQualified.length))}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Valor</p>
